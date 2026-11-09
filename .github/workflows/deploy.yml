@@ -66,9 +66,9 @@ jobs:
       SUPERUSER_PASSWORD: ${{ secrets.SUPERUSER_PASSWORD }}
       # Fixed Cloudflare tunnel domain
       CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
-      SITE_DOMAIN: "shops.hadi88.online"
-      ALLOWED_HOSTS: "shops.hadi88.online,localhost,127.0.0.1"
-      CSRF_TRUSTED_ORIGINS: "https://shops.hadi88.online"
+      SITE_DOMAIN: "test.uqn88.store"
+      ALLOWED_HOSTS: "test.uqn88.store,localhost,127.0.0.1"
+      CSRF_TRUSTED_ORIGINS: "https://test.uqn88.store"
       # License: fixed machine id (runner machine-id changes every run) + optional first-time key
       LICENSE_MACHINE_SEED: ${{ secrets.LICENSE_MACHINE_SEED }}
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
