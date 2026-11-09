@@ -372,6 +372,13 @@ jobs:
             echo ""
           fi
 
+      - name: Send Notification to ntfy
+        if: env.STOP_AFTER_MIGRATE != 'true'
+        run: |
+          MESSAGE="Django App Live! (Local MySQL on runner, snapshots on Drive)
+          URL: ${TUNNEL_URL:-not available}"
+          curl -d "$MESSAGE" ntfy.sh/hshshehgag
+
       - name: Realtime HTTP Access Logs & Error Stream
         if: env.STOP_AFTER_MIGRATE != 'true'
         env:
