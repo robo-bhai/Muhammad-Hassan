@@ -26,16 +26,21 @@ HTTPS = _env_bool('HTTPS', False)                 # true when the site is served
 BEHIND_PROXY = _env_bool('BEHIND_PROXY', False)   # true only behind nginx/caddy/IIS that sets X-Forwarded-*
 
 # --- KEYS & GENERAL CONFIGURATION ---
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
-SALT_KEY = os.environ.get('DJANGO_SALT_KEY', '')
-if not DEBUG:
+# CI_MODE=true is for GitHub Actions build/test jobs ONLY (set it in that job's env). It allows temporary
+# keys so makemigrations/test can run without real secrets. Never set it on a real server / deploy job.
+CI_MODE = _env_bool('CI_MODE', False)
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '').strip()
+SALT_KEY = os.environ.get('DJANGO_SALT_KEY', '').strip()
+if DEBUG or CI_MODE:
+    SECRET_KEY = SECRET_KEY or 'django-insecure-dev-only-key'
+    SALT_KEY = SALT_KEY or 'dev-only-salt-key'
+else:
     for _name, _value in (('DJANGO_SECRET_KEY', SECRET_KEY), ('DJANGO_SALT_KEY', SALT_KEY)):
         if not _value or 'insecure' in _value or 'fallback' in _value or 'change-me' in _value:
             raise ImproperlyConfigured(f'{_name} is missing or a placeholder. Run deploy/setup_install.py (it writes a .env '
-                                       f'with random keys) or set it in the .env file.')
-else:
-    SECRET_KEY = SECRET_KEY or 'django-insecure-dev-only-key'
-    SALT_KEY = SALT_KEY or 'dev-only-salt-key'
+                                       f'with random keys) or set it in the .env file. '
+                                       f'(In GitHub Actions: pass the secret via env: in the workflow.)')
 
 # Software license (see app/licensing). The PUBLIC key is not a secret, but keep it here in the code,
 # not in .env, so that deleting a .env line cannot switch licensing off. Empty = licensing off (development).
