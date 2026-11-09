@@ -1,0 +1,106 @@
+{% extends 'security_base.html' %}
+
+{% block title %}Security Logs{% endblock %}
+
+{% block page_title %}Security Logs{% endblock %}
+{% block page_subtitle %}Audit trail of user activity.{% endblock %}
+
+{% block page_body %}
+<form method="GET" class="card card-body mb-4">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label for="user" class="form-label">User</label>
+            <select id="user" name="user" class="form-select">
+                <option value="">All users</option>
+                {% for user in users %}
+                <option value="{{ user.username }}" {% if user.username == user_filter %}selected{% endif %}>{{ user.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="module" class="form-label">Module</label>
+            <select id="module" name="module" class="form-select">
+                <option value="">All modules</option>
+                {% for module in modules %}
+                <option value="{{ module }}" {% if module == module_filter %}selected{% endif %}>{{ module|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="sensitive" class="form-label">Sensitivity</label>
+            <select id="sensitive" name="sensitive" class="form-select">
+                <option value="">All</option>
+                <option value="true" {% if is_sensitive == 'true' %}selected{% endif %}>Sensitive only</option>
+                <option value="false" {% if is_sensitive == 'false' %}selected{% endif %}>Non-sensitive only</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Apply filters</button>
+            <a href="?" class="btn btn-outline-secondary">Reset</a>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover sec-table mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Time</th>
+                    <th scope="col">User</th>
+                    <th scope="col">Module</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">IP address</th>
+                    <th scope="col">Sensitivity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td class="text-nowrap">{{ log.created_at|date:"d-m-Y h:i:s A" }}</td>
+                    <td>{{ log.user.username|default:"Anonymous" }}</td>
+                    <td>{{ log.module|title }}</td>
+                    <td>{{ log.action }}</td>
+                    <td><code>{{ log.ip_address }}</code></td>
+                    <td>
+                        {% if log.is_sensitive %}
+                        <span class="pill pill-danger">Sensitive</span>
+                        {% else %}
+                        <span class="pill pill-neutral">Normal</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="sec-empty">No log entries match these filters.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="card-footer bg-transparent">
+        <nav aria-label="Log pages">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&user={{ user_filter|default_if_none:''|urlencode }}&module={{ module_filter|default_if_none:''|urlencode }}&sensitive={{ is_sensitive|default_if_none:''|urlencode }}">Previous</a></li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}&user={{ user_filter|default_if_none:''|urlencode }}&module={{ module_filter|default_if_none:''|urlencode }}&sensitive={{ is_sensitive|default_if_none:''|urlencode }}" {% if page_obj.number == num %}aria-current="page"{% endif %}>{{ num }}</a>
+                    </li>
+                    {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&user={{ user_filter|default_if_none:''|urlencode }}&module={{ module_filter|default_if_none:''|urlencode }}&sensitive={{ is_sensitive|default_if_none:''|urlencode }}">Next</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

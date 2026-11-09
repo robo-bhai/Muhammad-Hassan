@@ -1,0 +1,110 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Sales report{% endblock %}
+
+{% block content %}
+<style>
+    .vr-wrap { max-width: 760px; margin: 26px auto; padding: 0 14px; }
+    .vr-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .vr-card { background: #fff; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 16px; }
+    .vr-head { background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); color: #fff; padding: 18px 22px; }
+    .vr-head h3 { margin: 0; font-size: 20px; font-weight: 700; }
+    .vr-head p { margin: 3px 0 0; opacity: .9; font-size: 13px; }
+    .vr-body { padding: 14px 20px 18px; }
+    .vr-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .vr-pill { padding: 7px 14px; border-radius: 999px; border: 2px solid #e5e7eb; background: #fff; color: #374151; font-size: 14px; font-weight: 700; text-decoration: none; }
+    .vr-pill.on { border-color: #2563eb; background: #e8edff; color: #1e40af; }
+    .vr-custom { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .vr-custom input { padding: 8px 10px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; min-width: 0; }
+    .vr-btn { border: 0; border-radius: 10px; padding: 9px 16px; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(135deg,#2563eb,#7c3aed); text-decoration: none; display: inline-block; font-size: 14px; }
+    .vr-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .vr-kpi { border: 2px solid #f1f1f1; border-radius: 16px; padding: 12px 14px; }
+    .vr-kpi b { display: block; font-size: 22px; font-weight: 800; }
+    .vr-kpi span { font-size: 12.5px; color: #6b7280; }
+    .vr-kpi.green b { color: #198754; }
+    .vr-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #f1f1f1; font-size: 14.5px; }
+    .vr-row:first-child { border-top: 0; }
+    .vr-row .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .vr-row .q { color: #6b7280; font-size: 13px; }
+    .vr-row .v { font-weight: 700; }
+    .vr-bar { height: 10px; border-radius: 6px; background: #eef2ff; flex: 1; overflow: hidden; }
+    .vr-bar i { display: block; height: 100%; background: linear-gradient(135deg,#2563eb,#7c3aed); }
+    .vr-day { width: 62px; font-size: 12.5px; color: #6b7280; }
+    .vr-val { width: 74px; text-align: right; font-size: 13px; font-weight: 700; }
+    .vr-note { font-size: 12.5px; color: #6b7280; margin-top: 8px; }
+    .vr-empty { color: #6b7280; padding: 8px 0; font-size: 14px; }
+    @media (min-width: 640px) { .vr-kpis { grid-template-columns: repeat(3, 1fr); } }
+</style>
+
+<div class="vr-wrap">
+    <a class="vr-back" href="{% url 'vendor_dashboard' %}">← Dashboard</a>
+
+    <div class="vr-card">
+        <div class="vr-head"><h3>📊 Sales report</h3><p>{{ start|date:"d M Y" }}{% if start != end %} – {{ end|date:"d M Y" }}{% endif %}</p></div>
+        <div class="vr-body">
+            <div class="vr-pills">
+                <a class="vr-pill {% if range_key == 'today' %}on{% endif %}" href="?range=today">Aaj</a>
+                <a class="vr-pill {% if range_key == '7d' %}on{% endif %}" href="?range=7d">7 din</a>
+                <a class="vr-pill {% if range_key == '30d' %}on{% endif %}" href="?range=30d">30 din</a>
+                <a class="vr-pill {% if range_key == 'month' %}on{% endif %}" href="?range=month">Is mahine</a>
+            </div>
+            <form method="get" class="vr-custom">
+                <input type="hidden" name="range" value="custom">
+                <input type="date" name="from" value="{{ start|date:'Y-m-d' }}" aria-label="Se">
+                <input type="date" name="to" value="{{ end|date:'Y-m-d' }}" aria-label="Tak">
+                <button class="vr-btn" type="submit">Dikhayein</button>
+                <a class="vr-btn" style="background:#198754;" href="?range={{ range_key }}&from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}&export=csv">⬇ CSV</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="vr-card"><div class="vr-body">
+        <div class="vr-kpis">
+            <div class="vr-kpi"><b>{{ total_orders }}</b><span>Kul orders</span></div>
+            <div class="vr-kpi"><b>{{ delivered }}</b><span>Mukammal (delivered)</span></div>
+            <div class="vr-kpi"><b>{{ cancelled }}{% if total_orders %} <small style="font-size:13px;color:#6b7280;">({{ cancel_rate }}%)</small>{% endif %}</b><span>Cancel</span></div>
+            <div class="vr-kpi green"><b>Rs {{ sales|floatformat:0 }}</b><span>Bikri (delivered orders)</span></div>
+            <div class="vr-kpi"><b>Rs {{ avg|floatformat:0 }}</b><span>Ek order ka average</span></div>
+            <div class="vr-kpi green"><b>Rs {{ earn|floatformat:0 }}</b><span>Aap ka hissa (approx)</span></div>
+        </div>
+        <div class="vr-note">Shop commission {{ pct }}% (approx Rs {{ commission|floatformat:0 }}). Sirf delivered orders ginay gaye{% if active %}; {{ active }} order abhi chal rahe hain{% endif %}. Asal payable "Dashboard" mein hai.</div>
+    </div></div>
+
+    <div class="vr-card"><div class="vr-body">
+        <div style="font-weight:800;margin-bottom:6px;">🏆 Top products</div>
+        <div class="vr-pills" style="margin-bottom:4px;">
+            <a class="vr-pill {% if top_sort == 'qty' %}on{% endif %}" href="?range={{ range_key }}&from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}&top=qty">Zyada bike</a>
+            <a class="vr-pill {% if top_sort == 'revenue' %}on{% endif %}" href="?range={{ range_key }}&from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}&top=revenue">Zyada kamai</a>
+        </div>
+        {% for r in top %}
+        <div class="vr-row">
+            <span class="n">{{ forloop.counter }}. {{ r.product__name }} <span class="q">× {{ r.qty|floatformat:"-2" }}</span></span>
+            <span class="v">Rs {{ r.revenue|floatformat:0 }}</span>
+        </div>
+        {% empty %}
+        <div class="vr-empty">Is muddat mein koi delivered order nahi.</div>
+        {% endfor %}
+    </div></div>
+
+    <div class="vr-card"><div class="vr-body">
+        <div style="font-weight:800;margin-bottom:6px;">📅 {% if weekly %}Haftewar{% else %}Rozana{% endif %} bikri</div>
+        {% for r in series %}
+        <div class="vr-row">
+            <span class="vr-day">{{ r.day|date:"d M" }}</span>
+            <span class="vr-bar"><i style="width:{{ r.pct }}%"></i></span>
+            <span class="vr-val">Rs {{ r.sales|floatformat:0 }}</span>
+        </div>
+        {% endfor %}
+        {% if weekly %}<div class="vr-note">Har row hafte ki shuruat (Monday) se.</div>{% endif %}
+    </div></div>
+
+    <div class="vr-card"><div class="vr-body">
+        <div style="font-weight:800;margin-bottom:6px;">⏰ Sab se busy waqt</div>
+        {% for h in busy_hours %}
+        <div class="vr-row"><span class="n">{{ h.label }}</span><span class="v">{{ h.n }} order{{ h.n|pluralize }}</span></div>
+        {% empty %}
+        <div class="vr-empty">Abhi koi order nahi.</div>
+        {% endfor %}
+    </div></div>
+</div>
+{% endblock %}

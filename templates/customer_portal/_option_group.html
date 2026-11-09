@@ -1,0 +1,20 @@
+{# Ek option group; sub-choices (child_groups) apne parent option ke neeche, jab tak wo option chuna na ho chhupe rehte hain #}
+<div class="po-grp{% if g.parent_option_id %} po-sub{% endif %}" data-group="{{ g.id }}" data-kind="{{ g.kind }}"
+     data-required="{% if g.is_required %}1{% else %}0{% endif %}" data-max="{{ g.max_select }}" data-name="{{ g.name }}"
+     {% if g.parent_option_id %}data-parent="{{ g.parent_option_id }}" style="display:none"{% endif %}>
+    <div class="po-grp-title">
+        <span>{{ g.name }}</span>
+        <span class="po-badge {% if g.is_required %}req{% endif %}">{% if g.is_required %}Lazmi{% else %}Marzi{% endif %}</span>
+    </div>
+    <div class="po-hint">{% if g.kind == 'single' %}Ek chunein{% else %}{% if g.max_select %}Ziyada se ziyada {{ g.max_select }} chunein{% else %}Jitne chahein chunein{% endif %}{% endif %}</div>
+    {% for o in g.options.all %}
+    <label class="po-row {% if not o.is_available %}off{% endif %}">
+        <input type="{% if g.kind == 'single' %}radio{% else %}checkbox{% endif %}" class="po-input"
+               name="po-{{ g.id }}" value="{{ o.id }}" data-extra="{{ o.extra_price|stringformat:'.2f' }}"
+               {% if not o.is_available %}disabled{% endif %}>
+        <span class="po-name">{{ o.name }}{% if not o.is_available %} (khatam){% endif %}</span>
+        <span class="po-extra">{% if o.extra_price %}+ Rs. {{ o.extra_price|floatformat:0 }}{% endif %}</span>
+    </label>
+    {% for cg in o.child_groups.all %}{% if cg.is_active %}{% include 'customer_portal/_option_group.html' with g=cg %}{% endif %}{% endfor %}
+    {% endfor %}
+</div>

@@ -1,0 +1,55 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}{% block page_title %}{% endblock %} - {{ company_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .info-wrap { max-width: 860px; margin: 0 auto; }
+    .info-pills { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 22px; }
+    .info-pills a { padding: 6px 14px; border-radius: 999px; border: 1px solid rgba(128,128,128,.3);
+                    text-decoration: none; font-size: .88rem; color: inherit; }
+    .info-pills a.active { background: var(--info, #3b82f6); border-color: transparent; color: #fff; }
+    .info-card { border: 1px solid rgba(128,128,128,.25); border-radius: 14px; padding: 22px 24px; margin-bottom: 16px; }
+    .info-card h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+    .info-card p, .info-card li { line-height: 1.7; }
+    .info-card ul { padding-left: 1.2rem; margin-bottom: 0; }
+    .info-wa { display: inline-flex; align-items: center; gap: 8px; background: #25d366; color: #fff !important;
+               padding: 10px 18px; border-radius: 10px; text-decoration: none; font-weight: 600; }
+    .info-wa:hover { filter: brightness(.95); }
+    .info-updated { text-align: center; font-size: .8rem; opacity: .6; margin-top: 8px; }
+    @media (max-width: 576px) { .info-card { padding: 16px; } }
+</style>
+
+<div class="container py-4">
+  <div class="info-wrap">
+    <div class="text-center mb-3">
+        <h1 class="fw-bold mb-1">{% block heading %}{% endblock %}</h1>
+        <p class="text-muted mb-0">{% block subheading %}{% endblock %}</p>
+    </div>
+
+    <nav class="info-pills" aria-label="Support pages">
+        <a href="{% url 'shop_about' %}" class="{% if request.resolver_match.url_name == 'shop_about' %}active{% endif %}">About</a>
+        <a href="{% url 'shop_faq' %}" class="{% if request.resolver_match.url_name == 'shop_faq' %}active{% endif %}">FAQ</a>
+        <a href="{% url 'shop_help' %}" class="{% if request.resolver_match.url_name == 'shop_help' %}active{% endif %}">Help</a>
+        <a href="{% url 'shop_returns' %}" class="{% if request.resolver_match.url_name == 'shop_returns' %}active{% endif %}">Returns</a>
+        <a href="{% url 'shop_terms' %}" class="{% if request.resolver_match.url_name == 'shop_terms' %}active{% endif %}">Terms</a>
+        <a href="{% url 'shop_privacy' %}" class="{% if request.resolver_match.url_name == 'shop_privacy' %}active{% endif %}">Privacy</a>
+    </nav>
+
+    {% block info_body %}{% endblock %}
+
+    <div class="info-card text-center">
+        <h2>Aur madad chahiye?</h2>
+        <p class="mb-3">Hamari team se seedha baat karein.</p>
+        {% if company_whatsapp_url %}
+        <a href="{{ company_whatsapp_url }}?text=Hello%20{{ company_name|urlencode }}" target="_blank" rel="noopener" class="info-wa">
+            <i class="bi bi-whatsapp"></i> WhatsApp par chat karein
+        </a>
+        {% endif %}
+        <div class="mt-3 small text-muted">
+            {% if company_contact_number %}<i class="bi bi-telephone"></i> {{ company_contact_number }}{% endif %}
+            {% if company_email %}&nbsp; <i class="bi bi-envelope"></i> {{ company_email }}{% endif %}
+        </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

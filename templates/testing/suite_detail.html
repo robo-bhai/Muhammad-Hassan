@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ suite.name }}{% endblock %}
+{% block extra_css %}{% include 'testing/_qa_ui.html' %}{% endblock %}
+
+{% block content %}
+<div class="qa-wrap">
+  <div class="qa-head">
+    <div>
+      <h1><span class="qa-ico"><i class="bi bi-folder2-open"></i></span> {{ suite.name }}</h1>
+      <p>{{ suite.project.name }}{% if suite.description %} · {{ suite.description }}{% endif %}</p>
+    </div>
+    <div class="qa-actions">
+      <a href="{% url 'test_case_create' suite.id %}" class="qa-btn primary"><i class="bi bi-plus-lg"></i> New Test Case</a>
+      <a href="{% url 'test_project_list' %}" class="qa-btn"><i class="bi bi-arrow-left"></i> Projects</a>
+    </div>
+  </div>
+
+  {% include 'testing/_qa_nav.html' with active='projects' %}
+
+  <div class="qa-kpis">
+    <div class="qa-kpi" style="--c:#3b5bdb"><div class="v">{{ stats.total }}</div><div class="l">Total cases</div></div>
+    <div class="qa-kpi" style="--c:#2f9e44"><div class="v">{{ stats.passed }}</div><div class="l">Passed</div></div>
+    <div class="qa-kpi" style="--c:#e03131"><div class="v">{{ stats.failed }}</div><div class="l">Failed</div></div>
+    <div class="qa-kpi" style="--c:#7048e8">
+      <div class="v">{{ stats.pass_rate }}%</div><div class="l">Pass rate</div>
+      <div class="qa-bar mt-2"><span style="width:{{ stats.pass_rate }}%;background:#2f9e44"></span></div>
+    </div>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-card-h"><h6><i class="bi bi-list-check"></i> Test cases</h6></div>
+    <div class="table-responsive">
+      <table class="qa-table">
+        <thead><tr><th>Test case</th><th>Type</th><th>Priority</th><th>Status</th><th style="width:90px"></th></tr></thead>
+        <tbody>
+        {% for case in cases %}
+          <tr>
+            <td><span class="qa-title">{{ case.title }}</span><span class="qa-sub">{{ case.description|truncatechars:70 }}</span></td>
+            <td><span class="qa-tag">{{ case.type_label }}</span></td>
+            <td><span class="qa-pill qa-{{ case.priority }}">{{ case.priority_label }}</span></td>
+            <td><span class="qa-pill qa-{{ case.status }}">{{ case.status_label }}</span></td>
+            <td><a href="{% url 'test_case_execute' case.id %}" class="qa-btn sm primary"><i class="bi bi-play-fill"></i> Run</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5"><div class="qa-empty"><i class="bi bi-inbox"></i>No test cases in this suite yet.</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

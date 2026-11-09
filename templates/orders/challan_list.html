@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}🚚 Delivery Challans{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== Challan pages: professional look (scoped) ===== */
+    .ch-page .ch-hero { background:linear-gradient(135deg,#1a1a2e,#312e81); color:#fff; border-radius:18px; padding:20px 24px; margin-bottom:18px;
+        display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; }
+    .ch-page .ch-hero h3 { margin:0; font-weight:800; font-size:1.3rem; color:#fff; }
+    .ch-page .ch-hero p { margin:4px 0 0; opacity:.8; font-size:.85rem; color:#fff !important; }
+    .ch-page .ch-hero .ch-btns { display:flex; flex-wrap:wrap; gap:8px; }
+    .ch-page .ch-hero .btn { border-radius:12px; font-weight:700; padding:9px 16px; }
+    .ch-page .ch-hero .btn-light-glass { background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.25); }
+    .ch-page .ch-hero .btn-light-glass:hover { background:rgba(255,255,255,.25); color:#fff; }
+
+    .ch-page .card { border-radius:16px !important; border:1px solid #eef0f5 !important; box-shadow:0 2px 10px rgba(15,23,42,.04) !important; overflow:hidden; }
+    .ch-page .card-header { border:0 !important; padding:14px 20px !important; background:linear-gradient(135deg,#1a1d2e,#2b2f55) !important; color:#fff !important; }
+    .ch-page .card-header.bg-primary { background:linear-gradient(135deg,#4f46e5,#7c3aed) !important; }
+    .ch-page .card-header.bg-success { background:linear-gradient(135deg,#16a34a,#22c55e) !important; }
+    .ch-page .card-header h6 { font-size:.92rem; letter-spacing:.2px; }
+
+    .ch-page .table thead th { background:#f8f9fc !important; color:#64748b; font-size:.68rem; text-transform:uppercase; letter-spacing:1px; font-weight:800; border-bottom:2px solid #e5e7eb; padding:12px 14px; white-space:nowrap; }
+    .ch-page .table tbody td { padding:12px 14px; border-bottom:1px solid #f0f2f7; font-size:.87rem; }
+    .ch-page .table-hover tbody tr:hover { background:#f5f7ff; }
+
+    .ch-page .badge { border-radius:99px; padding:6px 11px; font-weight:700; font-size:.72rem; }
+    .ch-page .form-control, .ch-page .form-select { border-radius:10px; border:2px solid #eef0f5; padding:9px 14px; background:#fafbfc; }
+    .ch-page .form-control:focus, .ch-page .form-select:focus { border-color:#667eea; background:#fff; box-shadow:0 0 0 3px rgba(102,126,234,.12); }
+    .ch-page .btn { border-radius:10px; font-weight:600; }
+    .ch-page .btn-group-sm > .btn { border-radius:8px !important; margin:0 2px; }
+    .ch-page .alert { border-radius:14px; border:0; }
+
+    .ch-page .stat-card { transition:transform .2s, box-shadow .2s; }
+    .ch-page .stat-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,.12) !important; }
+
+    .ch-banner { display:flex; align-items:center; gap:14px; border-radius:14px; padding:14px 18px; margin-bottom:18px; }
+    .ch-banner i { font-size:1.8rem; }
+    .ch-banner.ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+    .ch-banner.wait { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+    .ch-banner b { display:block; font-size:1rem; }
+    .ch-banner small { opacity:.85; }
+
+    .ch-info-label { font-size:.68rem; text-transform:uppercase; letter-spacing:1px; color:#8a8fa0; font-weight:800; margin-bottom:2px; display:block; }
+    .ch-total { background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1px solid #bbf7d0; border-radius:14px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#166534; }
+    .ch-total span:last-child { font-size:1.3rem; }
+
+    @media (max-width:768px) { .ch-page .ch-hero { padding:16px; } .ch-page .ch-hero .ch-btns { width:100%; } .ch-page .ch-hero .btn { flex:1; } }
+    @media print { .ch-hero .ch-btns, .no-print { display:none !important; } .ch-hero { background:#fff !important; color:#000 !important; border:1px solid #ccc; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 ch-page">
+
+    <!-- HERO -->
+    <div class="ch-hero">
+        <div>
+            <h3><i class="bi bi-truck"></i> Delivery Challans</h3>
+            <p>Saari delivery challans ek jagah</p>
+        </div>
+        <div class="ch-btns">
+            <a href="{% url 'sale_order_list' %}" class="btn btn-light-glass"><i class="bi bi-cart"></i> Sale Orders</a>
+            <a href="{% url 'challan_list' %}" class="btn btn-success"><i class="bi bi-arrow-clockwise"></i> Refresh</a>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- STATS CARDS                                  -->
+    <!-- ============================================ -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-75 small">Total Challans</p>
+                            <h3 class="mb-0 fw-bold">{{ total_challans }}</h3>
+                        </div>
+                        <i class="bi bi-truck fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-75 small">Sale Challans</p>
+                            <h3 class="mb-0 fw-bold">{{ sale_count }}</h3>
+                        </div>
+                        <i class="bi bi-cart-check fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-75 small">Converted</p>
+                            <h3 class="mb-0 fw-bold">{{ converted_count }}</h3>
+                        </div>
+                        <i class="bi bi-check-circle fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card" style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: white;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-1 opacity-75 small">Pending</p>
+                            <h3 class="mb-0 fw-bold">{{ pending_count }}</h3>
+                        </div>
+                        <i class="bi bi-clock-history fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- FILTERS                                      -->
+    <!-- ============================================ -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3 align-items-end">
+                <!-- Search -->
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">🔍 Search</label>
+                    <input type="text" 
+                           name="search" 
+                           class="form-control" 
+                           placeholder="Challan No, Customer, Vehicle..."
+                           value="{{ search|default:'' }}">
+                </div>
+
+                <!-- Reason Filter -->
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">📋 Reason</label>
+                    <select name="reason" class="form-select">
+                        <option value="">All Reasons</option>
+                        <option value="sale" {% if selected_reason == 'sale' %}selected{% endif %}>Sale</option>
+                        <option value="transfer" {% if selected_reason == 'transfer' %}selected{% endif %}>Stock Transfer</option>
+                        <option value="job_work" {% if selected_reason == 'job_work' %}selected{% endif %}>Job Work</option>
+                        <option value="approval" {% if selected_reason == 'approval' %}selected{% endif %}>On Approval</option>
+                        <option value="return" {% if selected_reason == 'return' %}selected{% endif %}>Return to Vendor</option>
+                        <option value="other" {% if selected_reason == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">✅ Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>⏳ Pending</option>
+                        <option value="converted" {% if selected_status == 'converted' %}selected{% endif %}>✅ Converted</option>
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                </div>
+            </form>
+
+            {% if search or selected_reason or selected_status %}
+            <div class="mt-2">
+                <a href="{% url 'challan_list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear Filters
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- CHALLANS TABLE                               -->
+    <!-- ============================================ -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h6 class="mb-0 fw-bold">
+                <i class="bi bi-list-ul"></i> Challans ({{ page_obj.paginator.count }})
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40">#</th>
+                            <th>Challan No</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Reason</th>
+                            <th>Items</th>
+                            <th>Vehicle</th>
+                            <th>Status</th>
+                            <th width="150" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for challan in page_obj %}
+                        <tr>
+                            <td class="text-muted small">{{ forloop.counter }}</td>
+                            <td>
+                                <a href="{% url 'challan_detail' challan.pk %}" class="fw-bold text-decoration-none">
+                                    <i class="bi bi-receipt text-primary"></i> {{ challan.challan_no }}
+                                </a>
+                            </td>
+                            <td class="small">
+                                {{ challan.challan_date|date:"d-m-Y" }}
+                                <br>
+                                <small class="text-muted">{{ challan.challan_date|time:"h:i A" }}</small>
+                            </td>
+                            <td>
+                                <span class="fw-semibold">{{ challan.customer.name }}</span>
+                                {% if challan.customer.customer_code %}
+                                <br>
+                                <small class="text-muted">{{ challan.customer.customer_code }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if challan.reason == 'sale' %}
+                                    <span class="badge bg-success">🛒 Sale</span>
+                                {% elif challan.reason == 'transfer' %}
+                                    <span class="badge bg-info">🔄 Transfer</span>
+                                {% elif challan.reason == 'job_work' %}
+                                    <span class="badge bg-warning text-dark">🔧 Job Work</span>
+                                {% elif challan.reason == 'approval' %}
+                                    <span class="badge bg-primary">📋 Approval</span>
+                                {% elif challan.reason == 'return' %}
+                                    <span class="badge bg-danger">↩️ Return</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ challan.get_reason_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    {{ challan.total_items }} items
+                                </span>
+                                <br>
+                                <small class="text-muted">
+                                    Qty: {{ challan.total_qty|floatformat:0 }}
+                                </small>
+                            </td>
+                            <td class="small">
+                                {% if challan.vehicle_no %}
+                                    <i class="bi bi-truck"></i> {{ challan.vehicle_no }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if challan.converted_to_sale %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Converted
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-clock"></i> Pending
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <!-- View Button -->
+                                    <a href="{% url 'challan_detail' challan.pk %}" 
+                                       class="btn btn-outline-primary"
+                                       title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    
+                                    <!-- PDF Button -->
+                                    <a href="{% url 'generate_challan_pdf' challan.pk %}" 
+                                       class="btn btn-outline-danger"
+                                       title="Download PDF"
+                                       target="_blank">
+                                        <i class="bi bi-file-pdf"></i>
+                                    </a>
+                                    
+                                    <!-- Convert Button (only if not converted) -->
+                                    {% if not challan.converted_to_sale %}
+                                    <a href="{% url 'challan_convert_to_sale' challan.pk %}" 
+                                       class="btn btn-outline-success"
+                                       title="Convert to Sale"
+                                       onclick="return confirm('Convert this challan to Sale Invoice?')">
+                                        <i class="bi bi-arrow-right-circle"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div style="font-size: 4rem;">🚚</div>
+                                <h5 class="text-muted mt-3">No Challans Found</h5>
+                                <p class="text-muted small">No delivery challans available</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- PAGINATION                                   -->
+        <!-- ============================================ -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if selected_reason %}&reason={{ selected_reason }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_reason %}&reason={{ selected_reason }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if selected_reason %}&reason={{ selected_reason }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if selected_reason %}&reason={{ selected_reason }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Delete Account - {{ company_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:560px;">
+  <h1 class="h3 fw-bold mb-3"><i class="bi bi-trash3 text-danger"></i> Account delete karein</h1>
+
+  {% if messages %}{% for m in messages %}<div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags }}{% endif %}">{{ m }}</div>{% endfor %}{% endif %}
+
+  <div class="alert alert-warning">
+    Delete karne par aap ka naam, phone, email, saved addresses aur profile photo hata diye jate hain aur login band ho jata hai.
+    Ye wapas nahi ho sakta. Purane orders ki raqam hisab-kitab ke liye reh sakti hai, lekin un par aap ki personal maloomat nahi rehti.
+  </div>
+
+  {% if blockers %}
+    <div class="alert alert-danger"><b>Abhi delete nahi ho sakta:</b>
+      <ul class="mb-0">{% for b in blockers %}<li>{{ b }}</li>{% endfor %}</ul>
+    </div>
+    <a href="{% url 'my_account' %}" class="btn btn-outline-secondary">Wapas</a>
+  {% else %}
+    <form method="post" autocomplete="off">
+      {% csrf_token %}
+      <div class="mb-3"><label class="form-label">Apna password likhein</label>
+        <input type="password" name="password" class="form-control" required autocomplete="current-password"></div>
+      <div class="mb-3"><label class="form-label">Confirm karne ke liye <b>DELETE</b> likhein</label>
+        <input type="text" name="confirm" class="form-control" required></div>
+      <button type="submit" class="btn btn-danger">Mera account delete karein</button>
+      <a href="{% url 'my_account' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

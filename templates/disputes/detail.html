@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Dispute #{{ dispute.pk }}{% endblock %}
+{% block page_title %}⚠️ Dispute #{{ dispute.pk }} - Order #{{ order.order_no }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <a href="{% url 'dispute_list' %}" class="btn btn-link px-0 mb-2">&larr; Saare disputes</a>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+
+      <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="mb-0">{{ dispute.get_reason_display }}</h5>
+          <span class="badge {% if dispute.status == 'resolved' %}bg-success{% elif dispute.status == 'rejected' %}bg-secondary{% elif dispute.status == 'under_review' %}bg-info{% else %}bg-warning text-dark{% endif %}">{{ dispute.get_status_display }}</span>
+        </div>
+        <div class="text-muted small mb-3">Customer: <b>{{ dispute.customer.name }}</b> | Opened {{ dispute.created_at|date:"d M Y, h:i A" }}</div>
+        {% if dispute.description %}<p>{{ dispute.description|linebreaksbr }}</p>{% else %}<p class="text-muted">Customer ne tafseel nahi likhi.</p>{% endif %}
+        {% if dispute.photo %}
+          <a href="{{ dispute.photo.url }}" target="_blank" rel="noopener"><img src="{{ dispute.photo.url }}" alt="Customer ki photo" class="img-fluid rounded border" style="max-height:320px"></a>
+        {% endif %}
+      </div></div>
+
+      <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+        <h6 class="mb-3">Order ki maloomat</h6>
+        <div class="row small mb-3">
+          <div class="col-6 col-md-3"><div class="text-muted">Store</div><b>{{ dispute.vendor.name|default:"-" }}</b></div>
+          <div class="col-6 col-md-3"><div class="text-muted">Rider</div><b>{{ dispute.rider.name|default:"-" }}</b>{% if dispute.rider %}<div>{{ dispute.rider.phone }}</div>{% endif %}</div>
+          <div class="col-6 col-md-3"><div class="text-muted">Payment</div><b>{{ order.payment_method|default:"-" }}</b></div>
+          <div class="col-6 col-md-3"><div class="text-muted">Order total</div><b>{{ max_refund }}</b></div>
+        </div>
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Item</th><th class="text-end">Qty</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+          {% for it in items %}<tr><td>{{ it.product.name }}{% if it.options_text %} <span class="text-muted small">({{ it.options_text }})</span>{% endif %}</td><td class="text-end">{{ it.qty }}</td><td class="text-end">{{ it.total_amt }}</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div></div>
+
+      <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+        <h6 class="mb-3">Store aur rider ka jawab</h6>
+        <div class="mb-3">
+          <div class="text-muted small">Store{% if dispute.vendor %}: {{ dispute.vendor.name }}{% endif %}</div>
+          {% if dispute.vendor_responded_at %}
+            <div>{{ dispute.vendor_response|linebreaksbr }}</div>
+            {% if dispute.vendor_photo %}<a href="{{ dispute.vendor_photo.url }}" target="_blank" rel="noopener"><img src="{{ dispute.vendor_photo.url }}" alt="Store ki photo" class="img-fluid rounded border mt-2" style="max-height:220px"></a>{% endif %}
+            <div class="text-muted small mt-1">{{ dispute.vendor_responded_at|date:"d M, h:i A" }}</div>
+          {% else %}<div class="text-muted">Abhi jawab nahi diya.</div>{% endif %}
+        </div>
+        {% if dispute.rider %}
+        <div>
+          <div class="text-muted small">Rider: {{ dispute.rider.name }}</div>
+          {% if dispute.rider_responded_at %}
+            <div>{{ dispute.rider_response|linebreaksbr }}</div>
+            {% if dispute.rider_photo %}<a href="{{ dispute.rider_photo.url }}" target="_blank" rel="noopener"><img src="{{ dispute.rider_photo.url }}" alt="Rider ki photo" class="img-fluid rounded border mt-2" style="max-height:220px"></a>{% endif %}
+            <div class="text-muted small mt-1">{{ dispute.rider_responded_at|date:"d M, h:i A" }}</div>
+          {% else %}<div class="text-muted">Abhi jawab nahi diya.</div>{% endif %}
+        </div>
+        {% endif %}
+      </div></div>
+
+      {% if timeline %}
+      <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+        <h6 class="mb-3">Order timeline</h6>
+        {% for t in timeline %}
+          <div class="d-flex justify-content-between border-bottom py-1 small">
+            <span>{{ t.get_status_display }}{% if t.rider_name %} <span class="text-muted">- {{ t.rider_name }}</span>{% endif %}</span>
+            <span class="text-muted">{{ t.timestamp|date:"d M, h:i A" }}</span>
+          </div>
+          {% if t.proof_photo %}<a href="{{ t.proof_photo.url }}" target="_blank" rel="noopener" class="small">Delivery proof photo</a>{% endif %}
+        {% endfor %}
+      </div></div>
+      {% endif %}
+    </div>
+
+    <div class="col-12 col-lg-5">
+      {% if dispute.is_open %}
+      <div class="card border-0 shadow-sm"><div class="card-body">
+        <h6 class="mb-3">Faisla</h6>
+
+        {% if dispute.status == 'open' %}
+        <form method="post" class="mb-3">{% csrf_token %}
+          <input type="hidden" name="action" value="review">
+          <button class="btn btn-outline-info w-100">Review mein daalein</button>
+        </form>
+        <hr>
+        {% endif %}
+
+        <form method="post">{% csrf_token %}
+          <label class="form-label">Customer ko jawab / wajah</label>
+          <textarea class="form-control mb-3" name="note" rows="3" maxlength="300" placeholder="Customer ko yeh dikhega"></textarea>
+
+          <label class="form-label">Partial refund ki raqam <span class="text-muted small">(max {{ max_refund }})</span></label>
+          <input class="form-control mb-3" type="number" name="amount" step="0.01" min="0.01" max="{{ max_refund }}">
+
+          <div class="d-grid gap-2">
+            <button class="btn btn-success" name="action" value="refund_full" onclick="return confirm('Poori raqam ({{ max_refund }}) customer ke wallet mein wapas karein?')">Full refund ({{ max_refund }}) wallet mein</button>
+            <button class="btn btn-primary" name="action" value="refund_partial">Partial refund wallet mein</button>
+            <button class="btn btn-outline-danger" name="action" value="reject" onclick="return confirm('Dispute reject karein?')">Reject (wajah zaroori)</button>
+          </div>
+        </form>
+        <div class="text-muted small mt-3">Refund customer ke wallet mein jata hai aur ek order par sirf ek dafa ho sakta hai.</div>
+      </div></div>
+      {% else %}
+      <div class="card border-0 shadow-sm"><div class="card-body">
+        <h6 class="mb-2">Faisla ho chuka hai</h6>
+        <div><b>{{ dispute.get_resolution_display }}</b>{% if dispute.refund_amount %} - {{ dispute.refund_amount }}{% endif %}</div>
+        {% if dispute.admin_note %}<p class="mt-2 mb-1">{{ dispute.admin_note }}</p>{% endif %}
+        <div class="text-muted small">{{ dispute.resolved_by.get_username|default:"-" }}, {{ dispute.resolved_at|date:"d M Y, h:i A" }}</div>
+      </div></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

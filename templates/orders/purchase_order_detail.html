@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}{{ order.order_no }}{% endblock %}
+{% block page_title %}Purchase Order {{ order.order_no }}{% endblock %}
+{% block extra_css %}{% include 'orders/_po_css.html' %}{% endblock %}
+
+{% block content %}
+<div class="po">
+
+<div class="po-card">
+  <div class="po-card-b d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+      <div style="font-size:1.4rem;font-weight:800">{{ order.order_no }}
+        <span class="po-badge st-{{ order.status }}" style="vertical-align:middle;margin-left:8px">{{ order.get_status_display }}</span>
+        {% if is_overdue %}<span class="po-late" style="margin-left:6px">{{ days_late }} day{{ days_late|pluralize }} overdue</span>{% endif %}</div>
+      <div class="po-muted" style="font-size:.85rem">Created {{ order.order_date|date:"d M Y, h:i A" }}{% if order.created_by %} by {{ order.created_by.get_username }}{% endif %}</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      {% if can_receive %}<a class="po-btn ok" href="#receive"><i class="bi bi-box-arrow-in-down"></i> Receive goods</a>{% endif %}
+      {% if can_edit %}<a class="po-btn" href="{% url 'purchase_order_edit' order.pk %}"><i class="bi bi-pencil"></i> Edit</a>{% endif %}
+      <a class="po-btn" href="{% url 'purchase_order_print' order.pk %}" target="_blank"><i class="bi bi-printer"></i> Print</a>
+      <a class="po-btn" href="{% url 'purchase_order_duplicate' order.pk %}"><i class="bi bi-files"></i> Duplicate</a>
+      {% for st, label, colour, icon in actions %}
+      <form method="post" action="{% url 'purchase_order_quick_status' order.pk st %}" class="m-0" {% if st == 'cancelled' %}onsubmit="return confirm('Cancel this order?')"{% endif %}>
+        {% csrf_token %}<button class="po-btn {% if colour == 'danger' %}bad{% endif %}"><i class="bi {{ icon }}"></i> {{ label }}</button></form>
+      {% endfor %}
+      <a class="po-btn" href="{% url 'purchase_order_list' %}"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+  </div>
+</div>
+
+<div class="po-info mb-3">
+  <div class="po-box"><h6>Vendor</h6><p><strong>{{ order.vendor.name }}</strong></p>
+    {% if order.vendor.vendor_code %}<p class="po-muted">{{ order.vendor.vendor_code }}</p>{% endif %}
+    {% if order.vendor.contact_number %}<p>{{ order.vendor.contact_number }}</p>{% endif %}
+    {% if order.vendor.address %}<p class="po-muted">{{ order.vendor.address }}</p>{% endif %}</div>
+  <div class="po-box"><h6>Delivery</h6><p><strong>To:</strong> {{ order.warehouse.name }}</p>
+    <p><strong>Expected:</strong> {% if order.expected_date %}{{ order.expected_date|date:"d M Y" }}{% else %}Not set{% endif %}</p>
+    <p><strong>Vendor SO:</strong> {{ order.vendor_so_number|default:"-" }}</p></div>
+  <div class="po-box"><h6>Receiving progress</h6>
+    <div class="po-bar" style="height:10px"><i style="width:{{ receive_percent }}%"></i></div>
+    <p class="mt-2"><strong>{{ receive_percent }}%</strong> &middot; {{ total_received|floatformat:"-3g" }} of {{ total_ordered|floatformat:"-3g" }} received</p>
+    <p class="po-muted">{{ total_pending|floatformat:"-3g" }} still pending</p></div>
+</div>
+
+<div class="po-card">
+  <div class="po-card-h">Items</div>
+  <div class="po-wrap">
+  <table class="po-table">
+    <thead><tr><th class="c">#</th><th>Product</th><th class="r">Ordered</th><th class="r">Received</th><th class="r">Pending</th><th style="min-width:90px">Progress</th><th class="r">Price</th><th class="r">Total</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="c po-muted">{{ forloop.counter }}</td>
+        <td><strong>{{ r.item.product.name }}</strong>{% if r.unit %} <span class="po-muted">({{ r.unit }})</span>{% endif %}</td>
+        <td class="r">{{ r.item.qty|floatformat:"-3g" }}</td>
+        <td class="r">{{ r.received|floatformat:"-3g" }}{% if r.over %} <span class="po-late">over</span>{% endif %}</td>
+        <td class="r">{{ r.pending|floatformat:"-3g" }}</td>
+        <td><div class="po-bar"><i style="width:{{ r.percent }}%"></i></div></td>
+        <td class="r">{{ r.item.price|floatformat:"2g" }}</td>
+        <td class="r"><strong>{{ r.total|floatformat:"2g" }}</strong></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div class="po-card-b" style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap">
+    <div style="flex:1;min-width:220px">{% if order.notes %}<div class="po-lbl">Notes</div><div style="white-space:pre-line">{{ order.notes }}</div>{% endif %}</div>
+    <div style="min-width:260px">
+      <div class="po-sum"><span>Subtotal</span><span>Rs. {{ gross|floatformat:"2g" }}</span></div>
+      {% if order.discount_value %}<div class="po-sum"><span>Discount</span><span>- Rs. {{ order.discount_value|floatformat:"2g" }}</span></div>{% endif %}
+      <div class="po-sum big"><span>Net total</span><span>Rs. {{ net|floatformat:"2g" }}</span></div>
+      <div class="po-sum"><span>Advance paid</span><span>Rs. {{ order.advance_payment|floatformat:"2g" }}</span></div>
+      <div class="po-sum"><span><strong>Balance to pay</strong></span><span><strong>Rs. {{ balance|floatformat:"2g" }}</strong></span></div>
+    </div>
+  </div>
+</div>
+
+{% if can_receive %}
+<div class="po-card" id="receive">
+  <div class="po-card-h">Receive goods (creates a GRN)</div>
+  <form method="post" action="{% url 'purchase_order_create_grn' order.pk %}">{% csrf_token %}
+  <div class="po-card-b">
+    <div class="po-muted mb-2" style="font-size:.85rem">Enter the quantity actually received today. Leave blank or 0 for items that did not arrive. You can receive the rest later.</div>
+    <div class="po-wrap"><table class="po-table">
+      <thead><tr><th>Product</th><th class="r">Pending</th><th class="r" style="width:150px">Receive now</th></tr></thead>
+      <tbody>
+      {% for r in rows %}{% if r.pending > 0 %}
+        <tr><td>{{ r.item.product.name }}</td><td class="r">{{ r.pending|floatformat:"-3g" }}</td>
+            <td class="r"><input class="po-inp recv" type="number" step="any" min="0" max="{{ r.pending }}" data-pending="{{ r.pending }}" name="recv_{{ r.item.pk }}" placeholder="0" style="text-align:right"></td></tr>
+      {% endif %}{% endfor %}
+      </tbody>
+    </table></div>
+    <div class="mt-2"><button type="button" class="po-btn sm" onclick="document.querySelectorAll('.recv').forEach(i=>i.value=i.dataset.pending)">Fill all pending</button></div>
+    <div class="row g-2 mt-2">
+      <div class="col-6 col-md-3"><label class="po-lbl">Vendor invoice no</label><input class="po-inp" name="invoice_no" maxlength="50"></div>
+      <div class="col-6 col-md-3"><label class="po-lbl">Vehicle no</label><input class="po-inp" name="vehicle_no" maxlength="30"></div>
+      <div class="col-6 col-md-3"><label class="po-lbl">Driver</label><input class="po-inp" name="driver_name" maxlength="100"></div>
+      <div class="col-6 col-md-3"><label class="po-lbl">Remarks</label><input class="po-inp" name="notes"></div>
+    </div>
+    <div class="mt-3"><button class="po-btn ok" type="submit"><i class="bi bi-check2-circle"></i> Create GRN</button></div>
+  </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="po-card">
+  <div class="po-card-h">Goods received notes ({{ grns|length }})</div>
+  {% if grns %}
+  <div class="po-wrap"><table class="po-table">
+    <thead><tr><th>GRN no</th><th>Date</th><th>Invoice</th><th>Vehicle</th><th class="c">Lines</th><th class="r">Qty</th><th></th></tr></thead>
+    <tbody>{% for g in grns %}
+      <tr><td><strong>{{ g.grn_no }}</strong></td><td>{{ g.grn_date|date:"d M Y, h:i A" }}</td><td>{{ g.invoice_no|default:"-" }}</td>
+          <td>{{ g.vehicle_no|default:"-" }}</td><td class="c">{{ g.total_items }}</td><td class="r">{{ g.total_qty|floatformat:"-3g" }}</td>
+          <td class="r"><a class="po-btn sm" href="{% url 'grn_detail' g.pk %}">Open</a></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="po-card-b po-muted">Nothing received yet.</div>{% endif %}
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends 'security_base.html' %}
+
+{% block title %}API Keys{% endblock %}
+
+{% block page_title %}API Keys{% endblock %}
+{% block page_subtitle %}Create and review keys that grant API access.{% endblock %}
+
+{% block page_body %}
+<form method="POST" class="card card-body mb-4">
+    {% csrf_token %}
+    <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label for="key_user" class="form-label">User</label>
+            <select id="key_user" name="user" class="form-select" required>
+                <option value="">Select a user</option>
+                {% for user in users %}
+                <option value="{{ user.id }}">{{ user.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label for="key_name" class="form-label">Key name</label>
+            <input type="text" id="key_name" name="name" class="form-control" maxlength="100" placeholder="e.g. Accounting sync" required>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Generate key</button>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover sec-table mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">User</th>
+                    <th scope="col">Key prefix</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Last used</th>
+                    <th scope="col">Expires</th>
+                    <th scope="col">Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key in api_keys %}
+                <tr>
+                    <td class="fw-semibold">{{ key.name }}</td>
+                    <td>{{ key.user.username }}</td>
+                    <td><code>{{ key.key|slice:":8" }}&hellip;</code></td>
+                    <td>
+                        {% if key.is_active %}
+                        <span class="pill pill-success">Active</span>
+                        {% else %}
+                        <span class="pill pill-neutral">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-nowrap">{{ key.last_used|date:"d-m-Y h:i A"|default:"Never" }}</td>
+                    <td class="text-nowrap">{{ key.expires_at|date:"d-m-Y"|default:"Never" }}</td>
+                    <td class="text-nowrap">{{ key.created_at|date:"d-m-Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="sec-empty">No API keys yet. Use the form above to generate one.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

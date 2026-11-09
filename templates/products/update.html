@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}✏️ Edit Product{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Header -->
+    <div class="card border-0 mb-4" style="background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%); color: white;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="fw-bold mb-1">✏️ Edit Product</h2>
+                    <p class="mb-0 opacity-75">{{ product.name }}</p>
+                </div>
+                <a href="{% url 'product_list' %}" class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="row g-4">
+
+            <!-- Left Column: Basic Info -->
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-dark text-white">
+                        <h6 class="mb-0 fw-bold">📝 Basic Information</h6>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="row g-3">
+
+                            <!-- Name -->
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">
+                                    Product Name <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       name="name" 
+                                       class="form-control form-control-lg" 
+                                       required
+                                       value="{{ product.name }}">
+                            </div>
+
+                            <!-- Serial -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Serial Number</label>
+                                <input type="text" 
+                                       name="serial_no" 
+                                       class="form-control" 
+                                       value="{{ product.serial_no|default:'' }}">
+                            </div>
+
+                            <!-- Barcode -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Barcode</label>
+                                <input type="text" 
+                                       name="barcode" 
+                                       class="form-control" 
+                                       value="{{ product.barcode|default:'' }}">
+                            </div>
+
+                            <!-- Description -->
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Description</label>
+                                <textarea name="description" 
+                                          class="form-control" 
+                                          rows="3">{{ product.description|default:'' }}</textarea>
+                            </div>
+
+                            <!-- Used For -->
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Used For</label>
+                                <textarea name="used" 
+                                          class="form-control" 
+                                          rows="2">{{ product.used|default:'' }}</textarea>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Categories -->
+                <div class="card shadow-sm border-0 mt-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0 fw-bold">📂 Categories</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+
+                            <!-- Category -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Category</label>
+                                <select name="category" class="form-select">
+                                    <option value="">--- Select Category ---</option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat.id }}" {% if product.category_id == cat.id %}selected{% endif %}>
+                                        {{ cat.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Brand -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Brand</label>
+                                <select name="brand" class="form-select">
+                                    <option value="">--- Select Brand ---</option>
+                                    {% for b in brands %}
+                                    <option value="{{ b.id }}" {% if product.brand_id == b.id %}selected{% endif %}>
+                                        {{ b.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Type -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Type</label>
+                                <select name="types" class="form-select">
+                                    <option value="">--- Select Type ---</option>
+                                    {% for t in types %}
+                                    <option value="{{ t.id }}" {% if product.types_id == t.id %}selected{% endif %}>
+                                        {{ t.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Unit -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Unit</label>
+                                <select name="unit" class="form-select">
+                                    <option value="">--- Select Unit ---</option>
+                                    {% for u in units %}
+                                    <option value="{{ u.id }}" {% if product.unit_id == u.id %}selected{% endif %}>
+                                        {{ u.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Location -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Location</label>
+                                <select name="location" class="form-select">
+                                    <option value="">--- Select Location ---</option>
+                                    {% for loc in locations %}
+                                    <option value="{{ loc.id }}" {% if product.location_id == loc.id %}selected{% endif %}>
+                                        {{ loc.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Low Stock Threshold -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Low Stock Alert</label>
+                                <input type="number" 
+                                       name="low_stock_threshold" 
+                                       class="form-control" 
+                                       value="{{ product.low_stock_threshold }}"
+                                       step="0.01">
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Image + Status -->
+            <div class="col-md-4">
+
+                <!-- Product Image -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0 fw-bold">📸 Product Image</h6>
+                    </div>
+                    <div class="card-body text-center">
+
+                        <!-- Existing Image -->
+                        {% if product.image %}
+                        <div id="existingImage" class="mb-3">
+                            <img src="{{ product.image.url }}" 
+                                 alt="{{ product.name }}" 
+                                 class="img-fluid rounded"
+                                 style="max-height: 250px; border: 3px solid #10b981;">
+                        </div>
+                        
+                        <!-- Remove checkbox -->
+                        <div class="form-check mb-3">
+                            <input type="checkbox" 
+                                   name="remove_image" 
+                                   class="form-check-input" 
+                                   id="removeImage">
+                            <label class="form-check-label text-danger fw-bold" for="removeImage">
+                                <i class="bi bi-trash"></i> Current image hatao
+                            </label>
+                        </div>
+                        {% endif %}
+
+                        <!-- New Image Preview -->
+                        <div id="imagePreview" style="display: none;" class="mb-3">
+                            <img id="previewImg" 
+                                 src="" 
+                                 alt="Preview" 
+                                 class="img-fluid rounded"
+                                 style="max-height: 250px; border: 3px solid #f59e0b;">
+                            <p class="text-warning small mt-1">
+                                <i class="bi bi-info-circle"></i> New image (the old one will be replaced)
+                            </p>
+                            <button type="button" 
+                                    class="btn btn-sm btn-danger w-100" 
+                                    onclick="removePreview()">
+                                <i class="bi bi-x-circle"></i> New Image Hatao
+                            </button>
+                        </div>
+
+                        <!-- Placeholder (if no image) -->
+                        {% if not product.image %}
+                        <div id="imagePlaceholder" class="mb-3">
+                            <div style="font-size: 5rem; color: #ddd;">📷</div>
+                            <p class="text-muted small">No image</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Upload Button -->
+                        <input type="file" 
+                               name="image" 
+                               class="form-control" 
+                               accept="image/*"
+                               id="imageInput">
+
+                        <small class="text-muted d-block mt-2">
+                            {% if product.image %}
+                            Upload a new image
+                            {% else %}
+                            JPG, PNG, WEBP — Max 5MB
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="card shadow-sm border-0 mt-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0 fw-bold">⚙️ Status</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" 
+                                   name="is_active" 
+                                   class="form-check-input" 
+                                   id="isActive"
+                                   {% if product.is_active %}checked{% endif %}>
+                            <label class="form-check-label fw-bold" for="isActive">
+                                Product Active
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Save Button -->
+                <div class="d-grid gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                        <i class="bi bi-check-circle"></i> Update Product
+                    </button>
+                    <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">
+                        Cancel
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// New image preview
+document.getElementById('imageInput')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+            alert('❌ Image is larger than 5MB!');
+            this.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('previewImg').src = event.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+            
+            const placeholder = document.getElementById('imagePlaceholder');
+            if (placeholder) placeholder.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function removePreview() {
+    document.getElementById('imageInput').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    
+    {% if not product.image %}
+    const placeholder = document.getElementById('imagePlaceholder');
+    if (placeholder) placeholder.style.display = 'block';
+    {% endif %}
+}
+</script>
+
+{% endblock %}

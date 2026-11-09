@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">✅ Approve Shareholder Request</h4>
+                </div>
+                <div class="card-body">
+                    
+                    <div class="alert alert-info">
+                        <h5>📋 Request Details</h5>
+                        <table class="table table-sm mb-0">
+                            <tr>
+                                <td><strong>Name:</strong></td>
+                                <td>{{ request_obj.full_name }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ request_obj.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Phone:</strong></td>
+                                <td>{{ request_obj.phone }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>CNIC:</strong></td>
+                                <td>{{ request_obj.cnic|default:"N/A" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Requested:</strong></td>
+                                <td>{{ request_obj.requested_at|date:"d M Y, h:i A" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    {% if request_obj.address %}
+                    <div class="alert alert-secondary">
+                        <strong>Address:</strong><br>
+                        {{ request_obj.address }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if request_obj.notes %}
+                    <div class="alert alert-warning">
+                        <strong>Notes:</strong><br>
+                        {{ request_obj.notes }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="alert alert-success">
+                        <h6>🔐 What will happen:</h6>
+                        <ul class="mb-0">
+                            <li>✅ New user account will be created</li>
+                            <li>✅ Shareholder profile will be created</li>
+                            <li>✅ Login credentials will be sent to: <strong>{{ request_obj.email }}</strong></li>
+                            <li>✅ Cash balance account will be initialized</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Approve & Create Account
+                            </button>
+                            <a href="{% url 'shareholder_request_detail' request_obj.pk %}" class="btn btn-secondary btn-lg">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

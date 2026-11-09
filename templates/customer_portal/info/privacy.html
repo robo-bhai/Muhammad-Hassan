@@ -1,0 +1,22 @@
+{% extends 'customer_portal/info/base_info.html' %}
+{% block page_title %}Privacy Policy{% endblock %}
+{% block heading %}<i class="bi bi-shield-lock text-primary"></i> Privacy Policy{% endblock %}
+{% block subheading %}Aap ka data, aap ka bharosa{% endblock %}
+
+{% block info_body %}
+<div class="info-card"><h2>Hum kya maloomat lete hain</h2>
+  <ul><li>Naam, phone number, email</li><li>Delivery address</li><li>Order ki tafseel</li><li>Chat messages (live chat istemal karne par)</li></ul></div>
+<div class="info-card"><h2>Istemal</h2>
+  <p class="mb-0">Ye maloomat sirf order poora karne, delivery, tracking aur madad dene ke liye istemal hoti hain.</p></div>
+<div class="info-card"><h2>Share karna</h2>
+  <p class="mb-0">Aap ka data bechte nahi. Seller ko order poora karne ke liye aap ka naam, phone aur (rider assign hone tak) address nazar aata hai. Rider ko address aur phone sirf us delivery ke dauran nazar aate hain jab tak wo chal rahi ho. Order mukammal hone ke baad seller ko address nahi dikhta aur phone number masked ho jata hai.</p></div>
+<div class="info-card"><h2>Hifazat</h2>
+  <p class="mb-0">Pori site HTTPS par chalti hai. Aap ke address aur dusri hasaas maloomat database mein encrypted form mein rakhi jati hain. Phir bhi koi bhi system 100% mehfooz hone ki zamanat nahi de sakta.</p></div>
+<div class="info-card"><h2>Aap ke haqooq</h2>
+  <ul>
+    <li>Apni maloomat dekhna aur badalna: <a href="{% url 'my_account' %}">My Account</a>.</li>
+    <li>Account aur personal data delete karna: My Account mein <a href="{% url 'delete_my_account' %}">Delete Account</a>. Chalte order ya bakaya raqam ki soorat mein pehle wo mukammal karna hoga. Hisab-kitab ke liye order ki raqam reh sakti hai, lekin aap ki personal maloomat nahi.</li>
+    <li>Koi aur sawal: {% if company_email %}{{ company_email }}{% else %}hum se rabta karein{% endif %}.</li>
+  </ul></div>
+<p class="info-updated">Aakhri update: {% now "d M Y" %}</p>
+{% endblock %}

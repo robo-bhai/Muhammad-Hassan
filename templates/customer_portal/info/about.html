@@ -1,0 +1,29 @@
+{% extends 'customer_portal/info/base_info.html' %}
+{% block page_title %}About Us{% endblock %}
+{% block heading %}<i class="bi bi-info-circle text-primary"></i> {{ company_name }} ke bare mein{% endblock %}
+{% block subheading %}{{ company_tagline }}{% endblock %}
+
+{% block info_body %}
+<div class="info-card text-center">
+  {% if company_logo %}<img src="{{ company_logo }}" alt="{{ company_name }}" style="max-height:80px;" class="mb-3">{% endif %}
+  <p class="mb-0">{{ company_name }} aap ko mayari products, munasib qeemat aur bharosemand delivery dene ke liye kaam karta hai. Hamari koshish hai ke khareedari asaan, saaf aur befikr ho.</p>
+</div>
+<div class="info-card">
+  <h2>Hum kya dete hain</h2>
+  <ul>
+    <li>Asli aur maiyari products</li>
+    <li>Saaf qeematein, chhupe charges nahi</li>
+    <li>Order tracking aur madad ke liye seedha rabta</li>
+    <li>Asaan return aur refund</li>
+  </ul>
+</div>
+<div class="info-card">
+  <h2>Rabta</h2>
+  <ul>
+    {% if company_address %}<li>Address: {{ company_address }}</li>{% endif %}
+    {% if company_contact_number %}<li>Phone: {{ company_contact_number }}</li>{% endif %}
+    {% if company_email %}<li>Email: {{ company_email }}</li>{% endif %}
+    {% if company_website %}<li>Website: <a href="{{ company_website }}" target="_blank" rel="noopener">{{ company_website }}</a></li>{% endif %}
+  </ul>
+</div>
+{% endblock %}
