@@ -1,0 +1,78 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Options - {{ product.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .po-wrap { max-width: 700px; margin: 30px auto; padding: 0 15px; }
+    .po-card { background: #fff; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 18px; }
+    .po-head { background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); color: #fff; padding: 22px 26px; }
+    .po-head h3 { margin: 0; font-weight: 700; font-size: 22px; }
+    .po-head p { margin: 4px 0 0; opacity: .9; font-size: 14px; }
+    .po-body { padding: 20px 24px; }
+    .po-group { border: 2px solid #e5e7eb; border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; }
+    .po-group-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .po-group-title { font-weight: 700; font-size: 16px; }
+    .po-tags { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .po-opt { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #f1f1f1; }
+    .po-opt-name { flex: 1; font-size: 15px; }
+    .po-opt-name.off { text-decoration: line-through; color: #9ca3af; }
+    .po-opt-price { font-size: 14px; color: #198754; font-weight: 600; }
+    .po-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .po-form input, .po-form select { padding: 10px 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; min-width: 0; }
+    .po-form input[type=text] { flex: 2 1 140px; }
+    .po-form input[type=number] { flex: 1 1 90px; }
+    .po-btn { border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 700; color: #fff; cursor: pointer;
+              background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); }
+    .po-mini { border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 5px 10px; font-size: 13px; cursor: pointer; }
+    .po-del { color: #dc3545; border-color: #f5c2c7; }
+    .po-check { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+    .po-subgroup { margin: 8px 0 8px 14px; background: #f9fafb; border-style: dashed; }
+    .po-det { margin: 6px 0 4px; font-size: 13px; }
+    .po-det summary { cursor: pointer; color: #2563eb; }
+    .po-back { display: inline-block; margin: 6px 0 20px; color: #2563eb; text-decoration: none; }
+    .po-empty { color: #6b7280; font-size: 14px; padding: 4px 0 10px; }
+    .po-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .po-alert.error { background: #f8d7da; color: #721c24; }
+    @media (max-width: 576px) { .po-wrap { margin: 14px auto; padding: 0 10px; } .po-body { padding: 16px; }
+        .po-form input, .po-form select { font-size: 16px; } }
+</style>
+
+<div class="po-wrap">
+    <a class="po-back" href="{% url 'vendor_dashboard' %}">← Dashboard</a>
+
+    {% for m in messages %}<div class="po-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="po-card">
+        <div class="po-head">
+            <h3>Options: {{ product.name }}</h3>
+            <p>Size, flavour ya extras jodein. Customer product kholte hi chunega.</p>
+        </div>
+        <div class="po-body">
+            {% for g in groups %}
+            {% include 'customer_portal/vendor/_option_group.html' %}
+            {% empty %}
+            <div class="po-empty">Is product par abhi koi option group nahi.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="po-card">
+        <div class="po-body">
+            <div class="po-group-title">Naya group ({{ groups|length }}/{{ max_groups }})</div>
+            <form method="post" class="po-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_group">
+                <input type="text" name="name" maxlength="60" placeholder="Jaise: Size, Extras" required>
+                <select name="kind">
+                    <option value="single">Ek chunein</option>
+                    <option value="multiple">Kai chunein</option>
+                </select>
+                <input type="number" name="max_select" min="0" max="50" placeholder="Max (kai ke liye)">
+                <label class="po-check"><input type="checkbox" name="is_required" value="1"> Lazmi</label>
+                <button class="po-btn" type="submit">Group banayein</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

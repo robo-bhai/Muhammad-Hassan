@@ -1,0 +1,63 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Menu{% endblock %}
+
+{% block content %}
+<style>
+    .vm-wrap { max-width: 700px; margin: 30px auto; padding: 0 15px; }
+    .vm-card { background: #fff; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 18px; }
+    .vm-head { background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); color: #fff; padding: 20px 24px; }
+    .vm-head h3 { margin: 0; font-size: 21px; font-weight: 700; }
+    .vm-head p { margin: 4px 0 0; opacity: .9; font-size: 14px; }
+    .vm-body { padding: 8px 22px 16px; }
+    .vm-row { display: flex; align-items: center; gap: 8px; padding: 11px 0; border-top: 1px solid #f1f1f1; }
+    .vm-row:first-child { border-top: 0; }
+    .vm-name { flex: 1; font-size: 15px; font-weight: 600; }
+    .vm-sub { font-size: 12px; color: #6b7280; font-weight: 400; }
+    .vm-btn { border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 12px; font-size: 14px; cursor: pointer; }
+    .vm-btn:disabled { opacity: .35; cursor: default; }
+    .vm-star { border: 1px solid #fde68a; background: #fffbeb; color: #b45309; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .vm-star.on { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+    .vm-back { display: inline-block; margin: 6px 0 20px; color: #2563eb; text-decoration: none; }
+    .vm-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .vm-alert.error { background: #f8d7da; color: #721c24; }
+    .vm-empty { color: #6b7280; padding: 14px 0; font-size: 14px; }
+</style>
+
+<div class="vm-wrap">
+    <a class="vm-back" href="{% url 'vendor_dashboard' %}">← Dashboard</a>
+    {% for m in messages %}<div class="vm-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="vm-card">
+        <div class="vm-head"><h3>Menu sections ki tarteeb</h3><p>Store page par sections isi tarteeb se dikhenge.</p></div>
+        <div class="vm-body">
+            {% for c in categories %}
+            <div class="vm-row">
+                <span class="vm-name">{{ c.name }}</span>
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="up"><input type="hidden" name="category_id" value="{{ c.id }}">
+                    <button class="vm-btn" type="submit" {% if forloop.first %}disabled{% endif %} aria-label="Upar">↑</button></form>
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="down"><input type="hidden" name="category_id" value="{{ c.id }}">
+                    <button class="vm-btn" type="submit" {% if forloop.last %}disabled{% endif %} aria-label="Neeche">↓</button></form>
+            </div>
+            {% empty %}
+            <div class="vm-empty">Abhi koi product nahi, is liye koi section nahi.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-head"><h3>⭐ Popular items ({{ popular_count }}/{{ max_popular }})</h3><p>Ye items store page ke sab se upar "Popular" mein dikhte hain.</p></div>
+        <div class="vm-body">
+            {% for p in products %}
+            <div class="vm-row">
+                <span class="vm-name">{{ p.name }}<div class="vm-sub">{{ p.category.name|default:"" }}{% if p.approval_status != 'approved' %} · {{ p.approval_status }}{% endif %}</div></span>
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="toggle_popular"><input type="hidden" name="product_id" value="{{ p.id }}">
+                    <button class="vm-star {% if p.is_popular %}on{% endif %}" type="submit">{% if p.is_popular %}⭐ Popular{% else %}☆ Popular{% endif %}</button></form>
+            </div>
+            {% empty %}
+            <div class="vm-empty">Abhi koi product nahi.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

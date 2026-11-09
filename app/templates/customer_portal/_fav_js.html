@@ -1,0 +1,29 @@
+<style>
+  .fav-btn { border: 0; background: rgba(255,255,255,.95); width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center;
+             justify-content: center; font-size: 19px; color: #9ca3af; box-shadow: 0 2px 8px rgba(0,0,0,.15); cursor: pointer; padding: 0; }
+  .fav-btn.on { color: #e11d48; }
+  .fav-btn:disabled { opacity: .6; }
+</style>
+<script>
+  function toggleFav(btn, url, removeCard) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    fetch(url, {method: 'POST', headers: {'X-CSRFToken': m ? decodeURIComponent(m[1]) : '', 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (r) { return r.json().then(function (d) { return {status: r.status, d: d}; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        if (res.status === 401 && res.d.login_url) {
+          location.href = res.d.login_url + '?next=' + encodeURIComponent(location.pathname + location.search);
+          return;
+        }
+        if (!res.d.success) { alert(res.d.message || 'Kuch masla aa gaya'); return; }
+        btn.classList.toggle('on', !!res.d.favorited);
+        btn.innerHTML = res.d.favorited ? '<i class="bi bi-heart-fill"></i>' : '<i class="bi bi-heart"></i>';
+        if (removeCard && !res.d.favorited) {
+          var card = btn.closest('[data-fav-card]'); if (card) card.remove();
+        }
+      })
+      .catch(function () { btn.disabled = false; alert('Network masla, dobara koshish karein'); });
+  }
+</script>

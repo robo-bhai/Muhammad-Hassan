@@ -1,0 +1,56 @@
+<style>
+/* ===== Shop order pages: shared professional polish (scope: .so-shop) ===== */
+.so-shop .card { border:1px solid #eef0f5 !important; border-radius:18px !important; box-shadow:0 4px 16px rgba(15,23,42,.06) !important; overflow:hidden; }
+.so-shop .card-header { border:0 !important; padding:14px 20px !important; font-weight:800; }
+.so-shop .card-header.bg-white { background:linear-gradient(135deg,#f8fafc,#eef2ff) !important; color:#1a1a2e; }
+.so-shop .card-header.bg-primary { background:linear-gradient(135deg,#2563eb,#7c3aed) !important; }
+.so-shop .card-header.bg-warning { background:linear-gradient(135deg,#fef3c7,#fde68a) !important; }
+.so-shop .card-header h5, .so-shop .card-header h6 { margin:0; font-weight:800; }
+
+.so-shop .table thead th, .so-shop .table-light th { background:#f8f9fc !important; color:#64748b; font-size:.68rem; text-transform:uppercase; letter-spacing:1px; font-weight:800; border-bottom:2px solid #e5e7eb; padding:12px 14px; white-space:nowrap; }
+.so-shop .table tbody td { padding:12px 14px; border-bottom:1px solid #f0f2f7; vertical-align:middle; }
+.so-shop .table tfoot td { padding:12px 14px; background:#f8fafc; }
+.so-shop .table-hover tbody tr:hover { background:#f5f7ff; }
+
+.so-shop .badge { border-radius:99px; font-weight:700; letter-spacing:.2px; padding:.5em .9em; }
+.so-shop .btn { border-radius:12px; font-weight:700; }
+.so-shop .btn-primary { background:linear-gradient(135deg,#2563eb,#7c3aed); border:0; box-shadow:0 6px 16px rgba(37,99,235,.28); }
+.so-shop .btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 22px rgba(37,99,235,.4); }
+.so-shop .btn-outline-primary { border-width:2px; }
+.so-shop .form-control, .so-shop .form-select { border-radius:12px; border:2px solid #e5e9f2; padding:11px 14px; background:#fafbfc; }
+.so-shop .form-control:focus, .so-shop .form-select:focus { border-color:#6366f1; background:#fff; box-shadow:0 0 0 4px rgba(99,102,241,.12); }
+
+/* Order hero (detail/track) */
+.so-hero { background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 52%,#7c3aed 100%); color:#fff; border-radius:22px; padding:20px 22px; margin-bottom:18px;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; position:relative; overflow:hidden; }
+.so-hero::after { content:""; position:absolute; right:-40px; top:-50px; width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,.13); }
+.so-hero h2 { font-size:1.35rem; font-weight:900; margin:0; color:#fff; }
+.so-hero p { margin:4px 0 0; opacity:.9; font-size:.86rem; color:#fff !important; }
+.so-hero .so-hero-right { position:relative; z-index:1; text-align:right; }
+.so-hero .so-total-lbl { font-size:.66rem; text-transform:uppercase; letter-spacing:1.2px; opacity:.8; }
+.so-hero .so-total-val { font-size:1.5rem; font-weight:900; }
+.so-hero .badge { font-size:.8rem !important; padding:.55em 1em !important; }
+
+/* Timelines (order_detail .timeline + track_order .track-timeline) */
+.so-shop .timeline-step.completed .timeline-icon, .so-shop .track-step.completed .track-icon { background:#16a34a !important; color:#fff; box-shadow:0 4px 12px rgba(22,163,74,.35); }
+.so-shop .timeline-step.current .timeline-icon, .so-shop .track-step.current .track-icon { background:#4f46e5 !important; color:#fff; }
+.so-shop .timeline::before { background:#e5e7eb !important; height:4px !important; border-radius:4px; }
+.so-shop .timeline-label, .so-shop .track-label { font-weight:700; }
+
+/* my_orders cards: status stripe */
+.so-shop .order-card { border-left-width:5px !important; }
+.so-shop .order-card.st-pending { border-left-color:#f59e0b !important; }
+.so-shop .order-card.st-confirmed, .so-shop .order-card.st-processing, .so-shop .order-card.st-ready { border-left-color:#4f46e5 !important; }
+.so-shop .order-card.st-partially_delivered { border-left-color:#0ea5e9 !important; }
+.so-shop .order-card.st-delivered { border-left-color:#16a34a !important; }
+.so-shop .order-card.st-cancelled { border-left-color:#ef4444 !important; }
+
+/* track form + found card */
+.so-shop .track-form-card { border-radius:20px !important; border:1px solid #e0e7ff !important; box-shadow:0 10px 30px rgba(79,70,229,.10) !important; }
+.so-shop .order-header-card { background:linear-gradient(135deg,#1e3a8a,#4f46e5) !important; color:#fff !important; border-radius:20px !important; }
+.so-shop .order-header-card .order-label { color:rgba(255,255,255,.75) !important; }
+.so-shop .order-header-card .order-num { color:#fff !important; }
+
+.so-shop .alert { border-radius:14px; border:0; }
+@media (max-width:576px) { .so-hero .so-hero-right { text-align:left; } }
+</style>

@@ -1,0 +1,60 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Dispute - Order #{{ order.order_no }}{% endblock %}
+
+{% block content %}
+<style>
+  .vdd-wrap { max-width: 720px; margin: 24px auto; padding: 0 12px; }
+  .vdd-back { display: inline-block; text-decoration: none; border: 1px solid #ddd; background: #fff; border-radius: 10px; padding: 6px 14px; color: #333; margin-bottom: 14px; }
+  .vdd-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.06); padding: 16px; margin-bottom: 14px; }
+  .vdd-card h5 { margin: 0 0 8px; font-weight: 700; }
+  .vdd-meta { font-size: 13px; color: #777; margin-bottom: 10px; }
+  .vdd-item { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 3px 0; }
+  .vdd-photo { max-width: 100%; max-height: 300px; border-radius: 12px; border: 1px solid #eee; margin-top: 8px; }
+  .vdd-note { padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-bottom: 10px; }
+  .vdd-note.ok { background: #d4edda; color: #155724; }
+  .vdd-note.info { background: #d1ecf1; color: #0c5460; }
+  .vdd-note.bad { background: #e2e3e5; color: #383d41; }
+  .vdd-card textarea, .vdd-card input[type=file] { width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin-bottom: 10px; font: inherit; }
+  .vdd-send { width: 100%; border: 0; border-radius: 12px; padding: 12px; font-weight: 700; color: #fff; background: #1f2937; }
+</style>
+<div class="vdd-wrap">
+  <a class="vdd-back" href="{% url 'vendor_disputes' %}">&larr; Disputes</a>
+
+  <div class="vdd-card">
+    <h5>Order #{{ order.order_no }}: {{ d.get_reason_display }}</h5>
+    <div class="vdd-meta">Customer: {{ customer }} &middot; {{ d.created_at|date:"d M Y, h:i A" }}</div>
+    {% if d.description %}<p>{{ d.description|linebreaksbr }}</p>{% else %}<p class="text-muted">Customer ne tafseel nahi likhi.</p>{% endif %}
+    {% if d.photo %}<a href="{{ d.photo.url }}" target="_blank" rel="noopener"><img class="vdd-photo" src="{{ d.photo.url }}" alt="Customer ki photo"></a>{% endif %}
+  </div>
+
+  <div class="vdd-card">
+    <h5>Order ke items</h5>
+    {% for it in items %}<div class="vdd-item"><span>{{ it.product.name }}{% if it.options_text %} ({{ it.options_text }}){% endif %}</span><span>x {{ it.qty }}</span></div>{% endfor %}
+  </div>
+
+  {% if d.status == 'resolved' %}
+    <div class="vdd-note ok">Dispute resolve ho gaya.{% if d.refund_amount %} Customer ko {{ d.refund_amount }} wapas diye gaye.{% endif %}{% if d.admin_note %} {{ d.admin_note }}{% endif %}</div>
+  {% elif d.status == 'rejected' %}
+    <div class="vdd-note bad">Dispute reject ho gaya.{% if d.admin_note %} {{ d.admin_note }}{% endif %}</div>
+  {% endif %}
+
+  <div class="vdd-card">
+    <h5>Aap ka jawab</h5>
+    {% if responded %}
+      <div class="vdd-note info">Aap ka jawab admin tak pahunch gaya hai.</div>
+      <p>{{ my_response|linebreaksbr }}</p>
+      {% if my_photo %}<img class="vdd-photo" src="{{ my_photo.url }}" alt="Aap ki photo">{% endif %}
+    {% elif d.is_open %}
+      <form method="post" enctype="multipart/form-data">{% csrf_token %}
+        <textarea name="response" rows="4" maxlength="1000" required placeholder="Is masle par aap ka kya kehna hai? (jaise: order poora pack hua tha)"></textarea>
+        <input type="file" name="photo" accept="image/*">
+        <button class="vdd-send">Jawab bhejein</button>
+      </form>
+      <div class="vdd-meta mt-2">Jawab sirf ek dafa diya ja sakta hai.</div>
+    {% else %}
+      <p class="text-muted mb-0">Dispute band ho chuka hai, aap ne jawab nahi diya.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

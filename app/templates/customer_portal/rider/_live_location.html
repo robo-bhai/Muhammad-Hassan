@@ -1,0 +1,23 @@
+{# Rider ka phone apni location server ko bhejta hai (sirf online + active order ke dauran). #}
+<script>
+(function(){
+  if(!('geolocation' in navigator)) return;
+  var url = "{% url 'rider_location_update' %}", csrf = "{{ csrf_token }}";
+  var lastSent = 0, wake = null;
+  function send(p){
+    var n = Date.now();
+    if(n - lastSent < 5000) return;
+    lastSent = n;
+    var b = new URLSearchParams();
+    b.append('lat', p.coords.latitude); b.append('lng', p.coords.longitude);
+    fetch(url, {method:'POST', credentials:'same-origin',
+      headers:{'X-CSRFToken':csrf,'Content-Type':'application/x-www-form-urlencoded'}, body:b}).catch(function(){});
+  }
+  function keepAwake(){
+    try{ if(navigator.wakeLock){ navigator.wakeLock.request('screen').then(function(l){wake=l}).catch(function(){}); } }catch(e){}
+  }
+  navigator.geolocation.watchPosition(send, function(){}, {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
+  keepAwake();
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') keepAwake(); });
+})();
+</script>

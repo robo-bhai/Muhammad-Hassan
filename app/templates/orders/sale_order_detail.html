@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Order #{{ order.order_no }}{% endblock %}
+{% block page_title %}📝 Order #{{ order.order_no }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root { --so-border:#eef0f5; --so-text:#1a1a2e; --so-muted:#6b7280; --so-accent:#4f46e5; }
+
+    /* ---------- Hero ---------- */
+    .so-hero { background:linear-gradient(135deg,#1a1a2e,#312e81); color:#fff; border-radius:18px; padding:22px 26px;
+        display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:16px; }
+    .so-hero h3 { margin:0; font-weight:800; font-size:1.35rem; }
+    .so-hero small { opacity:.8; }
+    .so-hero .so-amount { text-align:right; }
+    .so-hero .so-amount .lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:1.2px; opacity:.75; }
+    .so-hero .so-amount .val { font-size:1.6rem; font-weight:900; }
+
+    .status-badge { padding:6px 14px; border-radius:20px; font-size:.78rem; font-weight:700; white-space:nowrap; display:inline-block; }
+    .status-pending { background:#fff3cd; color:#856404; }
+    .status-confirmed { background:#e0f7fa; color:#055160; }
+    .status-processing { background:#e8f0fe; color:#084298; }
+    .status-ready { background:#ede7f6; color:#4a148c; }
+    .status-delivered { background:#d4edda; color:#155724; }
+    .status-partially_delivered { background:#fff8e1; color:#e65100; }
+    .status-invoiced { background:#cff4fc; color:#055160; }
+    .status-cancelled { background:#fce4ec; color:#721c24; }
+
+    /* ---------- Stepper ---------- */
+    .so-card { background:#fff; border:1px solid var(--so-border); border-radius:16px; padding:20px 22px; margin-bottom:16px; }
+    .so-card > h6 { font-weight:800; font-size:.92rem; margin:0 0 14px; display:flex; align-items:center; gap:8px; color:var(--so-text); }
+    .so-steps { display:flex; justify-content:space-between; position:relative; gap:4px; overflow-x:auto; padding-bottom:4px; }
+    .so-step { flex:1; min-width:70px; text-align:center; position:relative; }
+    .so-step::before { content:''; position:absolute; top:19px; left:-50%; width:100%; height:3px; background:#e5e7eb; z-index:0; }
+    .so-step:first-child::before { display:none; }
+    .so-step.done::before, .so-step.current::before { background:#22c55e; }
+    .so-dot { width:40px; height:40px; border-radius:50%; margin:0 auto 6px; display:flex; align-items:center; justify-content:center;
+        background:#f1f5f9; color:#94a3b8; font-size:1.1rem; position:relative; z-index:1; border:3px solid #fff; box-shadow:0 0 0 2px #e5e7eb; }
+    .so-step.done .so-dot { background:#22c55e; color:#fff; box-shadow:0 0 0 2px #22c55e; }
+    .so-step.current .so-dot { background:#4f46e5; color:#fff; box-shadow:0 0 0 2px #4f46e5, 0 0 0 7px rgba(79,70,229,.18); }
+    .so-step span { font-size:.72rem; font-weight:700; color:#94a3b8; }
+    .so-step.done span, .so-step.current span { color:var(--so-text); }
+    .so-cancelled { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:12px; padding:12px 16px; font-weight:700; }
+
+    /* ---------- Action bar ---------- */
+    .so-actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .so-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 18px; border-radius:12px; border:0; font-weight:700; font-size:.88rem;
+        text-decoration:none; cursor:pointer; transition:transform .15s, box-shadow .15s; }
+    .so-btn:hover { transform:translateY(-1px); }
+    .so-btn.primary { background:linear-gradient(135deg,#16a34a,#22c55e); color:#fff; box-shadow:0 6px 16px rgba(22,163,74,.3); }
+    .so-btn.indigo  { background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff; box-shadow:0 6px 16px rgba(79,70,229,.3); }
+    .so-btn.amber   { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+    .so-btn.light   { background:#fff; color:#334155; border:1px solid #dbe0ea; }
+    .so-btn.danger  { background:#fff; color:#dc2626; border:1px solid #fecaca; }
+    .so-btn:hover { color:inherit; }
+    .so-btn.primary:hover, .so-btn.indigo:hover { color:#fff; }
+    .so-hint { font-size:.78rem; color:var(--so-muted); margin-top:10px; }
+
+    /* ---------- Info grid ---------- */
+    .so-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+    .so-info { background:#fff; border:1px solid var(--so-border); border-radius:16px; padding:18px 20px; }
+    .so-info h6 { font-size:.7rem; text-transform:uppercase; letter-spacing:1.4px; color:var(--so-muted); font-weight:800; margin-bottom:12px; }
+    .so-name { font-weight:800; font-size:1.1rem; color:var(--so-text); }
+    .so-code { background:#eef2ff; color:#4338ca; padding:2px 10px; border-radius:99px; font-size:.75rem; font-weight:700; display:inline-block; margin-top:4px; }
+    .so-line { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px dashed #eef0f5; font-size:.88rem; }
+    .so-line:last-child { border-bottom:0; }
+    .so-line .k { color:var(--so-muted); }
+    .so-line .v { font-weight:700; color:var(--so-text); text-align:right; }
+    .so-sub { color:#64748b; font-size:.85rem; margin-top:6px; }
+
+    /* ---------- Table ---------- */
+    .so-table-wrap { overflow-x:auto; }
+    .items-table { width:100%; border-collapse:separate; border-spacing:0; min-width:640px; }
+    .items-table thead th { background:#1a1d2e; color:#fff; padding:12px 14px; font-size:.68rem; text-transform:uppercase; letter-spacing:1px; font-weight:700; white-space:nowrap; border:0; }
+    .items-table thead th:first-child { border-radius:10px 0 0 0; }
+    .items-table thead th:last-child  { border-radius:0 10px 0 0; }
+    .items-table tbody td { padding:12px 14px; border-bottom:1px solid #f0f2f7; font-size:.87rem; color:var(--so-text); vertical-align:middle; }
+    .items-table tbody tr:hover { background:#f8f9ff; }
+    .items-table tfoot td { padding:12px 14px; background:#f8f9fc; font-weight:800; border-top:2px solid #e0e3eb; }
+    .items-table .text-right { text-align:right; }
+    .items-table .text-center { text-align:center; }
+    .pend-chip { background:#fff7ed; color:#c2410c; padding:2px 9px; border-radius:99px; font-weight:700; font-size:.78rem; }
+    .done-chip { background:#dcfce7; color:#166534; padding:2px 9px; border-radius:99px; font-weight:700; font-size:.78rem; }
+    .empty-row { text-align:center; padding:30px; color:#b0b5c0; }
+
+    /* ---------- Payment ---------- */
+    .amount-positive { color:#16a34a; font-weight:800; }
+    .amount-negative { color:#dc2626; font-weight:800; }
+    .so-due { display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding:12px 14px; border-radius:12px; font-weight:800; }
+    .so-due.bad { background:#fef2f2; color:#b91c1c; }
+    .so-due.ok  { background:#f0fdf4; color:#15803d; }
+    .so-prog { height:14px; background:#e5e7eb; border-radius:99px; overflow:hidden; }
+    .so-prog > div { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:99px; transition:width .6s; }
+
+    @media (max-width:768px) {
+        .so-grid { grid-template-columns:1fr; }
+        .so-hero { padding:18px; }
+        .so-hero .so-amount { text-align:left; }
+        .so-btn { flex:1 1 calc(50% - 10px); justify-content:center; }
+    }
+    @media print {
+        .so-actions, .so-hint, .no-print { display:none !important; }
+        .so-hero { background:#fff !important; color:#000 !important; border:1px solid #ccc; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ============ HERO ============ -->
+<div class="so-hero">
+    <div>
+        <h3>📝 {{ order.order_no }}</h3>
+        <small>{{ order.order_date|date:"d M, Y h:i A" }}</small>
+        <div class="mt-2"><span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span></div>
+    </div>
+    <div class="so-amount">
+        <div class="lbl">Order Total</div>
+        <div class="val">Rs. {{ order.total_amount|floatformat:0|intcomma }}</div>
+    </div>
+</div>
+
+<!-- ============ PROGRESS ============ -->
+<div class="so-card">
+    <h6><i class="bi bi-signpost-split"></i> Order Progress</h6>
+    {% if order.status == 'cancelled' %}
+        <div class="so-cancelled"><i class="bi bi-x-octagon-fill"></i> Yeh order cancel ho chuka hai.</div>
+    {% else %}
+    <div class="so-steps">
+        {% for st in steps %}
+        <div class="so-step {{ st.state }}">
+            <div class="so-dot"><i class="bi {% if st.state == 'done' %}bi-check-lg{% else %}{{ st.icon }}{% endif %}"></i></div>
+            <span>{{ st.label }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- ============ ACTIONS ============ -->
+<div class="so-card no-print">
+    <h6><i class="bi bi-lightning-charge-fill"></i> Actions</h6>
+    <div class="so-actions">
+        {% if order.status == 'pending' %}
+        <a href="{% url 'sale_order_quick_status' order.pk 'confirmed' %}?next={{ request.path }}" class="so-btn primary"><i class="bi bi-check-circle-fill"></i> Confirm Order</a>
+        {% endif %}
+        {% if order.status == 'confirmed' %}
+        <a href="{% url 'sale_order_quick_status' order.pk 'processing' %}?next={{ request.path }}" class="so-btn indigo"><i class="bi bi-arrow-repeat"></i> Start Processing</a>
+        {% endif %}
+        {% if order.status == 'processing' %}
+        <a href="{% url 'sale_order_quick_status' order.pk 'ready' %}?next={{ request.path }}" class="so-btn amber"><i class="bi bi-box-seam"></i> Mark Ready to Ship</a>
+        {% endif %}
+
+        {% if order.status == 'confirmed' or order.status == 'processing' or order.status == 'ready' or order.status == 'partially_delivered' %}
+        <a href="{% url 'sale_order_create_challan' order.pk %}" class="so-btn primary"><i class="bi bi-truck"></i> Create Delivery Challan</a>
+        {% endif %}
+
+        {% if order.converted_to_sale %}
+        <a href="{% url 'sale_detail' order.converted_to_sale.pk %}" class="so-btn indigo"><i class="bi bi-receipt-cutoff"></i> View Invoice</a>
+        {% elif order.status == 'delivered' or order.status == 'partially_delivered' or order.status == 'ready' %}
+        <a href="{% url 'sale_order_convert_invoice' order.pk %}" class="so-btn indigo"><i class="bi bi-receipt"></i> Convert to Invoice</a>
+        {% endif %}
+
+        {% if order.status == 'pending' or order.status == 'confirmed' %}
+        <a href="{% url 'sale_order_update' order.pk %}" class="so-btn light"><i class="bi bi-pencil-square"></i> Edit Order</a>
+        {% endif %}
+        <button type="button" class="so-btn light" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+        <a href="{% url 'sale_order_list' %}" class="so-btn light"><i class="bi bi-arrow-left"></i> Back</a>
+
+        {% if order.status != 'cancelled' and order.status != 'invoiced' %}
+        <a href="{% url 'sale_order_quick_status' order.pk 'cancelled' %}?next={{ request.path }}" class="so-btn danger"
+           onclick="return confirm('Kya aap yeh order cancel karna chahte hain?');"><i class="bi bi-x-circle"></i> Cancel Order</a>
+        {% endif %}
+    </div>
+    {% if order.status == 'pending' %}
+    <div class="so-hint">Pehle order <b>confirm</b> karein, phir challan ban sakta hai.</div>
+    {% endif %}
+</div>
+
+<!-- ============ CUSTOMER + ORDER INFO ============ -->
+<div class="so-grid">
+    <div class="so-info" style="border-top:4px solid #4f46e5;">
+        <h6>👤 Customer</h6>
+        <div class="so-name">{{ order.customer.name }}</div>
+        {% if order.customer.customer_code %}<span class="so-code">{{ order.customer.customer_code }}</span>{% endif %}
+        {% if order.customer.contact_number %}
+        <div class="so-sub"><i class="bi bi-telephone-fill text-success"></i> {{ order.customer.contact_number }}</div>
+        {% endif %}
+        {% if order.customer.address %}
+        <div class="so-sub"><i class="bi bi-geo-alt-fill text-danger"></i> {{ order.customer.address|truncatechars:60 }}</div>
+        {% endif %}
+    </div>
+    <div class="so-info" style="border-top:4px solid #22c55e;">
+        <h6>📋 Order Information</h6>
+        <div class="so-line"><span class="k">Warehouse</span><span class="v">{{ order.warehouse.name }}</span></div>
+        <div class="so-line"><span class="k">PO Number</span><span class="v">{{ order.customer_po_number|default:'N/A' }}</span></div>
+        <div class="so-line"><span class="k">Delivery Date</span><span class="v">{{ order.delivery_date|date:"d M, Y"|default:'Not Set' }}</span></div>
+        <div class="so-line"><span class="k">Created By</span><span class="v">{{ order.created_by.username|default:'Admin' }}</span></div>
+    </div>
+</div>
+
+<!-- ============ ITEMS ============ -->
+<div class="so-card">
+    <h6><i class="bi bi-box-seam-fill"></i> Order Items</h6>
+    <div class="so-table-wrap">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th class="text-center" style="width:44px;">#</th>
+                    <th>Product</th>
+                    <th class="text-right">Order Qty</th>
+                    <th class="text-right">Delivered</th>
+                    <th class="text-right">Pending</th>
+                    <th class="text-right">Price</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td><strong>{{ item.product.name }}</strong></td>
+                    <td class="text-right">{{ item.qty|floatformat:2 }}</td>
+                    <td class="text-right">{{ item.delivered|floatformat:2 }}</td>
+                    <td class="text-right">
+                        {% if item.pending > 0 %}<span class="pend-chip">{{ item.pending|floatformat:2 }}</span>
+                        {% else %}<span class="done-chip">✓ Done</span>{% endif %}
+                    </td>
+                    <td class="text-right">Rs. {{ item.price|floatformat:2|intcomma }}</td>
+                    <td class="text-right"><strong>Rs. {{ item.total_amt|floatformat:2|intcomma }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="empty-row">No items in this order</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2">TOTAL</td>
+                    <td class="text-right">{{ total_ordered|floatformat:2 }}</td>
+                    <td class="text-right">{{ total_delivered|floatformat:2 }}</td>
+                    <td class="text-right">{{ total_pending|floatformat:2 }}</td>
+                    <td></td>
+                    <td class="text-right">Rs. {{ order.total_amount|floatformat:2|intcomma }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- ============ PAYMENT + DELIVERY ============ -->
+<div class="so-grid">
+    <div class="so-info" style="border-top:4px solid #f59e0b;">
+        <h6>💰 Payment Details</h6>
+        {% if order.discount_value > 0 %}
+        <div class="so-line"><span class="k">Subtotal</span><span class="v">Rs. {{ subtotal_before_discount|floatformat:2|intcomma }}</span></div>
+        <div class="so-line"><span class="k">Discount</span><span class="v amount-negative">- Rs. {{ order.discount_value|floatformat:2|intcomma }}</span></div>
+        {% endif %}
+        <div class="so-line"><span class="k">Total Amount</span><span class="v">Rs. {{ order.total_amount|floatformat:2|intcomma }}</span></div>
+        <div class="so-line"><span class="k">Advance Paid</span><span class="v amount-positive">Rs. {{ order.advance_payment|floatformat:2|intcomma }}</span></div>
+        <div class="so-due {% if order.outstanding_advance > 0 %}bad{% else %}ok{% endif %}">
+            <span>{% if order.outstanding_advance > 0 %}Outstanding{% else %}Fully Paid{% endif %}</span>
+            <span>Rs. {{ order.outstanding_advance|floatformat:2|intcomma }}</span>
+        </div>
+    </div>
+    <div class="so-info" style="border-top:4px solid #0ea5e9;">
+        <h6>🚚 Delivery Progress</h6>
+        <div class="so-prog"><div style="width:{{ delivery_percent }}%;"></div></div>
+        <div class="so-line mt-2"><span class="k">Delivered</span><span class="v">{{ total_delivered|floatformat:2 }} / {{ total_ordered|floatformat:2 }}</span></div>
+        <div class="so-line"><span class="k">Pending</span><span class="v">{{ total_pending|floatformat:2 }}</span></div>
+        <div class="so-line"><span class="k">Completed</span><span class="v">{{ delivery_percent }}%</span></div>
+    </div>
+</div>
+
+<!-- ============ CHALLANS ============ -->
+{% if challans %}
+<div class="so-card">
+    <h6><i class="bi bi-truck"></i> Delivery Challans</h6>
+    <div class="so-table-wrap">
+        <table class="items-table" style="min-width:480px;">
+            <thead>
+                <tr><th>Challan No</th><th>Date</th><th>Items</th><th class="text-right">Total Qty</th><th class="text-right no-print">View</th></tr>
+            </thead>
+            <tbody>
+                {% for challan in challans %}
+                <tr>
+                    <td><a href="{% url 'challan_detail' challan.pk %}" style="font-weight:800;text-decoration:none;color:#4f46e5;">{{ challan.challan_no }}</a></td>
+                    <td>{{ challan.challan_date|date:"d M, Y" }}</td>
+                    <td>{{ challan.total_items }}</td>
+                    <td class="text-right">{{ challan.total_qty|floatformat:2 }}</td>
+                    <td class="text-right no-print"><a href="{% url 'challan_detail' challan.pk %}" class="so-btn light" style="padding:6px 12px;"><i class="bi bi-eye"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ============ NOTES ============ -->
+{% if order.notes %}
+<div class="so-info mb-3" style="border-top:4px solid #94a3b8;">
+    <h6>📝 Notes</h6>
+    <div style="font-size:.9rem;">{{ order.notes }}</div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}🚚 Challan {{ challan.challan_no }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== Challan pages: professional look (scoped) ===== */
+    .ch-page .ch-hero { background:linear-gradient(135deg,#1a1a2e,#312e81); color:#fff; border-radius:18px; padding:20px 24px; margin-bottom:18px;
+        display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; }
+    .ch-page .ch-hero h3 { margin:0; font-weight:800; font-size:1.3rem; color:#fff; }
+    .ch-page .ch-hero p { margin:4px 0 0; opacity:.8; font-size:.85rem; color:#fff !important; }
+    .ch-page .ch-hero .ch-btns { display:flex; flex-wrap:wrap; gap:8px; }
+    .ch-page .ch-hero .btn { border-radius:12px; font-weight:700; padding:9px 16px; }
+    .ch-page .ch-hero .btn-light-glass { background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.25); }
+    .ch-page .ch-hero .btn-light-glass:hover { background:rgba(255,255,255,.25); color:#fff; }
+
+    .ch-page .card { border-radius:16px !important; border:1px solid #eef0f5 !important; box-shadow:0 2px 10px rgba(15,23,42,.04) !important; overflow:hidden; }
+    .ch-page .card-header { border:0 !important; padding:14px 20px !important; background:linear-gradient(135deg,#1a1d2e,#2b2f55) !important; color:#fff !important; }
+    .ch-page .card-header.bg-primary { background:linear-gradient(135deg,#4f46e5,#7c3aed) !important; }
+    .ch-page .card-header.bg-success { background:linear-gradient(135deg,#16a34a,#22c55e) !important; }
+    .ch-page .card-header h6 { font-size:.92rem; letter-spacing:.2px; }
+
+    .ch-page .table thead th { background:#f8f9fc !important; color:#64748b; font-size:.68rem; text-transform:uppercase; letter-spacing:1px; font-weight:800; border-bottom:2px solid #e5e7eb; padding:12px 14px; white-space:nowrap; }
+    .ch-page .table tbody td { padding:12px 14px; border-bottom:1px solid #f0f2f7; font-size:.87rem; }
+    .ch-page .table-hover tbody tr:hover { background:#f5f7ff; }
+
+    .ch-page .badge { border-radius:99px; padding:6px 11px; font-weight:700; font-size:.72rem; }
+    .ch-page .form-control, .ch-page .form-select { border-radius:10px; border:2px solid #eef0f5; padding:9px 14px; background:#fafbfc; }
+    .ch-page .form-control:focus, .ch-page .form-select:focus { border-color:#667eea; background:#fff; box-shadow:0 0 0 3px rgba(102,126,234,.12); }
+    .ch-page .btn { border-radius:10px; font-weight:600; }
+    .ch-page .btn-group-sm > .btn { border-radius:8px !important; margin:0 2px; }
+    .ch-page .alert { border-radius:14px; border:0; }
+
+    .ch-page .stat-card { transition:transform .2s, box-shadow .2s; }
+    .ch-page .stat-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,.12) !important; }
+
+    .ch-banner { display:flex; align-items:center; gap:14px; border-radius:14px; padding:14px 18px; margin-bottom:18px; }
+    .ch-banner i { font-size:1.8rem; }
+    .ch-banner.ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+    .ch-banner.wait { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+    .ch-banner b { display:block; font-size:1rem; }
+    .ch-banner small { opacity:.85; }
+
+    .ch-info-label { font-size:.68rem; text-transform:uppercase; letter-spacing:1px; color:#8a8fa0; font-weight:800; margin-bottom:2px; display:block; }
+    .ch-total { background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1px solid #bbf7d0; border-radius:14px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#166534; }
+    .ch-total span:last-child { font-size:1.3rem; }
+
+    @media (max-width:768px) { .ch-page .ch-hero { padding:16px; } .ch-page .ch-hero .ch-btns { width:100%; } .ch-page .ch-hero .btn { flex:1; } }
+    @media print { .ch-hero .ch-btns, .no-print { display:none !important; } .ch-hero { background:#fff !important; color:#000 !important; border:1px solid #ccc; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 ch-page">
+
+    <!-- HERO -->
+    <div class="ch-hero">
+        <div>
+            <h3><i class="bi bi-truck"></i> Challan {{ challan.challan_no }}</h3>
+            <p>{{ challan.challan_date|date:"d M, Y h:i A" }} &middot; {{ challan.customer.name }}</p>
+        </div>
+        <div class="ch-btns no-print">
+            <a href="{% url 'challan_list' %}" class="btn btn-light-glass"><i class="bi bi-arrow-left"></i> Back</a>
+            <button type="button" class="btn btn-light-glass" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+            <a href="{% url 'generate_challan_pdf' challan.pk %}" class="btn btn-danger" target="_blank"><i class="bi bi-file-pdf"></i> PDF</a>
+            {% if not challan.converted_to_sale %}
+            <a href="{% url 'challan_convert_to_sale' challan.pk %}" class="btn btn-success"
+               onclick="return confirm('Convert this challan to Sale Invoice?')"><i class="bi bi-arrow-right-circle"></i> Convert to Sale</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- STATUS BANNER -->
+    {% if challan.converted_to_sale %}
+    <div class="ch-banner ok">
+        <i class="bi bi-check-circle-fill"></i>
+        <div><b>Sale mein convert ho chuka hai</b><small>Is challan se invoice ban chuka hai.</small></div>
+        <a href="{% url 'sale_detail' challan.converted_to_sale.pk %}" class="btn btn-sm btn-success ms-auto no-print"><i class="bi bi-receipt"></i> View Invoice</a>
+    </div>
+    {% else %}
+    <div class="ch-banner wait">
+        <i class="bi bi-clock-history"></i>
+        <div><b>Convert hona baqi hai</b><small>Is challan ka invoice abhi nahi bana. Upar "Convert to Sale" dabayein.</small></div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+        <!-- ============================================ -->
+        <!-- LEFT: Challan Info                           -->
+        <!-- ============================================ -->
+        <div class="col-md-8">
+
+            <!-- Challan Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0 fw-bold">📋 Challan Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Challan No</label>
+                            <div class="fw-bold">{{ challan.challan_no }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Date</label>
+                            <div class="fw-bold">{{ challan.challan_date|date:"d-m-Y h:i A" }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Reason</label>
+                            <div>
+                                <span class="badge bg-info">{{ challan.get_reason_display }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Warehouse</label>
+                            <div class="fw-bold">{{ challan.warehouse.name|default:"-" }}</div>
+                        </div>
+                        {% if challan.order %}
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Order Reference</label>
+                            <div>
+                                <a href="{% url 'sale_order_detail' challan.order.pk %}" class="text-decoration-none">
+                                    <i class="bi bi-cart"></i> {{ challan.order.order_no }}
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if challan.vehicle_no %}
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Vehicle No</label>
+                            <div class="fw-bold"><i class="bi bi-truck"></i> {{ challan.vehicle_no }}</div>
+                        </div>
+                        {% endif %}
+                        {% if challan.driver_name %}
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Driver</label>
+                            <div class="fw-bold">{{ challan.driver_name }}</div>
+                        </div>
+                        {% endif %}
+                        {% if challan.transport_name %}
+                        <div class="col-md-6">
+                            <label class="ch-info-label">Transport</label>
+                            <div class="fw-bold">{{ challan.transport_name }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if challan.notes %}
+                    <hr>
+                    <label class="ch-info-label">Notes</label>
+                    <p class="mb-0">{{ challan.notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0 fw-bold">📦 Items ({{ items.count }})</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="40">#</th>
+                                    <th>Product</th>
+                                    <th class="text-center">Order Qty</th>
+                                    <th class="text-center">Delivered</th>
+                                    <th class="text-center">Pending</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td class="text-muted small">{{ forloop.counter }}</td>
+                                    <td>
+                                        <div class="fw-semibold">{{ item.product.name }}</div>
+                                        {% if item.product.serial_no %}
+                                        <small class="text-muted">S/N: {{ item.product.serial_no }}</small>
+                                        {% endif %}
+                                        {% if item.notes %}
+                                        <br><small class="text-info">📝 {{ item.notes }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">{{ item.order_qty|floatformat:0 }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">{{ item.qty|floatformat:0 }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if item.pending_qty > 0 %}
+                                        <span class="badge bg-warning text-dark">{{ item.pending_qty|floatformat:0 }}</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">Rs. {{ item.price|floatformat:2|intcomma }}</td>
+                                    <td class="text-end fw-bold">Rs. {{ item.total_amt|floatformat:2|intcomma }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        No items in this challan
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================================ -->
+        <!-- RIGHT: Customer + Summary                    -->
+        <!-- ============================================ -->
+        <div class="col-md-4">
+
+            <!-- Customer Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0 fw-bold">👤 Customer</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="ch-info-label">Name</label>
+                        <div class="fw-bold">{{ challan.customer.name }}</div>
+                    </div>
+                    {% if challan.customer.customer_code %}
+                    <div class="mb-3">
+                        <label class="ch-info-label">Code</label>
+                        <div>{{ challan.customer.customer_code }}</div>
+                    </div>
+                    {% endif %}
+                    {% if challan.customer.contact_number %}
+                    <div class="mb-3">
+                        <label class="ch-info-label">Phone</label>
+                        <div>{{ challan.customer.contact_number }}</div>
+                    </div>
+                    {% endif %}
+                    {% if challan.customer.address %}
+                    <div class="mb-0">
+                        <label class="ch-info-label">Address</label>
+                        <div class="small">{{ challan.customer.address }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0 fw-bold">📊 Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Items:</span>
+                        <span class="fw-bold">{{ items.count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Total Quantity:</span>
+                        <span class="fw-bold">{{ challan.total_qty|floatformat:0 }}</span>
+                    </div>
+                    <hr>
+                    <div class="ch-total">
+                        <span>Total Amount</span>
+                        <span>Rs. {{ total_amount|floatformat:2|intcomma }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body small text-muted">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Created:</span>
+                        <span>{{ challan.created_at|date:"d-m-Y h:i A" }}</span>
+                    </div>
+                    {% if challan.created_by %}
+                    <div class="d-flex justify-content-between">
+                        <span>Created By:</span>
+                        <span>{{ challan.created_by.username }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

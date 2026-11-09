@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Orders{% endblock %}
+{% block page_title %}Purchase Orders{% endblock %}
+{% block extra_css %}{% include 'orders/_po_css.html' %}{% endblock %}
+
+{% block content %}
+<div class="po">
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div class="po-muted" style="font-size:.85rem">Orders sent to vendors, with receiving progress and overdue tracking.</div>
+  <div class="d-flex gap-2">
+    <a class="po-btn" href="?{{ querystring }}{% if querystring %}&{% endif %}export=csv"><i class="bi bi-download"></i> CSV</a>
+    <a class="po-btn pri" href="{% url 'purchase_order_create' %}"><i class="bi bi-plus-lg"></i> New Purchase Order</a>
+  </div>
+</div>
+
+<div class="po-kpis">
+  <a class="po-kpi" href="?status=open"><div class="v">{{ open_value|floatformat:"0g" }}</div><div class="l">Open order value (Rs.)</div></a>
+  <a class="po-kpi" href="?status=pending"><div class="v">{{ counts.pending }}</div><div class="l">Pending approval</div></a>
+  <a class="po-kpi" href="?status=confirmed"><div class="v">{{ counts.confirmed }}</div><div class="l">Confirmed / in transit</div></a>
+  <a class="po-kpi" href="?status=partially_received"><div class="v">{{ counts.partial }}</div><div class="l">Partly received</div></a>
+  <a class="po-kpi {% if counts.overdue %}warn{% endif %}" href="?status=overdue"><div class="v">{{ counts.overdue }}</div><div class="l">Overdue</div></a>
+  <a class="po-kpi" href="?status=received"><div class="v">{{ counts.done }}</div><div class="l">Received / completed</div></a>
+</div>
+
+<form method="get" class="po-card">
+  <div class="po-card-b">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-3"><label class="po-lbl">Search</label>
+        <input class="po-inp" name="search" value="{{ search }}" placeholder="PO no, vendor, vendor SO"></div>
+      <div class="col-6 col-md-2"><label class="po-lbl">Status</label>
+        <select class="po-inp" name="status">
+          <option value="">All</option>
+          <option value="open" {% if selected_status == 'open' %}selected{% endif %}>All open</option>
+          <option value="overdue" {% if selected_status == 'overdue' %}selected{% endif %}>Overdue</option>
+          {% for k, v in status_choices %}<option value="{{ k }}" {% if selected_status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select></div>
+      <div class="col-6 col-md-2"><label class="po-lbl">Vendor</label>
+        <select class="po-inp" name="vendor"><option value="">All</option>
+          {% for v in vendors %}<option value="{{ v.id }}" {% if selected_vendor == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>{% endfor %}
+        </select></div>
+      <div class="col-6 col-md-2"><label class="po-lbl">Warehouse</label>
+        <select class="po-inp" name="warehouse"><option value="">All</option>
+          {% for w in warehouses %}<option value="{{ w.id }}" {% if selected_warehouse == w.id|stringformat:"s" %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
+        </select></div>
+      <div class="col-6 col-md-3"><label class="po-lbl">Sort</label>
+        <select class="po-inp" name="sort">
+          <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Newest first</option>
+          <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Oldest first</option>
+          <option value="amount_desc" {% if sort == 'amount_desc' %}selected{% endif %}>Largest amount</option>
+          <option value="expected" {% if sort == 'expected' %}selected{% endif %}>Expected date</option>
+        </select></div>
+      <div class="col-6 col-md-2"><label class="po-lbl">From</label><input type="date" class="po-inp" name="from" value="{{ date_from }}"></div>
+      <div class="col-6 col-md-2"><label class="po-lbl">To</label><input type="date" class="po-inp" name="to" value="{{ date_to }}"></div>
+      <div class="col-12 col-md-8 d-flex gap-2">
+        <button class="po-btn pri" type="submit"><i class="bi bi-funnel"></i> Filter</button>
+        <a class="po-btn" href="{% url 'purchase_order_list' %}">Reset</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="po-card">
+  <div class="po-card-h">
+    <span>{{ page_obj.paginator.count }} order{{ page_obj.paginator.count|pluralize }}</span>
+    <span class="po-muted" style="font-weight:600">Filtered value: Rs. {{ filtered_value|floatformat:"2g" }}</span>
+  </div>
+  <div class="po-wrap">
+  <table class="po-table">
+    <thead><tr>
+      <th>PO No</th><th>Date</th><th>Vendor</th><th>Warehouse</th><th>Expected</th>
+      <th class="c">Items</th><th class="r">Net amount</th><th style="min-width:110px">Received</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for o in page_obj %}
+      <tr>
+        <td><a href="{% url 'purchase_order_detail' o.pk %}" style="font-weight:700;text-decoration:none">{{ o.order_no }}</a>
+            {% if o.vendor_so_number %}<div class="po-muted" style="font-size:.72rem">SO: {{ o.vendor_so_number }}</div>{% endif %}</td>
+        <td>{{ o.order_date|date:"d M Y" }}<div class="po-muted" style="font-size:.72rem">{{ o.order_date|date:"h:i A" }}</div></td>
+        <td><strong>{{ o.vendor.name|truncatechars:22 }}</strong>{% if o.vendor.vendor_code %}<div class="po-muted" style="font-size:.72rem">{{ o.vendor.vendor_code }}</div>{% endif %}</td>
+        <td>{{ o.warehouse.name }}</td>
+        <td>{% if o.expected_date %}{{ o.expected_date|date:"d M Y" }}{% if o.is_overdue %}<div><span class="po-late">{{ o.days_late }} day{{ o.days_late|pluralize }} late</span></div>{% endif %}{% else %}<span class="po-muted">Not set</span>{% endif %}</td>
+        <td class="c">{{ o.item_count }}</td>
+        <td class="r"><strong>{{ o.net|floatformat:"2g" }}</strong>{% if o.discount_value %}<div class="po-muted" style="font-size:.72rem">after {{ o.discount_value|floatformat:"0g" }} discount</div>{% endif %}</td>
+        <td><div class="po-bar"><i style="width:{{ o.receive_percent }}%"></i></div><small class="po-muted">{{ o.receive_percent }}%</small></td>
+        <td><span class="po-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td>
+        <td style="white-space:nowrap">
+          {% if o.can_receive %}<a class="po-btn sm ok" href="{% url 'purchase_order_detail' o.pk %}#receive">Receive</a>{% endif %}
+          <div class="dropdown d-inline-block">
+            <button class="po-btn sm" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-label="Actions"><i class="bi bi-three-dots-vertical"></i></button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{% url 'purchase_order_detail' o.pk %}"><i class="bi bi-eye"></i> Open</a></li>
+              <li><a class="dropdown-item" href="{% url 'purchase_order_print' o.pk %}" target="_blank"><i class="bi bi-printer"></i> Print</a></li>
+              <li><a class="dropdown-item" href="{% url 'purchase_order_duplicate' o.pk %}"><i class="bi bi-files"></i> Duplicate</a></li>
+              {% if o.next_actions %}<li><hr class="dropdown-divider"></li>{% endif %}
+              {% for st, label, colour, icon in o.next_actions %}
+              <li><form method="post" action="{% url 'purchase_order_quick_status' o.pk st %}" {% if st == 'cancelled' %}onsubmit="return confirm('Cancel {{ o.order_no }}?')"{% endif %}>
+                {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button class="dropdown-item text-{{ colour }}"><i class="bi {{ icon }}"></i> {{ label }}</button></form></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="10" class="c po-muted" style="padding:40px">No purchase orders found. <a href="{% url 'purchase_order_create' %}">Create the first one</a>.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="po-card-b d-flex justify-content-between align-items-center">
+    <span class="po-muted" style="font-size:.82rem">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <div class="d-flex gap-2">
+      {% if page_obj.has_previous %}<a class="po-btn sm" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+      {% if page_obj.has_next %}<a class="po-btn sm" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}

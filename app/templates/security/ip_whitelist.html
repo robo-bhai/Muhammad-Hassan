@@ -1,0 +1,62 @@
+{% extends 'security_base.html' %}
+
+{% block title %}IP Allow List{% endblock %}
+
+{% block page_title %}IP Allow List{% endblock %}
+{% block page_subtitle %}Addresses permitted to access the system when the allow list is enabled.{% endblock %}
+
+{% block page_body %}
+<form method="POST" class="card card-body mb-4">
+    {% csrf_token %}
+    <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label for="allow_ip" class="form-label">IP address</label>
+            <input type="text" id="allow_ip" name="ip_address" class="form-control" maxlength="45" autocomplete="off" spellcheck="false" placeholder="e.g. 203.0.113.10" required>
+        </div>
+        <div class="col-md-5">
+            <label for="allow_description" class="form-label">Description <span class="text-muted fw-normal">(optional)</span></label>
+            <input type="text" id="allow_description" name="description" class="form-control" maxlength="255" placeholder="e.g. Head office">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Add address</button>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover sec-table mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">IP address</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Added by</th>
+                    <th scope="col">Added at</th>
+                    <th scope="col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ip in whitelist %}
+                <tr>
+                    <td><code>{{ ip.ip_address }}</code></td>
+                    <td>{{ ip.description|default:"-" }}</td>
+                    <td>{{ ip.created_by.username|default:"System" }}</td>
+                    <td class="text-nowrap">{{ ip.created_at|date:"d-m-Y h:i A" }}</td>
+                    <td>
+                        {% if ip.is_active %}
+                        <span class="pill pill-success">Active</span>
+                        {% else %}
+                        <span class="pill pill-neutral">Inactive</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="sec-empty">No allow-listed addresses.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

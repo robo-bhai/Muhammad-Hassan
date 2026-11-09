@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Two-Factor Authentication{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-5">
+            <div class="card">
+                <div class="card-body p-4">
+                    <h1 class="h4 mb-1">Set up two-factor authentication</h1>
+                    <p class="text-muted mb-4">After you sign in with your password, you will also enter a one-time code. We send a code to your email to confirm this setup.</p>
+
+                    <form method="POST">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="phone_number" class="form-label">Phone number <span class="text-muted fw-normal">(optional)</span></label>
+                            <input type="tel" id="phone_number" name="phone_number" class="form-control" autocomplete="tel" value="{{ user_settings.phone_number|default_if_none:'' }}" placeholder="+92 300 1234567">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="email" class="form-label">Email address</label>
+                            <input type="email" id="email" name="email" class="form-control" autocomplete="email" value="{{ user_settings.email|default_if_none:'' }}" placeholder="name@example.com">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Send verification code</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

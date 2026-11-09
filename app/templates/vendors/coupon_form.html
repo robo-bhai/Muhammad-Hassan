@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if coupon %}Edit Coupon{% else %}Add Coupon{% endif %}{% endblock %}
+{% block page_title %}🏷️ {% if coupon %}Edit {{ coupon.code }}{% else %}New Coupon{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 760px;">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+      <h6 class="mb-3">Code aur discount</h6>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Code</label>{{ form.code }}
+          {% for e in form.code.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Badge text <small class="text-muted">(optional)</small></label>{{ form.title }}
+          <div class="form-text">{{ form.title.help_text }}</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Type</label>{{ form.discount_type }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Value</label>{{ form.value }}
+          {% for e in form.value.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Max discount <small class="text-muted">(sirf %)</small></label>{{ form.max_discount }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Minimum order</label>{{ form.min_order }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Store</label>{{ form.store }}
+          <div class="form-text">{{ form.store.help_text }}</div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+      <h6 class="mb-3">Hadd aur dates</h6>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">Kul istemal ki hadd</label>{{ form.usage_limit }}<div class="form-text">Khali = bepanah</div></div>
+        <div class="col-md-6"><label class="form-label">Ek customer kitni dafa</label>{{ form.per_customer_limit }}<div class="form-text">0 = bepanah</div></div>
+        <div class="col-md-6"><label class="form-label">Start date</label>{{ form.starts_on }}</div>
+        <div class="col-md-6"><label class="form-label">End date</label>{{ form.ends_on }}
+          {% for e in form.ends_on.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+      </div>
+      <div class="mt-3 d-flex flex-column gap-2">
+        <div class="form-check form-switch">{{ form.first_order_only }} <label class="form-check-label">Sirf customer ke pehle order par</label></div>
+        <div class="form-check form-switch">{{ form.show_on_store }} <label class="form-check-label">Store card par offer badge dikhao (store chunna zaroori)</label></div>
+        <div class="form-check form-switch">{{ form.is_active }} <label class="form-check-label">Active</label></div>
+      </div>
+    </div></div>
+
+    <div class="alert alert-light border small">
+      💡 Discount order ke total se kam hota hai aur store ki bikri mein bhi ghat jata hai (vendor ka hissa discounted raqam par banta hai).
+    </div>
+
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary">💾 Save</button>
+      <a href="{% url 'coupon_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

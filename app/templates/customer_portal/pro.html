@@ -1,0 +1,50 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Pro{% endblock %}
+
+{% block content %}
+<style>
+  .pr-wrap { max-width: 560px; margin: 24px auto 40px; padding: 0 14px; }
+  .pr-hero { background: linear-gradient(135deg,#7c3aed,#e11d48); color: #fff; border-radius: 22px; padding: 24px; text-align: center; box-shadow: 0 10px 40px rgba(124,58,237,.3); }
+  .pr-hero h1 { font-size: 28px; font-weight: 800; margin: 0 0 6px; }
+  .pr-price { font-size: 34px; font-weight: 800; margin: 10px 0 0; }
+  .pr-card { background: #fff; border-radius: 18px; box-shadow: 0 4px 18px rgba(0,0,0,.07); padding: 18px 20px; margin-top: 16px; }
+  .pr-card li { padding: 6px 0; font-size: 15px; list-style: none; }
+  .pr-btn { width: 100%; border: 0; border-radius: 14px; padding: 14px; font-size: 16px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#7c3aed,#e11d48); cursor: pointer; }
+  .pr-status { border-radius: 14px; padding: 12px 14px; font-weight: 700; }
+  .pr-ok { background: #e8f5e9; color: #1b5e20; }
+  .pr-wait { background: #fff7e0; color: #8a6200; }
+  .pr-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+</style>
+<div class="pr-wrap">
+  {% for m in messages %}<div class="pr-alert">{{ m }}</div>{% endfor %}
+  <div class="pr-hero">
+    <h1>⭐ Pro</h1>
+    <div>Free delivery{% if cfg.min_order > 0 %} (Rs. {{ cfg.min_order|floatformat:0 }} se upar ke orders par){% endif %}</div>
+    <div class="pr-price">Rs. {{ cfg.price|floatformat:0 }} <small style="font-size:15px;font-weight:600;">/ {{ cfg.days }} din</small></div>
+  </div>
+
+  <div class="pr-card">
+    {% if active %}
+      <div class="pr-status pr-ok">✅ Aap Pro member hain, {{ active.ends_on|date:"d M Y" }} tak.</div>
+    {% elif pending %}
+      <div class="pr-status pr-wait">⏳ Aap ki request mil gayi ({{ pending.requested_at|date:"d M" }}). Payment dene par shop Pro activate kar dega.</div>
+    {% else %}
+      <ul style="padding:0;margin:0 0 14px;">
+        <li>🚚 Har eligible order par delivery fee maaf</li>
+        <li>📆 {{ cfg.days }} din tak chalta hai</li>
+        <li>💵 Payment shop ko cash / bank / JazzCash se dein; online payment abhi nahi</li>
+      </ul>
+      {% if can_pay_wallet %}
+      <form method="post" action="{% url 'pro_buy_wallet' %}" style="margin-bottom:10px;">{% csrf_token %}
+        <button class="pr-btn" type="submit">Wallet se Rs. {{ cfg.price|floatformat:0 }} ada karke abhi Pro lein</button>
+        <div style="font-size:12.5px;color:#6b7280;margin-top:4px;">Wallet balance: Rs. {{ wallet_balance|floatformat:0 }}</div>
+      </form>
+      {% endif %}
+      <form method="post" action="{% url 'pro_request' %}">{% csrf_token %}
+        <button class="pr-btn" type="submit">Pro ki request bhejein</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

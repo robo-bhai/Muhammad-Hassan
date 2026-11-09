@@ -1,0 +1,77 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Wallet{% endblock %}
+
+{% block content %}
+<style>
+  .wl-wrap { max-width: 640px; margin: 24px auto 40px; padding: 0 14px; }
+  .wl-hero { background: linear-gradient(135deg,#2563eb,#7c3aed); color: #fff; border-radius: 22px; padding: 22px 24px; box-shadow: 0 10px 40px rgba(37,99,235,.25); }
+  .wl-hero small { opacity: .9; }
+  .wl-bal { font-size: 36px; font-weight: 800; margin: 2px 0 6px; }
+  .wl-card { background: #fff; border-radius: 18px; box-shadow: 0 4px 18px rgba(0,0,0,.07); padding: 6px 18px; margin-top: 16px; }
+  .wl-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid #f1f1f1; }
+  .wl-row:first-child { border-top: 0; }
+  .wl-row .t { flex: 1; min-width: 0; }
+  .wl-row .t b { display: block; font-size: 14.5px; }
+  .wl-row .t small { color: #6b7280; }
+  .wl-pos { color: #198754; font-weight: 800; }
+  .wl-neg { color: #dc3545; font-weight: 800; }
+  .wl-note { font-size: 13.5px; color: #374151; background: #eef2ff; border-radius: 14px; padding: 12px 14px; margin-top: 14px; }
+  .wl-empty { text-align: center; color: #6b7280; padding: 26px 0; }
+</style>
+<div class="wl-wrap">
+  <div class="wl-hero">
+    <small>Wallet balance</small>
+    <div class="wl-bal">Rs. {{ balance|floatformat:0 }}</div>
+    <small>Checkout par "Wallet se ada karein" dabayein, balance us order ke total mein lag jayega.</small>
+  </div>
+
+  {% for m in messages %}<div class="wl-note" style="background:{% if m.tags == 'error' %}#f8d7da;color:#721c24{% else %}#e8f5e9;color:#1b5e20{% endif %};">{{ m }}</div>{% endfor %}
+
+  {% if loyalty %}
+  <div class="wl-card" style="padding:14px 16px;margin-bottom:14px;">
+    <div style="font-weight:800;">⭐ Loyalty points</div>
+    <div style="font-size:26px;font-weight:800;margin:2px 0;">{{ loyalty.balance }} <small style="font-size:14px;font-weight:600;color:#6b7280;">points ≈ Rs. {{ loyalty.worth|floatformat:0 }}</small></div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:8px;">Har Rs. 100 ke delivered order par {{ loyalty.per_100|floatformat:"-2" }} point. Kam az kam {{ loyalty.min_redeem }} points convert hote hain; 1 point = Rs. {{ loyalty.value|floatformat:"-2" }}.</div>
+    {% if loyalty.can_redeem %}
+    <form method="post" action="{% url 'loyalty_redeem' %}" style="display:flex;gap:8px;flex-wrap:wrap;">{% csrf_token %}
+      <input type="hidden" name="points" value="all">
+      <button type="submit" style="border:0;border-radius:10px;padding:10px 16px;font-weight:700;color:#fff;background:linear-gradient(135deg,#2563eb,#7c3aed);">Sab points wallet mein badlein</button>
+    </form>
+    {% else %}
+    <div style="font-size:13px;color:#b45309;">Abhi {{ loyalty.min_redeem }} points se kam hain, convert nahi ho sakte.</div>
+    {% endif %}
+    {% if loyalty.rows %}
+    <div style="margin-top:10px;border-top:1px solid #f1f1f1;">
+      {% for r in loyalty.rows %}
+      <div style="display:flex;justify-content:space-between;padding:7px 0;font-size:13.5px;border-bottom:1px solid #f7f7f7;">
+        <span>{{ r.get_kind_display }}{% if r.order %} · #{{ r.order.order_no }}{% endif %}<br><small style="color:#6b7280;">{{ r.created_at|date:"d M Y" }}{% if r.note %} · {{ r.note }}{% endif %}</small></span>
+        <b style="color:{% if r.points > 0 %}#198754{% else %}#dc3545{% endif %};">{% if r.points > 0 %}+{% endif %}{{ r.points }}</b>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="wl-note">
+    💡 Wallet mein paise daalne ke liye shop se raabta karein; shop aap ke account mein top-up kar dega.
+    {% if cashback_percent > 0 %}<br>🎁 Har delivered order par <b>{{ cashback_percent|floatformat:"-2" }}%</b> cashback wallet mein aata hai{% if cashback_max > 0 %} (max Rs. {{ cashback_max|floatformat:0 }} per order){% endif %}.{% endif %}
+    <br>↩️ Order cancel ho to wallet se kata hua paisa wapas aa jata hai.
+  </div>
+
+  <div class="wl-card">
+    {% for r in rows %}
+    <div class="wl-row">
+      <div class="t">
+        <b>{{ r.get_kind_display }}{% if r.order %} · #{{ r.order.order_no }}{% endif %}</b>
+        <small>{{ r.created_at|date:"d M Y, h:i A" }}{% if r.note %} · {{ r.note }}{% endif %}</small>
+      </div>
+      <span class="{% if r.amount > 0 %}wl-pos{% else %}wl-neg{% endif %}">{% if r.amount > 0 %}+{% endif %}{{ r.amount|floatformat:0 }}</span>
+    </div>
+    {% empty %}
+    <div class="wl-empty">Abhi koi lena-dena nahi.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

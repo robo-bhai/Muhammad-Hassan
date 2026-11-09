@@ -1,0 +1,17 @@
+{% extends 'customer_portal/info/base_info.html' %}
+{% block page_title %}Return Policy{% endblock %}
+{% block heading %}<i class="bi bi-arrow-return-left text-primary"></i> Return aur Refund Policy{% endblock %}
+{% block subheading %}Saaf aur asaan usool{% endblock %}
+
+{% block info_body %}
+<div class="info-card"><h2>Return ki muddat</h2>
+  <p class="mb-0">Saman milne ke <b>{{ return_window_days }} din</b> ke andar return ki darkhwast kar sakte hain.</p></div>
+<div class="info-card"><h2>Kin sooraton mein return hoga</h2>
+  <ul><li>Product kharab ya toota hua mila</li><li>Ghalat product deliver hua</li><li>Order mein koi item kam tha</li></ul></div>
+<div class="info-card"><h2>Kin sooraton mein return nahi hoga</h2>
+  <ul><li>Istemal shuda ya kharab kiya hua saman</li><li>Original packing ke baghair</li><li>Jaldi kharab hone wali cheezein (khane peene ka saman) siwaye is ke ke wo kharab ya ghalat aayi hon</li></ul></div>
+<div class="info-card"><h2>Tareeqa</h2>
+  <ol><li>WhatsApp ya call par order number ke saath rabta karein.</li><li>Masle ki tasveer bhejein.</li><li>Hamari team tasdeeq ke baad pickup ya replacement tay karegi.</li></ol></div>
+<div class="info-card"><h2>Refund</h2>
+  <p class="mb-0">Manzoor hone par refund {{ refund_days }} working din mein usi tareeqe se hoga jis se payment hui thi.</p></div>
+{% endblock %}

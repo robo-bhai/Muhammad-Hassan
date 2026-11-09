@@ -1,0 +1,16 @@
+{% extends 'customer_portal/info/base_info.html' %}
+{% block page_title %}Terms & Conditions{% endblock %}
+{% block heading %}<i class="bi bi-file-earmark-text text-primary"></i> Terms &amp; Conditions{% endblock %}
+{% block subheading %}{{ company_name }} istemal karne ki shartein{% endblock %}
+
+{% block info_body %}
+<div class="info-card"><h2>1. Qabooliyat</h2><p class="mb-0">Is shop ko istemal karne ka matlab hai ke aap in shartoon se agree hain.</p></div>
+<div class="info-card"><h2>2. Account</h2><p class="mb-0">Account ki maloomat sahi rakhna aur apna password mehfooz rakhna aap ki zimmedari hai.</p></div>
+<div class="info-card"><h2>3. Orders aur qeematein</h2><p class="mb-0">Qeematein aur stock badal sakte hain. Order ki tasdeeq ke baad hi wo pakka samjha jaye ga. Ghalat qeemat ya stock ki soorat mein hum order cancel ya theek karne ka haq rakhte hain.</p></div>
+<div class="info-card"><h2>4. Delivery</h2><p class="mb-0">Delivery ka waqt andaza hai, zamanat nahi. Sahi address aur rabte ka number dena aap ki zimmedari hai.</p></div>
+<div class="info-card"><h2>5. Return aur refund</h2><p class="mb-0"><a href="{% url 'shop_returns' %}">Return Policy</a> ke mutabiq.</p></div>
+<div class="info-card"><h2>6. Sellers</h2><p class="mb-0">Seller apni products ki sahi maloomat aur maiyar ke zimmedar hain. Humein ghalat ya mamnoo products hatane ka haq hai.</p></div>
+<div class="info-card"><h2>7. Tabdeeli</h2><p class="mb-0">Ye shartein waqt ke saath badal sakti hain. Tabdeeli ke baad shop ka istemal naye shartoon ki qabooliyat samjha jaye ga.</p></div>
+<div class="info-card"><h2>Rabta</h2><p class="mb-0">{% if company_email %}{{ company_email }}{% endif %}{% if company_contact_number %} | {{ company_contact_number }}{% endif %}</p></div>
+<p class="info-updated">Aakhri update: {% now "d M Y" %}</p>
+{% endblock %}

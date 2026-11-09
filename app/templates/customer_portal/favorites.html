@@ -1,0 +1,83 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Favourites{% endblock %}
+
+{% block content %}
+<style>
+  .fv-wrap { max-width: 1000px; margin: 24px auto 40px; padding: 0 14px; }
+  .fv-head h1 { font-size: 26px; font-weight: 800; margin: 0 0 14px; }
+  .fv-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .fv-tab { padding: 9px 18px; border-radius: 999px; background: #fff; border: 2px solid #e5e7eb; color: #374151; font-weight: 700; text-decoration: none; font-size: 14px; }
+  .fv-tab.on { background: linear-gradient(135deg,#2563eb,#7c3aed); border-color: transparent; color: #fff; }
+  .fv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .fv-card { position: relative; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,.07); }
+  .fv-card a.fv-link { display: block; text-decoration: none; color: inherit; }
+  .fv-img { height: 130px; background: #eef2ff center/cover no-repeat; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; color: #6366f1; }
+  .fv-img img { width: 100%; height: 100%; object-fit: cover; }
+  .fv-body { padding: 12px 14px 14px; }
+  .fv-name { font-weight: 700; font-size: 16px; }
+  .fv-sub { font-size: 13px; color: #6b7280; margin-top: 2px; }
+  .fv-price { margin-top: 6px; font-weight: 800; color: #198754; }
+  .fv-oos { color: #b91c1c; font-size: 12px; font-weight: 700; }
+  .fv-heart { position: absolute; top: 10px; right: 10px; z-index: 2; }
+  .fv-empty { text-align: center; color: #6b7280; padding: 50px 10px; background: #fff; border-radius: 18px; }
+  .fv-empty a { color: #2563eb; font-weight: 700; }
+</style>
+
+<div class="fv-wrap">
+  <div class="fv-head"><h1>❤️ Favourites</h1></div>
+  <div class="fv-tabs">
+    <a class="fv-tab {% if tab == 'stores' %}on{% endif %}" href="?tab=stores">Stores ({{ store_count }})</a>
+    <a class="fv-tab {% if tab == 'items' %}on{% endif %}" href="?tab=items">Items ({{ item_count }})</a>
+  </div>
+
+  {% if tab == 'stores' %}
+    {% if stores %}
+    <div class="fv-grid">
+      {% for s in stores %}
+      <div class="fv-card" data-fav-card>
+        <button type="button" class="fav-btn fv-heart on" aria-label="Favourite se hatayein"
+                onclick="toggleFav(this, '{% url 'favorite_store_toggle' s.pk %}', true)"><i class="bi bi-heart-fill"></i></button>
+        <a class="fv-link" href="{% url 'store_detail' s.pk %}">
+          <div class="fv-img" {% if s.cover_image %}style="background-image:url('{{ s.cover_image.url }}')"{% endif %}>{% if not s.cover_image %}{{ s.business_name|slice:":1"|upper }}{% endif %}</div>
+          <div class="fv-body">
+            <div class="fv-name">{{ s.business_name }}</div>
+            <div class="fv-sub">
+              {% if s.rating_avg %}⭐ {{ s.rating_avg }} ({{ s.rating_count }}) · {% endif %}{{ s.delivery_time_min }}-{{ s.delivery_time_max }} min ·
+              {% if s.is_free_delivery %}Free delivery{% else %}{{ currency }} {{ s.delivery_fee|floatformat:0 }}{% endif %}
+            </div>
+            <div class="fv-sub">{% if s.status == 'open' %}🟢 Open{% elif s.status == 'busy' %}🟠 Busy{% else %}🔴 Closed{% endif %}</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="fv-empty">Abhi koi pasandida store nahi.<br>Stores page par ❤ dabayein. <a href="{% url 'store_list' %}">Stores dekhein</a></div>
+    {% endif %}
+  {% else %}
+    {% if items %}
+    <div class="fv-grid">
+      {% for p in items %}
+      <div class="fv-card" data-fav-card>
+        <button type="button" class="fav-btn fv-heart on" aria-label="Wishlist se hatayein"
+                onclick="toggleFav(this, '{% url 'wishlist_toggle' p.pk %}', true)"><i class="bi bi-heart-fill"></i></button>
+        <a class="fv-link" href="{% url 'shop_product_detail' p.pk %}">
+          <div class="fv-img">{% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.name }}" loading="lazy">{% else %}{{ p.name|slice:":1"|upper }}{% endif %}</div>
+          <div class="fv-body">
+            <div class="fv-name">{{ p.name }}</div>
+            {% if p.store_name %}<div class="fv-sub">{{ p.store_name }}</div>{% endif %}
+            <div class="fv-price">{{ currency }} {{ p.final_price|floatformat:0 }}</div>
+            {% if p.stock_int <= 0 %}<div class="fv-oos">Out of stock</div>{% endif %}
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="fv-empty">Wishlist khali hai.<br>Kisi item par ❤ dabayein. <a href="{% url 'shop_home' %}">Shop dekhein</a></div>
+    {% endif %}
+  {% endif %}
+</div>
+{% include 'customer_portal/_fav_js.html' %}
+{% endblock %}
