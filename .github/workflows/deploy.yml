@@ -47,6 +47,7 @@ jobs:
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       # Pictures/media Cloudinary pe save hon (runner restart pe local media/ khali ho jata hai)
       MEDIA_STORAGE: "cloudinary"
+      CI_MODE: 'true'
       # Django -> runner-local MySQL (hardcoded, no secrets needed)
       DB_HOST: "127.0.0.1"
       DB_PORT: "3306"
