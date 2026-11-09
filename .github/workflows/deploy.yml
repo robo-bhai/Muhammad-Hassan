@@ -64,9 +64,11 @@ jobs:
       SUPERUSER_NAME: ${{ secrets.SUPERUSER_NAME }}
       SUPERUSER_EMAIL: ${{ secrets.SUPERUSER_EMAIL }}
       SUPERUSER_PASSWORD: ${{ secrets.SUPERUSER_PASSWORD }}
-      # Temporary Cloudflare URL random hota hai, isliye wildcard allow kiya
-      ALLOWED_HOSTS: "*"
-      CSRF_TRUSTED_ORIGINS: "https://*.trycloudflare.com"
+      # Fixed Cloudflare tunnel domain
+      CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
+      SITE_DOMAIN: "shops.hadi88.online"
+      ALLOWED_HOSTS: "shops.hadi88.online,localhost,127.0.0.1"
+      CSRF_TRUSTED_ORIGINS: "https://shops.hadi88.online"
       # License: fixed machine id (runner machine-id changes every run) + optional first-time key
       LICENSE_MACHINE_SEED: ${{ secrets.LICENSE_MACHINE_SEED }}
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
@@ -343,41 +345,34 @@ jobs:
           pkill -f "cloudflared" || true
           sleep 2
 
-      - name: Start Django Server & Temporary Cloudflare Tunnel
+      - name: Start Django Server & Cloudflare Tunnel (fixed domain)
         if: env.STOP_AFTER_MIGRATE != 'true'
         run: |
           touch django.log tunnel.log
           PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 --insecure > django.log 2>&1 &
-          # Quick tunnel: no token / no domain needed, random *.trycloudflare.com URL
-          cloudflared tunnel --no-autoupdate --url http://localhost:8000 > tunnel.log 2>&1 &
-          # periodic snapshot every 30 min so a crash / 6h kill loses at most 30 min of data
+          # Named tunnel: token from secret CLOUDFLARE_TOKEN, hostname is set in Cloudflare Zero Trust dashboard
+          cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARE_TOKEN" > tunnel.log 2>&1 &
+          # periodic snapshot every 30 min (local copy; saved to cache at job end)
           setsid nohup bash -c 'while true; do sleep 1800; bash "$HELPER_DIR/snapshot.sh" periodic; done' > periodic_snapshot.log 2>&1 &
 
-          TUNNEL_URL=""
+          TUNNEL_OK=""
           for i in {1..30}; do
-            TUNNEL_URL=$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' tunnel.log | head -n 1 || true)
-            if [ -n "$TUNNEL_URL" ]; then break; fi
+            if grep -q "Registered tunnel connection" tunnel.log; then TUNNEL_OK="yes"; break; fi
             sleep 2
           done
 
-          if [ -z "$TUNNEL_URL" ]; then
-            echo "!!! Cloudflare temporary URL nahi mila. tunnel.log:"
+          TUNNEL_URL="https://$SITE_DOMAIN"
+          echo "TUNNEL_URL=$TUNNEL_URL" >> "$GITHUB_ENV"
+          if [ -z "$TUNNEL_OK" ]; then
+            echo "!!! Tunnel connect hota nazar nahi aaya. tunnel.log:"
             cat tunnel.log
           else
-            echo "TUNNEL_URL=$TUNNEL_URL" >> "$GITHUB_ENV"
             echo ""
             echo "=============================================="
             echo "  LIVE URL: $TUNNEL_URL"
             echo "=============================================="
             echo ""
           fi
-
-      - name: Send Notification to ntfy
-        if: env.STOP_AFTER_MIGRATE != 'true'
-        run: |
-          MESSAGE="Django App Live! (Local MySQL on runner, snapshots in GitHub cache)
-          URL: ${TUNNEL_URL:-not available}"
-          curl -d "$MESSAGE" ntfy.sh/hshshehgag
 
       - name: Realtime HTTP Access Logs & Error Stream
         if: env.STOP_AFTER_MIGRATE != 'true'
