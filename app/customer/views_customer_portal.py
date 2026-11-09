@@ -56,6 +56,7 @@ from ..models import (
 from ..decorators import customer_login_required
 from ..security.security_utils import safe_error
 from . import store_orders
+from . import drop_pin
 from . import cart_options
 from . import offers
 from . import coupons as coupon_logic
@@ -1663,6 +1664,7 @@ def place_order(request):
                 f"Time: {cart_data['delivery_info']['time_estimate']}"
             ),
             **offers.order_fields(summary),
+            **drop_pin.order_fields(request.session),
             advance_payment=delivery_charges,  # Delivery charges as advance
             created_by=request.user if request.user.is_authenticated else None,
         )

@@ -94,6 +94,9 @@ class RiderProfile(models.Model):
                                            help_text="Har delivery par rider ki kamai (Rs.)")
     last_seen_at = models.DateTimeField(null=True, blank=True)
     last_login_at = models.DateTimeField(null=True, blank=True)
+    last_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    last_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    last_location_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -420,3 +423,14 @@ class DeliveryFeedback(models.Model):
     
     def __str__(self):
         return f"{self.order.order_number if self.order else 'N/A'} - {self.rating}⭐"
+
+
+class DispatchAttempt(models.Model):
+    """Auto dispatch: kis rider ko kis tarteeb se order offer hua."""
+    sale_order = models.OneToOneField('SaleOrder', on_delete=models.CASCADE, related_name='dispatch_attempt')
+    ranking = models.JSONField(default=list)     # rider ids, offer ki tarteeb mein
+    declined = models.JSONField(default=list)    # riders jinhon ne reject kiya
+    started_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "🎯 Dispatch"

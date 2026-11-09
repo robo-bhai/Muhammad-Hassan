@@ -1,0 +1,39 @@
+{# Rider ka live map. Customer page: order + delivery_info. Public page: live_token + delivery_info. #}
+{% if delivery_info and delivery_info.rider_id %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<div id="liveMapCard" style="display:none;background:#fff;border-radius:20px;padding:14px;margin:16px 0;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <strong>🛵 Rider live location</strong>
+    <small id="liveMapAge" style="color:#6b7280"></small>
+  </div>
+  <div id="liveMap" style="height:260px;border-radius:14px"></div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  {% if live_token %}var api = "{% url 'track_live_public' %}?t={{ live_token|urlencode }}";
+  {% else %}var api = "{% url 'customer_rider_location' order.id %}";{% endif %}
+  var map=null, marker=null, home=null, fitted=false;
+  function tick(){
+    fetch(api,{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){
+      var card=document.getElementById('liveMapCard');
+      if(!d.active){ card.style.display='none'; return; }
+      card.style.display='block';
+      var ll=[d.lat,d.lng];
+      if(!map){
+        map=L.map('liveMap').setView(ll,16);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+        marker=L.marker(ll).addTo(map).bindPopup(d.rider_name||'Rider');
+      } else { marker.setLatLng(ll); }
+      if(d.dest_lat!==undefined){
+        var dl=[d.dest_lat,d.dest_lng];
+        if(!home){ home=L.marker(dl,{icon:L.divIcon({html:'🏠',className:'',iconSize:[28,28],iconAnchor:[14,14]})}).addTo(map).bindPopup('Aap ki delivery location'); }
+        if(!fitted){ map.fitBounds([ll,dl],{padding:[40,40],maxZoom:17}); fitted=true; }
+      } else { map.panTo(ll); }
+      document.getElementById('liveMapAge').textContent = d.stale ? 'Location ruk gayi hai' : 'Live';
+    }).catch(function(){});
+  }
+  tick(); setInterval(tick,8000);
+})();
+</script>
+{% endif %}

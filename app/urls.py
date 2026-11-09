@@ -12,6 +12,8 @@ from app.customer import views_vendor_tools
 from app.customer import views_coupons
 from app.customer import views_offers
 from app.customer import views_rider_portal
+from app.customer import views_live_tracking
+from app.customer import views_dispatch
 from app.customer import views_reviews
 from app.customer import views_disputes
 from app.customer import views_dispute_responses
@@ -1172,6 +1174,12 @@ urlpatterns = [
      path('shop/rider/earnings/', views_rider_portal.rider_earnings, name='rider_earnings'),
      path('shop/rider/online/', views_rider_portal.rider_toggle_online, name='rider_toggle_online'),
      path('shop/rider/api/poll/', views_rider_portal.rider_poll, name='rider_poll'),
+     path('shop/rider/api/location/', views_live_tracking.rider_location_update, name='rider_location_update'),
+     path('shop/track/live-public/', views_live_tracking.track_live_public, name='track_live_public'),
+     path('shop/api/drop-location/', views_live_tracking.customer_set_drop_location, name='customer_set_drop_location'),
+     path('shop/rider/decline/<int:pk>/', views_dispatch.rider_decline_order, name='rider_decline_order'),
+     path('shop/vendor/api/set-location/', views_dispatch.vendor_set_location, name='vendor_set_location'),
+     path('shop/track/live/<int:order_id>/', views_live_tracking.customer_rider_location, name='customer_rider_location'),
      path('shop/rider/accept/<int:pk>/', views_rider_portal.rider_accept_order, name='rider_accept_order'),
      path('shop/rider/manage/<int:pk>/', views_rider_portal.rider_detail, name='rider_detail'),
      path('shop/rider/order/<int:pk>/<str:action>/', views_rider_portal.rider_order_action, name='rider_order_action'),

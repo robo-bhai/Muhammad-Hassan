@@ -51,6 +51,7 @@
       <p>Ye aap ke store ki wo page ha jo customer dekhte hain.</p>
     </div>
     <div class="ss-body">
+      {% include 'customer_portal/vendor/_store_location.html' %}
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 

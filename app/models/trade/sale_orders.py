@@ -63,6 +63,8 @@ class SaleOrder(models.Model):
         null=True, blank=True, db_index=True,
         help_text="Customer ne order baad ke waqt ke liye rakha (khali = jaldi se jaldi)")
     vendor_responded_at = models.DateTimeField(null=True, blank=True)
+    delivery_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    delivery_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     
     # ✅ NEW field: Client IP (to detect duplicates)
     client_ip = models.GenericIPAddressField(

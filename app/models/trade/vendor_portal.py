@@ -110,6 +110,8 @@ class VendorProfile(models.Model):
     delivery_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     delivery_time_min = models.PositiveSmallIntegerField(default=30, help_text="Minutes")
     delivery_time_max = models.PositiveSmallIntegerField(default=45, help_text="Minutes")
+    lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     delivery_areas = models.TextField(
         blank=True, default='', max_length=1000,
         help_text="Wo shehar/area jahan ye store deliver karta hai, comma se alag (jaise: Gulberg, DHA, Johar Town). "

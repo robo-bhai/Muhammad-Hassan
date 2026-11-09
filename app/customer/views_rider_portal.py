@@ -32,6 +32,7 @@ from ..models import (
     CompanyInfo, DeliveryInfo, OrderTracking, RiderProfile, RiderSettlement, SaleOrder, VendorProfile,
 )
 from . import store_orders
+from . import dispatch
 from .views_reviews import rider_rating
 from .views_customer_auth import get_client_ip, is_valid_phone, normalize_phone, safe_login
 
@@ -138,6 +139,8 @@ def _card(di):
         'store_phone': getattr(o.vendor, 'contact_number', '') if o.vendor_id else '',
         'store_addr': store_addr, 'map_store': _maps(store_addr),
         'cust_addr': getattr(cust, 'address', '') or '', 'map_cust': _maps(getattr(cust, 'address', '') or ''),
+        'map_pin': (f'https://www.google.com/maps/dir/?api=1&destination={o.delivery_lat},{o.delivery_lng}'
+                    if o.delivery_lat is not None and o.delivery_lng is not None else ''),
         'cust_phone': phone, 'wa_cust': f'https://wa.me/{digits}' if digits else '',
         'total': store_orders.order_cash_due(o),
         'is_cod': (o.payment_method or 'cod') == 'cod',
@@ -162,6 +165,7 @@ def _offer_card(o, rider):
         'total': store_orders.order_cash_due(o),
         'is_cod': (o.payment_method or 'cod') == 'cod',
         'fee': rider.per_delivery_fee,
+        'dist_km': dispatch.distance_km(o, rider),
     }
 
 
@@ -315,7 +319,7 @@ def rider_home(request):
     mine = (DeliveryInfo.objects.filter(rider=rider, status__in=ACTIVE_STATUSES, sale_order__isnull=False)
             .select_related('sale_order', 'sale_order__customer', 'sale_order__vendor')
             .prefetch_related('sale_order__items__product').order_by('assigned_at'))
-    offers = [_offer_card(o, rider) for o in _offers_qs()] if rider.is_online else []
+    offers = [_offer_card(o, rider) for o in dispatch.visible_orders(_offers_qs(), rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES)] if rider.is_online else []
     today = period_stats(rider, timezone.localdate())
     return render(request, 'customer_portal/rider/home.html', _rider_ctx(
         request, 'orders', mine=[_card(d) for d in mine], offers=offers,
@@ -364,7 +368,7 @@ def rider_poll(request):
     """Har ~12 second mein: naye offers/orders ka count (awaaz ke liye)."""
     rider = request.user.rider_profile
     _touch(rider)
-    offers = len(list(_offers_qs())) if rider.is_online else 0
+    offers = len(dispatch.visible_orders(_offers_qs(), rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES)) if rider.is_online else 0
     active = DeliveryInfo.objects.filter(rider=rider, status__in=ACTIVE_STATUSES).count()
     assigned = DeliveryInfo.objects.filter(rider=rider, status='assigned').count()
     return JsonResponse({'offers': offers, 'active': active, 'assigned': assigned, 'online': rider.is_online})
@@ -388,6 +392,8 @@ def rider_accept_order(request, pk):
             order = SaleOrder.objects.select_for_update().filter(pk=pk, status='ready').first()
             if not order:
                 raise store_orders.OrderActionError('Ye order ab available nahi.')
+            if not dispatch.can_take(order, rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES):
+                raise store_orders.OrderActionError('Ye order abhi kisi aur rider ko offer ho raha hai. Thori der baad dekhein.')
             di, _ = DeliveryInfo.objects.select_for_update().get_or_create(sale_order=order)
             if di.rider_id and di.status != 'cancelled':
                 raise store_orders.OrderActionError('Ye order kisi aur rider ne le liya.')

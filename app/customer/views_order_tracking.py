@@ -13,6 +13,7 @@ Order Tracking Views - Complete Professional System
 
 from django.shortcuts import render, redirect, get_object_or_404
 from ..shop_flags import flag_required
+from .views_live_tracking import make_live_token
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
@@ -534,6 +535,7 @@ def track_order_public(request):
         'error': error,
         'search_order_no': search_order_no,
         'search_phone': search_phone,
+        'live_token': make_live_token(order) if order else None,
     }
     return render(request, 'customer_portal/track_order_public.html', context)
 

@@ -71,6 +71,7 @@
   {% endif %}
 </nav>
 
+{% if rider and rider.is_online and active_count %}{% include 'customer_portal/rider/_live_location.html' %}{% endif %}
 <script>
 (function(){
   var last = null, audioCtx = null;
