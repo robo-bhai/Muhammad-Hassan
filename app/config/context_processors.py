@@ -1,6 +1,8 @@
 # context_processors.py
 from django.core.cache import cache
-from ..models import SystemSetting, Purchase, ShareholderDepositRequest, ShareholderWithdrawalRequest, BalanceDividend, Shareholder, CompanyInfo
+from django.utils.functional import SimpleLazyObject
+from app.shop_flags import shop_flags_all
+from app.models import SystemSetting, Purchase, ShareholderDepositRequest, ShareholderWithdrawalRequest, BalanceDividend, Shareholder, CompanyInfo
 
 
 def _whatsapp_url(number):
@@ -41,10 +43,10 @@ def _company_branding():
 # Factory mode was removed: the business mode is always 'shop' and only the Shop switch of each module counts.
 # (The old mode_factory_* rows are ignored.) No module is hidden until you turn its switch off.
 # ----------------------------------------------------------------------------
-from ..module_config.module_catalog import MODULE_CATALOG, get_module_catalog, get_module_keys
-from ..i18n.i18n_lang import LANGUAGES, get_language
+from app.module_catalog import MODULE_CATALOG, get_module_catalog, get_module_keys
+from app.i18n.i18n_lang import LANGUAGES, get_language
 
-from ..lite_edition import is_lite
+from app.lite_edition import is_lite
 
 MODULES = [m['key'] for m in MODULE_CATALOG]
 
@@ -79,7 +81,7 @@ def system_settings(request):
     if _lang['code'] != 'en':
         try:
             from django.core.cache import cache as _cache
-            from ..i18n import i18n_service as _i18n
+            from app.i18n import i18n_service as _i18n
             _i18n_ver = _cache.get_or_set('i18n_ver', _i18n.get_version, 30)
         except Exception:
             _i18n_ver = ''
@@ -135,6 +137,8 @@ def system_settings(request):
         # MODULE SETTINGS                            #
         # ========================================== #
         'BUSINESS_MODE': vis['_mode'],
+        # Shop switches (Settings > Shop). Lazy: the DB is only hit if a template uses {{ SHOP.xxx }}.
+        'SHOP': SimpleLazyObject(shop_flags_all),
         # Lite Edition (simple Urdu-first mode): templates use {% if LITE_MODE %}
         'LITE_MODE': is_lite(),
         # Owner of the customer account (sidebar: Security section is for Administrator / Owner only)
@@ -192,7 +196,7 @@ def get_shareholder_balance_used(shareholder):
     Calculate total balance used by a specific shareholder
     """
     from decimal import Decimal
-    from ..models import Purchase
+    from app.models import Purchase
     
     total = Decimal('0.00')
     
@@ -212,7 +216,7 @@ def get_total_balance_used():
     Calculate total balance used by all shareholders
     """
     from decimal import Decimal
-    from ..models import Shareholder
+    from app.models import Shareholder
     
     total = Decimal('0.00')
     
@@ -226,7 +230,7 @@ def get_eligible_shareholders_count():
     """
     Get count of shareholders eligible for balance dividend
     """
-    from ..models import Shareholder
+    from app.models import Shareholder
     
     count = 0
     min_balance = Decimal(SystemSetting.get_value('min_balance_for_dividend', '0'))

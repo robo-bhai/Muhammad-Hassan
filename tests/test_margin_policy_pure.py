@@ -138,7 +138,7 @@ class Wiring(unittest.TestCase):
     def test_sources_compile(self):
         for rel in ('app/utils/pricing.py', 'app/utils/margin_policy.py', 'app/models/inventory/catalog.py',
                     'app/views_frontend/inventory/products.py', 'app/views_frontend/inventory/price_history.py',
-                    'app/settings_catalog.py', 'app/admin/registrations.py',
+                    'app/module_config/settings_catalog.py', 'app/admin/registrations.py',
                     'app/migrations/0036_category_min_margin.py'):
             ast.parse(_read(rel), rel)
 
@@ -173,7 +173,7 @@ class Wiring(unittest.TestCase):
         self.assertLess(body.index('def _selling_price_changed'), body.index('def clean'))
 
     def test_settings_tab_and_admin(self):
-        cat = _read('app/settings_catalog.py')
+        cat = _read('app/module_config/settings_catalog.py')
         self.assertIn("'key': 'pricing'", cat)
         self.assertIn("'name': 'min_margin_percent'", cat)
         self.assertEqual(mp.COMPANY_KEY, 'min_margin_percent')

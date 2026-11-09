@@ -1,6 +1,6 @@
 import sys, importlib.util, types
 # allocate_fifo ko Django ke baghair test karne ke liye sirf us function ko load karte hain
-src = open(__file__.replace('tests/test_fifo.py', 'app/store_issue_service.py')).read()
+src = open(__file__.replace('tests/test_fifo.py', 'app/store/store_issue_service.py')).read()
 start = src.index('EPS = 1e-9'); end = src.index('def _d(')
 ns = {}; exec(src[start:end].replace('class StoreIssueError(Exception):\n    pass', ''), ns)
 f = ns['allocate_fifo']

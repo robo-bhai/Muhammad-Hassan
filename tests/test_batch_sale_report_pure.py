@@ -2,7 +2,7 @@ import importlib.util, sys, datetime
 from decimal import Decimal
 from types import SimpleNamespace as NS
 
-spec = importlib.util.spec_from_file_location('brl', __file__.replace('tests/test_batch_sale_report_pure.py', 'app/batch_report_logic.py'))
+spec = importlib.util.spec_from_file_location('brl', __file__.replace('tests/test_batch_sale_report_pure.py', 'app/utils/batch_report_logic.py'))
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 
 cust = NS(pk=1, name='Ali', customer_code='C1')

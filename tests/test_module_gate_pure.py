@@ -21,9 +21,9 @@ def _load(name, rel):
     return mod
 
 
-gate = _load('module_gate', 'app/module_gate.py')
-lite = _load('lite_edition', 'app/lite_edition.py')
-catalog = _load('module_catalog', 'app/module_catalog.py')
+gate = _load('module_gate', 'app/security/module_gate.py')
+lite = _load('lite_edition', 'app/module_config/lite_edition.py')
+catalog = _load('module_catalog', 'app/module_config/module_catalog.py')
 BY_KEY = {m['key']: m for m in catalog.MODULE_CATALOG}
 STATIC_KEYS = list(BY_KEY)
 
@@ -49,7 +49,7 @@ class Catalog(unittest.TestCase):
         self.assertTrue(BY_KEY['system_tools']['shop'])     # existing installs keep the permission matrix etc.
 
     def test_both_copies_in_sync(self):
-        a, b = _read('app/module_catalog.py').split('\n', 1)[1], _read('app/module_config/module_catalog.py').split('\n', 1)[1]
+        a, b = _read('app/module_config/module_catalog.py').split('\n', 1)[1], _read('app/module_config/module_catalog.py').split('\n', 1)[1]
         self.assertEqual(a, b)
 
     def test_prefixes_are_unique_across_modules(self):
@@ -95,21 +95,21 @@ class Gate(unittest.TestCase):
 
 class Wiring(unittest.TestCase):
     def test_middleware_skips_superuser_and_keeps_2fa_open(self):
-        for rel in ('app/module_access.py', 'app/middleware/module_access.py'):
+        for rel in ('app/middleware/module_access.py', 'app/middleware/module_access.py'):
             s = _read(rel)
             self.assertIn('user.is_authenticated and not user.is_superuser', s)
             self.assertIn("ALWAYS_OPEN = ('/security/two-factor/', '/security/change-password/')", s)
             self.assertIn('not request.path.startswith(ALWAYS_OPEN)', s)
 
     def test_context_processors_give_admin_everything_and_expose_owner(self):
-        for rel in ('app/context_processors.py', 'app/config/context_processors.py'):
+        for rel in ('app/config/context_processors.py', 'app/config/context_processors.py'):
             s = _read(rel)
             self.assertIn("if getattr(user, 'is_superuser', False):", s)
             self.assertIn("'IS_OWNER': _is_owner,", s)
             self.assertIn("'LITE_MODE': is_lite(),", s)
 
     def test_security_views_use_the_gate(self):
-        for rel in ('app/views_security.py', 'app/views_modules/views_security.py', 'app/security/views_security.py'):
+        for rel in ('app/security/views_security.py', 'app/views_modules/views_security.py', 'app/security/views_security.py'):
             s = _read(rel)
             self.assertEqual(s.count('can_use_security(request.user)'), 7)
             self.assertNotIn('if not request.user.is_superuser:', s)

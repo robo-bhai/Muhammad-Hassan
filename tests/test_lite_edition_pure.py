@@ -23,8 +23,8 @@ def _load(name, rel):
     return mod
 
 
-lite = _load('lite_edition', 'app/lite_edition.py')
-catalog = _load('module_catalog', 'app/module_catalog.py')
+lite = _load('lite_edition', 'app/module_config/lite_edition.py')
+catalog = _load('module_catalog', 'app/module_config/module_catalog.py')
 STATIC_KEYS = [m['key'] for m in catalog.MODULE_CATALOG]
 
 LITE_TEMPLATES = ['templates/components/sidebar_lite_menu.html', 'templates/index_lite.html',
@@ -113,13 +113,13 @@ class LiteWiring(unittest.TestCase):
         self.assertRegex(s, r"\{% endif %\}\n    </ul>\n    \n    <div class=\"sidebar-footer\">")
 
     def test_context_processors_expose_lite_mode(self):
-        for rel in ('app/context_processors.py', 'app/config/context_processors.py'):
+        for rel in ('app/config/context_processors.py', 'app/config/context_processors.py'):
             s = _read(rel)
             self.assertIn("'LITE_MODE': is_lite()", s)
             self.assertIn('import is_lite', s)
 
     def test_language_default_hook_in_both_copies(self):
-        for rel in ('app/i18n/i18n_lang.py', 'app/i18n_lang.py'):
+        for rel in ('app/i18n/i18n_lang.py', 'app/i18n/i18n_lang.py'):
             s = _read(rel)
             self.assertIn('_site_default() or DEFAULT_LANG', s)
             self.assertIn('from app.lite_edition import default_language', s)
@@ -129,7 +129,7 @@ class LiteWiring(unittest.TestCase):
         self.assertIn("render(request, 'index_lite.html', lite_dashboard_context(localdate()))", s)
 
     def test_enable_uses_live_catalog_and_command_calls_it(self):
-        self.assertIn('from app.module_catalog import get_module_keys', _read('app/lite_edition.py'))
+        self.assertIn('from app.module_catalog import get_module_keys', _read('app/module_config/lite_edition.py'))
         cmd = _read('app/management/commands/lite_edition.py')
         self.assertIn('enable_lite(', cmd)
         self.assertIn('disable_lite()', cmd)
@@ -160,7 +160,7 @@ class LiteWiring(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(ROOT, 'templates/admin/module_settings.html')))
         self.assertNotIn('def module_settings(', _read('app/views_frontend/system/dashboard.py'))
         self.assertNotIn("name='module_settings'", _read('app/urls.py'))
-        self.assertIn("'key': 'modules'", _read('app/settings_catalog.py'))  # lives inside the Settings Center
+        self.assertIn("'key': 'modules'", _read('app/module_config/settings_catalog.py'))  # lives inside the Settings Center
 
 class NoFactoryMode(unittest.TestCase):
     def test_settings_ui_has_no_factory_or_business_mode(self):
@@ -169,11 +169,11 @@ class NoFactoryMode(unittest.TestCase):
             self.assertNotIn('factory', t, rel)
             self.assertNotIn('business_mode', t, rel)
         self.assertNotIn('<div class="mode-chip', _read('templates/components/sidebar.html'))
-        for rel in ('app/settings_catalog.py', 'app/module_config/settings_catalog.py'):
+        for rel in ('app/module_config/settings_catalog.py', 'app/module_config/settings_catalog.py'):
             self.assertNotIn("'name': 'business_mode'", _read(rel))
 
     def test_visibility_always_uses_shop_switch(self):
-        for rel in ('app/context_processors.py', 'app/config/context_processors.py'):
+        for rel in ('app/config/context_processors.py', 'app/config/context_processors.py'):
             s = _read(rel)
             self.assertIn("mode = 'shop'", s)
             self.assertNotIn("get_value('business_mode'", s)

@@ -10,7 +10,7 @@ Tab keys:
   access   : 'superuser' | 'admin' (superuser ya staff) | 'owner' (superuser, Owner ya CEO)
   store    : where the data is saved ('system' | 'security' | 'delivery' | 'company' | None)
   fields   : generic fields (neeche)
-  special  : a special part that is not built by the generic form ('modules' | 'city_charges' | 'logo' | 'voice')
+  special  : a special part that is not built by the generic form ('modules' | 'shareholders' | 'city_charges' | 'logo' | 'voice')
   links    : [(label, url_name)] - tab ke neeche quick buttons
 
 Field keys:
@@ -25,6 +25,8 @@ NOTE ('system' store): SystemSetting.set_value lowercases the value, so in this 
 keep only bool / number / select (lowercase values). Use a dedicated model for free text.
 """
 
+from django.conf import settings as _dj_settings
+
 TABS = [
     # ------------------------------------------------------------------ Modules
     {
@@ -37,9 +39,11 @@ TABS = [
     {
         'key': 'shareholders', 'label': 'Shareholders', 'icon': 'bi-people',
         'desc': 'Purchase deduction and dividend rules',
-        'access': 'superuser', 'store': 'system',
+        'access': 'superuser', 'store': 'system', 'special': 'shareholders',
         'links': [('Bulk Process Deductions', 'bulk_process_deductions'),
-                  ('Deduction Report', 'shareholder_deduction_report')],
+                  ('Deduction Report', 'shareholder_deduction_report'),
+                  ('Balance Dividend Reports', 'balance_dividend_report'),
+                  ('All Balance Dividends', 'balance_dividend_list')],
         'fields': [
             {'name': 'enable_shareholder_purchase_deduction', 'label': 'Purchase par shareholder deduction', 'type': 'bool',
              'default': True, 'group': 'Purchase Deduction',
@@ -114,6 +118,19 @@ TABS = [
              'prefix': 'Rs.', 'group': 'Pickup & Free Delivery', 'help': 'Delivery is free on orders above this amount.'},
         ],
     },
+    # ------------------------------------------------------------------ Pricing
+    {
+        'key': 'pricing', 'label': 'Pricing', 'icon': 'bi-tags',
+        'desc': 'Minimum profit margin allowed when setting selling prices',
+        'access': 'owner', 'store': 'system',
+        'links': [('Stock Batches', 'batch_list'), ('Price History', 'price_history')],
+        'fields': [
+            {'name': 'min_margin_percent', 'label': 'Minimum margin (company rule)', 'type': 'decimal', 'default': '0',
+             'min': 0, 'max': 1000, 'suffix': '%', 'group': 'Margin Policy',
+             'help': 'No selling price may be lower than cost + this %. 0 = no minimum (the price can still never be below cost). '
+                     'A category can override this in Admin > Product Category > Minimum margin %.'},
+        ],
+    },
     # ----------------------------------------------------------------- Security
     {
         'key': 'security', 'label': 'Security', 'icon': 'bi-shield-lock',
@@ -143,6 +160,97 @@ TABS = [
             {'name': 'enable_security_alerts', 'label': 'Security Alerts', 'type': 'bool', 'default': True, 'group': 'Alerts'},
             {'name': 'alert_email', 'label': 'Alert Email', 'type': 'email', 'group': 'Alerts'},
             {'name': 'alert_whatsapp', 'label': 'Alert WhatsApp', 'type': 'text', 'max_len': 20, 'group': 'Alerts'},
+        ],
+    },
+    # --------------------------------------------------------------------- Shop
+    {
+        'key': 'shop', 'label': 'Shop', 'icon': 'bi-shop',
+        'desc': 'Online shop: vendors (register, login, products, orders)',
+        'access': 'admin', 'store': 'system',
+        'links': [('Vendor approvals', 'vendor_approvals'), ('Shop banners', 'shop_banner_list')],
+        'fields': [
+            {'name': 'vendor_register_enabled', 'label': 'Register as a Seller', 'type': 'bool', 'default': True,
+             'group': 'Vendors', 'help': 'OFF = the register page and its link are closed. Existing vendors are not affected.'},
+            {'name': 'vendor_login_enabled', 'label': 'Seller Login', 'type': 'bool', 'default': True,
+             'group': 'Vendors', 'help': 'OFF = vendors cannot log in (already logged-in sessions stay until they sign out).'},
+            {'name': 'vendor_auto_approve_accounts', 'label': 'Auto-approve new vendor accounts', 'type': 'bool',
+             'default': bool(getattr(_dj_settings, 'VENDOR_AUTO_APPROVE_ACCOUNTS', False)), 'group': 'Vendors',
+             'help': 'OFF = admin approves each vendor (Vendors > Approvals).'},
+            {'name': 'vendor_auto_approve_products', 'label': 'Auto-approve vendor products', 'type': 'bool',
+             'default': bool(getattr(_dj_settings, 'VENDOR_AUTO_APPROVE_PRODUCTS', False)), 'group': 'Vendors',
+             'help': 'OFF = every new or edited product waits for admin approval before it is live.'},
+            {'name': 'vendor_can_add_products', 'label': 'Vendors can add / edit products', 'type': 'bool', 'default': True,
+             'group': 'Vendors'},
+            {'name': 'vendor_can_manage_orders', 'label': 'Vendors can manage orders', 'type': 'bool', 'default': True,
+             'group': 'Vendors', 'help': 'OFF = vendors cannot open the orders page or accept / reject / mark ready.'},
+            {'name': 'customer_register_enabled', 'label': 'Register as a Customer', 'type': 'bool', 'default': True,
+             'group': 'Customers', 'help': 'OFF = the sign-up page and its links are closed. Existing customers are not affected.'},
+            {'name': 'customer_login_enabled', 'label': 'Customer login', 'type': 'bool', 'default': True,
+             'group': 'Customers', 'help': 'OFF = customers cannot log in (logged-in sessions stay until they sign out).'},
+            {'name': 'shop_ordering_enabled', 'label': 'Online ordering (checkout / buy now)', 'type': 'bool', 'default': True,
+             'group': 'Customers', 'help': 'OFF = browsing and cart still work, but checkout and placing orders are paused.'},
+            {'name': 'order_tracking_enabled', 'label': 'Order tracking page', 'type': 'bool', 'default': True,
+             'group': 'Customers', 'help': 'OFF = the public Track Order page and its links are closed.'},
+            {'name': 'customer_can_cancel_orders', 'label': 'Customers can cancel orders', 'type': 'bool', 'default': True,
+             'group': 'Customers'},
+            {'name': 'customer_can_rate_orders', 'label': 'Customers can rate orders', 'type': 'bool', 'default': True,
+             'group': 'Customers'},
+            {'name': 'customer_can_dispute_orders', 'label': 'Customers can report a problem (dispute)', 'type': 'bool', 'default': True,
+             'group': 'Customers', 'help': 'OFF = the "Report a problem" form on delivered orders is hidden.'},
+            {'name': 'dispute_window_hours', 'label': 'Dispute window after delivery', 'type': 'decimal', 'default': '48',
+             'min': 1, 'max': 720, 'suffix': 'hours', 'group': 'Customers',
+             'help': 'Customers can open a dispute only this many hours after delivery.'},
+            {'name': 'shop_stores_enabled', 'label': 'Stores page', 'type': 'bool', 'default': True,
+             'group': 'Shop pages', 'help': 'OFF = stores list/detail pages, the "Stores near you" row and Stores links are closed.'},
+            {'name': 'shop_banners_enabled', 'label': 'Banners', 'type': 'bool', 'default': True,
+             'group': 'Shop pages', 'help': 'OFF = admin banners are not shown on the shop home or stores page.'},
+            {'name': 'shop_push_enabled', 'label': 'Push notifications', 'type': 'bool', 'default': True,
+             'group': 'Shop pages', 'help': 'OFF = no phone/browser popups for orders (in-app and email notifications still work). Needs VAPID keys in settings.'},
+            {'name': 'shop_coupons_enabled', 'label': 'Coupons (promo codes)', 'type': 'bool', 'default': True,
+             'group': 'Offers', 'help': 'OFF = coupon box, store offer badges and vendor coupons are hidden and ignored.'},
+            {'name': 'shop_wallet_enabled', 'label': 'Wallet credit', 'type': 'bool', 'default': True,
+             'group': 'Offers', 'help': 'OFF = customers cannot pay from wallet; the Wallet page is hidden.'},
+            {'name': 'cashback_percent', 'label': 'Cashback on delivered orders', 'type': 'decimal', 'default': '0',
+             'min': 0, 'max': 25, 'suffix': '%', 'group': 'Offers',
+             'help': 'Customer gets this % of the order items back as wallet credit after delivery. 0 = off.'},
+            {'name': 'cashback_max', 'label': 'Maximum cashback per order', 'type': 'decimal', 'default': '0',
+             'min': 0, 'prefix': 'Rs.', 'group': 'Offers', 'help': '0 = no limit.'},
+            {'name': 'shop_loyalty_enabled', 'label': 'Loyalty points', 'type': 'bool', 'default': False,
+             'group': 'Offers', 'help': 'ON = customers earn points on delivered orders and can convert them to wallet credit (Wallet must also be ON).'},
+            {'name': 'loyalty_points_per_100', 'label': 'Points earned per Rs. 100', 'type': 'decimal', 'default': '1',
+             'min': 0, 'max': 100, 'group': 'Offers', 'help': 'On the order items total (after coupon). 1 = one point for every Rs. 100.'},
+            {'name': 'loyalty_point_value', 'label': 'Value of one point', 'type': 'decimal', 'default': '1',
+             'min': 0, 'prefix': 'Rs.', 'group': 'Offers', 'help': 'Wallet credit the customer gets for each point converted.'},
+            {'name': 'loyalty_min_redeem', 'label': 'Minimum points to convert', 'type': 'int', 'default': '100',
+             'min': 1, 'suffix': 'Points', 'group': 'Offers'},
+            {'name': 'shop_pro_enabled', 'label': 'Pro membership (free delivery)', 'type': 'bool', 'default': False,
+             'group': 'Offers', 'help': 'ON = customers can ask to join Pro; you activate them from Admin > Pro Memberships after you receive the payment.'},
+            {'name': 'pro_price', 'label': 'Pro price', 'type': 'decimal', 'default': '0', 'min': 0,
+             'prefix': 'Rs.', 'group': 'Offers', 'help': 'Shown to the customer. Payment is collected by you (cash / bank / JazzCash), not online.'},
+            {'name': 'pro_days', 'label': 'Pro duration', 'type': 'int', 'default': '30', 'min': 1, 'max': 366,
+             'suffix': 'Days', 'group': 'Offers'},
+            {'name': 'pro_min_order', 'label': 'Pro free delivery: minimum order', 'type': 'decimal', 'default': '0',
+             'min': 0, 'prefix': 'Rs.', 'group': 'Offers', 'help': 'Pro members get free delivery on orders of at least this amount. 0 = every order.'},
+            {'name': 'shop_favorites_enabled', 'label': 'Favourite stores and wishlist', 'type': 'bool', 'default': True,
+             'group': 'Shop pages', 'help': 'OFF = heart buttons, the Favourites page and the Favourites filter are hidden.'},
+            {'name': 'shop_search_enabled', 'label': 'Product search', 'type': 'bool', 'default': True,
+             'group': 'Shop pages', 'help': 'OFF = search bars are hidden and search text is ignored.'},
+            {'name': 'shop_voice_search_enabled', 'label': 'Voice search (microphone)', 'type': 'bool', 'default': True,
+             'group': 'Shop pages'},
+            {'name': 'shop_chat_enabled', 'label': 'Customer chat', 'type': 'bool', 'default': True,
+             'group': 'Shop pages', 'help': 'OFF = the chat endpoints stop answering.'},
+            {'name': 'rider_login_enabled', 'label': 'Rider login', 'type': 'bool', 'default': True,
+             'group': 'Riders', 'help': 'OFF = riders cannot log in (logged-in sessions stay until they sign out).'},
+            {'name': 'rider_can_accept_orders', 'label': 'Riders can accept new orders', 'type': 'bool', 'default': True,
+             'group': 'Riders', 'help': 'OFF = riders cannot take orders from the offers list. Orders given to them directly are not affected.'},
+            {'name': 'vendor_can_assign_riders', 'label': 'Vendors can choose a rider', 'type': 'bool', 'default': True,
+             'group': 'Riders', 'help': 'OFF = the "Rider do" form is hidden in vendor orders and the action is refused.'},
+            {'name': 'rider_earnings_enabled', 'label': 'Rider earnings page', 'type': 'bool', 'default': True,
+             'group': 'Riders'},
+            {'name': 'rider_register_enabled', 'label': 'Register as a Rider', 'type': 'bool', 'default': True,
+             'group': 'Riders', 'help': 'OFF = the rider sign-up page and its links are closed.'},
+            {'name': 'rider_auto_approve', 'label': 'Auto-approve new riders', 'type': 'bool', 'default': False,
+             'group': 'Riders', 'help': 'OFF = admin approves each new rider (Riders page > Chalu).'},
         ],
     },
     # -------------------------------------------------------------------- Voice

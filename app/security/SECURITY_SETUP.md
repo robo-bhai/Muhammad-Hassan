@@ -58,7 +58,7 @@ CACHES = {...}   # brute-force / OTP limits cache par chalte hain: production me
 Authenticator ke liye "Two-factor authentication" Security Settings mein on honi chahiye.
 Authenticator wale users ko email OTP ke bajaye app code poocha jata hai. Naya migration nahi chahiye.
 
-Tests: `python manage.py test app.tests_security_totp`
+Tests: `python manage.py test app.tests_suite.tests_security_totp`
 
 ## 4. Abhi bhi baqi (agla step)
 * APIKey banti hain lekin koi API unhe check nahi karti; api_rate_limit enforce nahi hota.
