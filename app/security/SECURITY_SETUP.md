@@ -64,3 +64,14 @@ Tests: `python manage.py test app.tests_suite.tests_security_totp`
 * APIKey banti hain lekin koi API unhe check nahi karti; api_rate_limit enforce nahi hota.
 * Per-account (username) lockout nahi, sirf per-IP (jaan boojh kar, taake koi dusre ko lock na kare).
 * Content-Security-Policy: pehle SECURITY_CSP_REPORT_ONLY se test karein, templates mein inline scripts hain.
+
+## 5. Hacker ko rokna, aapko batana, record rakhna
+| Kaam | Kaise | Kahan dekhein |
+|---|---|---|
+| Galat password baar baar | IP khud block (max_login_attempts, lockout_time) | Security -> IP Blacklist |
+| Aap ko inform | Email: Security Settings ka `alert_email` (khali ho to superusers ko). Ek hi IP ki mail 10 min mein ek. | Inbox + Security -> Alerts |
+| Hacker ka record | IP, tried usernames, browser/tool, pehli/aakhri koshish, har login attempt | Security -> Alerts, Security -> Logs, LoginAttempt |
+| Har badlao ka record | AuditLogMiddleware (kaun, kahan se, kya) | Security -> Logs |
+
+Email ke liye settings.py mein EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL zaroori hain.
+Test: `python manage.py test app.tests_suite.tests_security_alerts`

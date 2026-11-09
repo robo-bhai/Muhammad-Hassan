@@ -293,9 +293,22 @@ def check_brute_force(username, ip_address):
         entry.is_active = True
         entry.save()
 
+    attempts = list(LoginAttempt.objects.filter(
+        ip_address=ip_address, is_success=False, attempted_at__gte=window_start
+    ).order_by("attempted_at").values_list("username", "user_agent", "attempted_at"))
+    usernames = sorted({a[0] for a in attempts if a[0]})[:10]
+    agents = sorted({(a[1] or "")[:120] for a in attempts if a[1]})[:3]
+    first_at = attempts[0][2] if attempts else None
+    last_at = attempts[-1][2] if attempts else None
     create_security_alert(
         title="Brute Force Attack Detected",
         description=(
+            f"IP {ip_address} was blocked for {policy.lockout_time} minutes after "
+            f"{failed_attempts} failed login attempts.\n"
+            f"Usernames tried: {', '.join(usernames) or '-'}\n"
+            f"Browser / tool: {' | '.join(agents) or '-'}\n"
+            f"First attempt: {first_at:%Y-%m-%d %H:%M:%S}  Last attempt: {last_at:%Y-%m-%d %H:%M:%S}"
+            if attempts else
             f"IP {ip_address} was blocked for {policy.lockout_time} minutes after "
             f"{failed_attempts} failed login attempts (last username: {username})."
         ),
@@ -309,9 +322,64 @@ def check_brute_force(username, ip_address):
 # Alerts and API keys
 # ---------------------------------------------------------------------------
 
+# Alert types that must reach the owner immediately (besides any high / critical alert).
+NOTIFY_ALERT_TYPES = {
+    "brute_force", "ip_blocked", "unauthorized_access", "suspicious_login",
+    "api_key_compromised", "data_breach",
+}
+ALERT_MAIL_THROTTLE_SECONDS = 600     # one email per alert type + IP per 10 minutes
+
+
+def _alert_recipients(policy):
+    """alert_email from Security Settings; if empty, every active superuser's email."""
+    if policy.alert_email:
+        return [policy.alert_email]
+    User = get_user_model()
+    return sorted({e for e in User.objects.filter(is_superuser=True, is_active=True)
+                   .values_list("email", flat=True) if e})
+
+
+def notify_security_alert(alert):
+    """Email the owner about a security alert. Never raises; returns True if sent."""
+    try:
+        policy = SecuritySettings.get_settings()
+        if not policy.enable_security_alerts:
+            return False
+        if alert.severity not in ("high", "critical") and alert.alert_type not in NOTIFY_ALERT_TYPES:
+            return False
+        recipients = _alert_recipients(policy)
+        if not recipients:
+            logger.warning("Security alert %s not emailed: no alert_email and no superuser email.", alert.pk)
+            return False
+        if not cache.add(f"sec_alert_mail:{alert.alert_type}:{alert.ip_address}", 1,
+                         ALERT_MAIL_THROTTLE_SECONDS):
+            return False          # same alert for the same IP was emailed a moment ago
+        site = getattr(django_settings, "SITE_NAME", "ERP System")
+        body = "\n".join([
+            f"{site} - SECURITY ALERT ({alert.get_severity_display()})",
+            "",
+            alert.title,
+            "",
+            alert.description,
+            "",
+            f"Type: {alert.get_alert_type_display()}",
+            f"IP address: {alert.ip_address or '-'}",
+            f"User: {alert.user.get_username() if alert.user else '-'}",
+            f"Time: {alert.created_at:%Y-%m-%d %H:%M:%S}",
+            "",
+            "Full record: Security -> Alerts and Security -> Logs in the ERP.",
+        ])
+        send_mail(f"[{site}] Security alert: {alert.title}"[:200], body, None, recipients,
+                  fail_silently=False)
+        return True
+    except Exception:
+        logger.exception("Could not email security alert.")
+        return False
+
+
 def create_security_alert(title, description, alert_type, severity="medium", user=None, ip_address=None):
-    """Create and return a security alert."""
-    return SecurityAlert.objects.create(
+    """Create a security alert and email the owner when it is serious."""
+    alert = SecurityAlert.objects.create(
         title=title,
         description=description,
         alert_type=alert_type,
@@ -319,6 +387,8 @@ def create_security_alert(title, description, alert_type, severity="medium", use
         user=user,
         ip_address=ip_address,
     )
+    notify_security_alert(alert)
+    return alert
 
 
 def generate_api_key(user, name, permissions=None):
