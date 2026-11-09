@@ -1,11 +1,11 @@
 name: Django CI/CD Pipeline
 
 # DB design: MySQL runs ONLY on the GitHub runner (service container).
-# Persistence = encrypted snapshots on Google Drive (rclone, folder "hassan_shops").
-#   start of run : restore latest snapshot -> local MySQL (first ever run: fresh DB)
-#   every 30 min : snapshot -> Drive
-#   end of run   : stop server, final snapshot -> Drive, keep latest 10
-# No Aiven / cloud MySQL anywhere.
+# Persistence = encrypted snapshot stored in the GitHub Actions CACHE (no rclone / Google Drive).
+#   start of run : restore latest cache entry -> local MySQL (first ever run: fresh DB)
+#   every 30 min : local snapshot only (cache can only be saved at the end of the job)
+#   end of run   : stop server, final snapshot -> save as new cache entry, keep latest 3
+# Note: GitHub deletes cache entries not used for 7 days, so keep the workflow running at least weekly.
 
 on:
   push:
@@ -18,6 +18,10 @@ on:
         default: ''
   repository_dispatch:
     types: [ backup_now, restore_now, migrate_now ]
+
+permissions:
+  contents: read
+  actions: write   # needed to delete old cache entries
 
 jobs:
   build-and-test:
@@ -63,7 +67,6 @@ jobs:
       # Temporary Cloudflare URL random hota hai, isliye wildcard allow kiya
       ALLOWED_HOSTS: "*"
       CSRF_TRUSTED_ORIGINS: "https://*.trycloudflare.com"
-      RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG_DATA }}
       # License: fixed machine id (runner machine-id changes every run) + optional first-time key
       LICENSE_MACHINE_SEED: ${{ secrets.LICENSE_MACHINE_SEED }}
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
@@ -102,7 +105,7 @@ jobs:
       - name: Install Pips & System Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y mysql-client rclone libmysqlclient-dev pkg-config build-essential
+          sudo apt-get install -y mysql-client libmysqlclient-dev pkg-config build-essential
           python -m pip install --upgrade pip
           pip install mysqlclient gunicorn "django-import-export>=3.3.0" "django>=5.2,<5.3" django-dbbackup django-axes reportlab openpyxl pillow python-barcode qrcode cryptography python-dotenv requests django-pwa whitenoise django-cloudinary-storage rembg numpy
 
@@ -124,15 +127,19 @@ jobs:
             if [ -n "$INPUT_VAL" ]; then RESTORE_TARGET="$INPUT_VAL"; fi
           fi
           echo "RESTORE_TARGET=$RESTORE_TARGET" >> "$GITHUB_ENV"
+          # latest -> placeholder key (never exists, so restore-keys prefix picks the newest entry)
+          # otherwise the given value is treated as an exact cache key
+          if [ "$RESTORE_TARGET" = "latest" ] || [ "$RESTORE_TARGET" = "r" ] || [ "$RESTORE_TARGET" = "list" ] || [ "$RESTORE_TARGET" = "ls" ] || [ -z "$RESTORE_TARGET" ]; then
+            echo "RESTORE_KEY=db-snapshot-latest-placeholder" >> "$GITHUB_ENV"
+          else
+            echo "RESTORE_KEY=$RESTORE_TARGET" >> "$GITHUB_ENV"
+          fi
           echo "Restore target: $RESTORE_TARGET"
 
-      - name: Setup Rclone & Snapshot Helpers
+      - name: Setup Snapshot Helpers
         run: |
-          mkdir -p "$HOME/.config/rclone"
-          echo "$RCLONE_CONFIG_DATA" > "$HOME/.config/rclone/rclone.conf"
-          REMOTE_NAME=$(rclone listremotes | head -n 1 | tr -d ':')
-          if [ -z "$REMOTE_NAME" ]; then echo "No rclone remote found in RCLONE_CONFIG_DATA"; exit 1; fi
-          echo "DRIVE_DIR=${REMOTE_NAME}:hassan_shops" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/snapshots"
+          echo "SNAP_DIR=$RUNNER_TEMP/snapshots" >> "$GITHUB_ENV"
           echo "HELPER_DIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
 
           # --- encrypt / decrypt helper (same Fernet scheme as old snapshots) ---
@@ -150,7 +157,7 @@ jobs:
           open(dst, 'wb').write(f.encrypt(data) if mode == 'enc' else f.decrypt(data))
           PYEOF
 
-          # --- snapshot script: dump -> sanity check -> encrypt -> upload -> rotate (keep 10) ---
+          # --- snapshot script: dump -> sanity check -> encrypt -> write to SNAP_DIR (saved to cache at job end) ---
           cat > "$RUNNER_TEMP/snapshot.sh" <<'SHEOF'
           #!/usr/bin/env bash
           # usage: snapshot.sh <periodic|final>
@@ -160,16 +167,11 @@ jobs:
           flock 9
           set -uo pipefail
 
-          # --- license.key lives in a file, not in the DB: keep a copy on Drive (only when it changed) ---
+          # --- license.key lives in a file, not in the DB: keep an encrypted copy in the cache dir ---
           if [ -f license.key ]; then
-            LH=$(sha256sum license.key | cut -d' ' -f1)
-            if [ "$LH" != "$(cat "$HELPER_DIR/license_hash" 2>/dev/null)" ]; then
-              python "$HELPER_DIR/crypt.py" enc license.key "$HELPER_DIR/license.key.enc" \
-                && rclone copyto "$HELPER_DIR/license.key.enc" "$DRIVE_DIR/license.key.enc" \
-                && echo "$LH" > "$HELPER_DIR/license_hash" \
-                && echo "[snapshot:$MODE] license.key saved to Drive" \
-                || echo "[snapshot:$MODE] license.key upload FAILED"
-            fi
+            python "$HELPER_DIR/crypt.py" enc license.key "$SNAP_DIR/license.key.enc" \
+              && echo "[snapshot:$MODE] license.key stored" \
+              || echo "[snapshot:$MODE] license.key store FAILED"
           fi
 
           TS=$(date +"%Y%m%d_%H%M%S")
@@ -193,19 +195,11 @@ jobs:
           fi
 
           python "$HELPER_DIR/crypt.py" enc "$RAW" "$HELPER_DIR/$NAME" || { echo "encrypt failed"; exit 1; }
-          rclone copyto "$HELPER_DIR/$NAME" "$DRIVE_DIR/$NAME" || { echo "upload failed"; exit 1; }
-          rm -f "$RAW" "$HELPER_DIR/$NAME"
-          echo "[snapshot:$MODE] uploaded $NAME ($NEW_SIZE bytes raw)"
-
-          # rotation: keep the latest 10 snapshots
-          rclone lsjson "$DRIVE_DIR" --files-only --include "db_snapshot_*" \
-            | jq -r 'sort_by(.ModTime) | .[].Name' > "$HELPER_DIR/all_snaps.txt"
-          TOTAL=$(wc -l < "$HELPER_DIR/all_snaps.txt")
-          if [ "$TOTAL" -gt 10 ]; then
-            head -n $((TOTAL - 10)) "$HELPER_DIR/all_snaps.txt" | while read -r F; do
-              [ -n "$F" ] && rclone deletefile "$DRIVE_DIR/$F" && echo "rotated out: $F"
-            done
-          fi
+          # keep only the newest snapshot in SNAP_DIR (the cache entry stays small)
+          rm -f "$SNAP_DIR"/db_snapshot_*.enc
+          mv "$HELPER_DIR/$NAME" "$SNAP_DIR/$NAME"
+          rm -f "$RAW"
+          echo "[snapshot:$MODE] stored $NAME ($NEW_SIZE bytes raw)"
 
           if [ "$MODE" = "final" ]; then
             curl -s -H "Title: DB Backup Successful" -H "Tags: white_check_mark,database" \
@@ -214,51 +208,57 @@ jobs:
           SHEOF
           chmod +x "$RUNNER_TEMP/snapshot.sh"
 
-      - name: Restore Database from Google Drive (or start fresh)
+      - name: List available cache snapshots
+        if: ${{ env.RESTORE_TARGET == 'list' || env.RESTORE_TARGET == 'ls' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "$RESTORE_TARGET" = "list" ] || [ "$RESTORE_TARGET" = "ls" ]; then
-            echo "=== AVAILABLE SNAPSHOTS ==="
-            rclone lsl "$DRIVE_DIR" --include "db_snapshot_*" || true
-            echo "=== list done; continuing with LATEST ==="
-            RESTORE_TARGET="latest"
-          fi
+          echo "=== AVAILABLE SNAPSHOTS (cache keys) ==="
+          gh cache list -R "${{ github.repository }}" --key db-snapshot- --sort created_at --order desc || true
+          echo "=== list done; continuing with LATEST ==="
 
-          if [ "$RESTORE_TARGET" = "latest" ] || [ "$RESTORE_TARGET" = "r" ] || [ -z "$RESTORE_TARGET" ]; then
-            FILE=$(rclone lsjson "$DRIVE_DIR" --files-only --include "db_snapshot_*" \
-                   | jq -r 'sort_by(.ModTime) | .[-1].Name // empty')
-          else
-            FILE="$RESTORE_TARGET"
-          fi
+      - name: Restore snapshot from GitHub cache
+        id: restore_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/snapshots
+          key: ${{ env.RESTORE_KEY }}
+          restore-keys: |
+            db-snapshot-
 
-          # --- license.key: Drive copy wins (it has the latest renewal); else bootstrap from secret LICENSE_KEY ---
-          if rclone lsf "$DRIVE_DIR" --include "license.key.enc" | grep -q "license.key.enc"; then
-            rclone copyto "$DRIVE_DIR/license.key.enc" "$HELPER_DIR/license.key.enc" \
-              && python "$HELPER_DIR/crypt.py" dec "$HELPER_DIR/license.key.enc" ./license.key \
-              && echo "License restored from Drive."
+      - name: Restore Database from cache (or start fresh)
+        run: |
+          echo "Cache matched key: '${{ steps.restore_cache.outputs.cache-matched-key }}'"
+
+          FILE=$(ls "$SNAP_DIR"/db_snapshot_*.enc 2>/dev/null | sort | tail -n 1 || true)
+
+          # --- license.key: cache copy wins (it has the latest renewal); else bootstrap from secret LICENSE_KEY ---
+          if [ -f "$SNAP_DIR/license.key.enc" ]; then
+            python "$HELPER_DIR/crypt.py" dec "$SNAP_DIR/license.key.enc" ./license.key \
+              && echo "License restored from cache."
           elif [ -n "${LICENSE_KEY:-}" ]; then
             printf '%s' "$LICENSE_KEY" > ./license.key
             echo "License written from secret LICENSE_KEY."
           else
-            echo "No license on Drive and no LICENSE_KEY secret (trial/read-only rules apply)."
+            echo "No license in cache and no LICENSE_KEY secret (trial/read-only rules apply)."
           fi
           [ -f license.key ] && sha256sum license.key | cut -d' ' -f1 > "$HELPER_DIR/license_hash"
 
           if [ -z "$FILE" ]; then
-            echo "No snapshot on Drive -> FIRST RUN, starting with a fresh empty database."
+            echo "No snapshot in cache -> FIRST RUN, starting with a fresh empty database."
             echo "0" > "$HELPER_DIR/restored_size"
             echo "DB_READY=true" >> "$GITHUB_ENV"
             exit 0
           fi
 
-          echo "Restoring snapshot: $FILE"
-          rclone copyto "$DRIVE_DIR/$FILE" "./$FILE"
-          python "$HELPER_DIR/crypt.py" dec "./$FILE" "./restored.sql.gz"
+          echo "Restoring snapshot: $(basename "$FILE")"
+          python "$HELPER_DIR/crypt.py" dec "$FILE" ./restored.sql.gz
           stat -c %s ./restored.sql.gz > "$HELPER_DIR/restored_size"
           gunzip -c ./restored.sql.gz > ./restored.sql
 
           MYSQL_PWD=root mysql -h 127.0.0.1 -P 3306 -u root -e "DROP DATABASE IF EXISTS local_django_db; CREATE DATABASE local_django_db CHARACTER SET utf8mb4;"
           MYSQL_PWD=root mysql -h 127.0.0.1 -P 3306 -u root local_django_db < ./restored.sql
-          rm -f ./restored.sql ./restored.sql.gz "./$FILE"
+          rm -f ./restored.sql ./restored.sql.gz
 
           TABLES=$(MYSQL_PWD=root mysql -h 127.0.0.1 -P 3306 -u root -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='local_django_db';")
           echo "Restore OK: $TABLES tables loaded."
@@ -375,7 +375,7 @@ jobs:
       - name: Send Notification to ntfy
         if: env.STOP_AFTER_MIGRATE != 'true'
         run: |
-          MESSAGE="Django App Live! (Local MySQL on runner, snapshots on Drive)
+          MESSAGE="Django App Live! (Local MySQL on runner, snapshots in GitHub cache)
           URL: ${TUNNEL_URL:-not available}"
           curl -d "$MESSAGE" ntfy.sh/hshshehgag
 
@@ -405,7 +405,7 @@ jobs:
             grep -i -C 3 "error\|exception\|traceback" django.log | tail -n 50 || echo "No errors detected."
           done || true
 
-      - name: Final Snapshot to Google Drive (stop server first)
+      - name: Final Snapshot (stop server first)
         if: ${{ always() && env.DB_READY == 'true' && env.STOP_AFTER_MIGRATE != 'true' }}
         run: |
           # Stop writers first so nothing is written after the snapshot
@@ -413,4 +413,30 @@ jobs:
           pkill -f "cloudflared" || true
           pkill -f "snapshot.sh" || true
           sleep 3
-          bash "$HELPER_DIR/snapshot.sh" final
+          bash "$HELPER_DIR/snapshot.sh" final || true
+
+      - name: Check snapshot exists
+        if: ${{ always() && env.DB_READY == 'true' }}
+        run: |
+          if ls "$SNAP_DIR"/db_snapshot_*.enc >/dev/null 2>&1; then
+            echo "HAVE_SNAP=true" >> "$GITHUB_ENV"
+          else
+            echo "No snapshot file to save - cache save skipped."
+          fi
+
+      - name: Save snapshot to GitHub cache
+        if: ${{ always() && env.HAVE_SNAP == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/snapshots
+          key: db-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Rotate old cache entries (keep latest 3)
+        if: ${{ always() && env.HAVE_SNAP == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh cache list -R "${{ github.repository }}" --key db-snapshot- --sort created_at --order desc --limit 100 --json id,key \
+            --jq '.[3:][] | .id' | while read -r ID; do
+              [ -n "$ID" ] && gh cache delete "$ID" -R "${{ github.repository }}" && echo "rotated out cache id $ID"
+            done || true
