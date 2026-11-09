@@ -347,7 +347,7 @@ jobs:
         if: env.STOP_AFTER_MIGRATE != 'true'
         run: |
           touch django.log tunnel.log
-          PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
+          PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 --insecure > django.log 2>&1 &
           # Quick tunnel: no token / no domain needed, random *.trycloudflare.com URL
           cloudflared tunnel --no-autoupdate --url http://localhost:8000 > tunnel.log 2>&1 &
           # periodic snapshot every 30 min so a crash / 6h kill loses at most 30 min of data

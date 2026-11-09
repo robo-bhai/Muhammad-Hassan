@@ -312,6 +312,9 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# WhiteNoise: serve /static/ (admin CSS, icons) even if collectstatic output is missing
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = False
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
