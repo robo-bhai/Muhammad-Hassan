@@ -30,6 +30,7 @@ from django.urls import NoReverseMatch, reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from app.models import SecuritySettings
+from app.security.totp import check_user_code, user_has_totp
 from app.utils.security import generate_otp, send_otp_email, verify_otp
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ class TwoFactorMiddleware:
         if not SecuritySettings.get_settings().enable_2fa:
             return self.get_response(request)
 
-        if not user.email:
+        if not user.email and not user_has_totp(user):
             logger.warning("2FA skipped for user %s: no email address.", user.pk)
             return self.get_response(request)
 
@@ -122,7 +123,19 @@ def login_otp(request):
     if request.session.get(SESSION_VERIFIED_KEY) or not SecuritySettings.get_settings().enable_2fa:
         return redirect(_next_url(request))
 
+    use_totp = user_has_totp(request.user)
+
     if request.method == "POST":
+        if use_totp and request.POST.get("action") != "resend":
+            ok, used_backup = check_user_code(request.user, request.POST.get("otp_code"))
+            if ok:
+                request.session[SESSION_VERIFIED_KEY] = True
+                if used_backup:
+                    messages.warning(request, "A backup code was used. Generate new codes in Security settings.")
+                return redirect(_next_url(request))
+            messages.error(request, "The code is invalid, already used, or too many attempts were made.")
+            return redirect("login_otp")
+
         if request.POST.get("action") == "resend":
             waited = time.time() - request.session.get(SESSION_SENT_AT_KEY, 0)
             if waited < RESEND_COOLDOWN_SECONDS:
@@ -139,11 +152,11 @@ def login_otp(request):
         messages.error(request, message)
         return redirect("login_otp")
 
-    if SESSION_SENT_AT_KEY not in request.session:
+    if not use_totp and SESSION_SENT_AT_KEY not in request.session:
         _send_code(request)
 
     return render(
         request,
         "security/login_otp.html",
-        {"masked_email": _mask_email(request.user.email or "")},
+        {"masked_email": _mask_email(request.user.email or ""), "use_totp": use_totp},
     )

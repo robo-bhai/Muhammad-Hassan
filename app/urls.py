@@ -24,6 +24,7 @@ from app.customer import views_push
 from app.customer import views_stores
 from app.security import views_admin_otp
 from app.security import views_security
+from app.security import views_totp
 from app.backoffice import views_bi  
 from app.backoffice import views_testing  
 from app.backoffice import views_document
@@ -693,6 +694,7 @@ urlpatterns = [
     path('security/', views_security.security_dashboard, name='security_dashboard'),
     path('security/settings/', views_security.security_settings_view, name='security_settings'),
     path('security/two-factor/', views_security.two_factor_setup, name='two_factor_setup'),
+    path('security/authenticator/', views_totp.totp_setup, name='totp_setup'),
     path('security/two-factor/verify/', views_security.two_factor_verify, name='two_factor_verify'),
     path('security/ip-whitelist/', views_security.ip_whitelist_view, name='ip_whitelist'),
     path('security/ip-blacklist/', views_security.ip_blacklist_view, name='ip_blacklist'),

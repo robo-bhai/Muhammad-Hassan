@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Authenticator app{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:640px">
+  <h1 class="h4 mb-3">Authenticator app (2-step verification)</h1>
+  {% if messages %}{% for m in messages %}<div class="alert alert-info py-2">{{ m }}</div>{% endfor %}{% endif %}
+
+  {% if enabled %}
+    <div class="alert alert-success">Authenticator app is <strong>enabled</strong>. Backup codes left: {{ backup_left }}.</div>
+    <form method="POST" class="card card-body mb-3">{% csrf_token %}
+      <input type="hidden" name="action" value="regenerate">
+      <label class="form-label">Password</label>
+      <input type="password" name="password" class="form-control mb-2" required autocomplete="current-password">
+      <button class="btn btn-outline-primary">Generate new backup codes</button>
+    </form>
+    <form method="POST" class="card card-body">{% csrf_token %}
+      <input type="hidden" name="action" value="disable">
+      <label class="form-label">Password</label>
+      <input type="password" name="password" class="form-control mb-2" required autocomplete="current-password">
+      <button class="btn btn-outline-danger">Disable authenticator app</button>
+    </form>
+  {% else %}
+    <ol>
+      <li>Install Google Authenticator, Microsoft Authenticator or Authy on your phone.</li>
+      <li>Add an account: choose "Enter a setup key" and type this key (time-based):
+        <div class="my-2"><code class="fs-5 user-select-all">{{ secret }}</code></div>
+        On a phone you can also <a href="{{ uri }}">tap here to add it automatically</a>.</li>
+      <li>Enter the 6-digit code the app shows:</li>
+    </ol>
+    <form method="POST" class="card card-body">{% csrf_token %}
+      <input type="hidden" name="action" value="confirm">
+      <input name="code" class="form-control form-control-lg text-center mb-2" maxlength="6"
+             inputmode="numeric" autocomplete="one-time-code" placeholder="000000" required autofocus>
+      <button class="btn btn-primary">Verify and enable</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}
