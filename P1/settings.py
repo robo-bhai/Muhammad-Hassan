@@ -181,8 +181,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'app.middleware.frame_embed.AllowAppFraming',
     'app.middleware.license_gate.LicenseMiddleware',
-  #  "django.middleware.clickjacking.XFrameOptionsMiddleware",
-       # XFrameOptionsMiddleware ke BAAD likhein
 
     # Custom Middleware
     'app.middleware.ShareholderRestrictionMiddleware',
