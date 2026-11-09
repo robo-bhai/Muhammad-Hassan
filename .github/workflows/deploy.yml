@@ -57,12 +57,12 @@ jobs:
       BACKUP_SECRET_KEY: ${{ secrets.BACKUP_SECRET_KEY }}
       DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       DJANGO_SALT_KEY: ${{ secrets.DJANGO_SALT_KEY }}
-      CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
       SUPERUSER_NAME: ${{ secrets.SUPERUSER_NAME }}
       SUPERUSER_EMAIL: ${{ secrets.SUPERUSER_EMAIL }}
       SUPERUSER_PASSWORD: ${{ secrets.SUPERUSER_PASSWORD }}
-      ALLOWED_HOSTS: ${{ secrets.ALLOWED_HOSTS }}
-      CSRF_TRUSTED_ORIGINS: ${{ secrets.CSRF_TRUSTED_ORIGINS }}
+      # Temporary Cloudflare URL random hota hai, isliye wildcard allow kiya
+      ALLOWED_HOSTS: "*"
+      CSRF_TRUSTED_ORIGINS: "https://*.trycloudflare.com"
       RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG_DATA }}
       # License: fixed machine id (runner machine-id changes every run) + optional first-time key
       LICENSE_MACHINE_SEED: ${{ secrets.LICENSE_MACHINE_SEED }}
@@ -343,25 +343,34 @@ jobs:
           pkill -f "cloudflared" || true
           sleep 2
 
-      - name: Start Django Server & Permanent Cloudflare Tunnel
+      - name: Start Django Server & Temporary Cloudflare Tunnel
         if: env.STOP_AFTER_MIGRATE != 'true'
         run: |
           touch django.log tunnel.log
           PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 > django.log 2>&1 &
-          cloudflared tunnel run --token "$CLOUDFLARE_TOKEN" > tunnel.log 2>&1 &
+          # Quick tunnel: no token / no domain needed, random *.trycloudflare.com URL
+          cloudflared tunnel --no-autoupdate --url http://localhost:8000 > tunnel.log 2>&1 &
           # periodic snapshot every 30 min so a crash / 6h kill loses at most 30 min of data
           setsid nohup bash -c 'while true; do sleep 1800; bash "$HELPER_DIR/snapshot.sh" periodic; done' > periodic_snapshot.log 2>&1 &
-          sleep 6
-          echo "=== SERVER & CLOUDFLARE TUNNEL LIVE ==="
 
-      - name: Get Public IP & Send Notification to ntfy
-        if: env.STOP_AFTER_MIGRATE != 'true'
-        run: |
-          PUBLIC_IP=$(curl -s ifconfig.me || curl -s api.ipify.org)
-          MESSAGE="Django App Live! (Local MySQL on runner, snapshots on Drive)
-          Domain: https://shops.hadi88.online
-          Direct IP: http://$PUBLIC_IP:8000"
-          curl -d "$MESSAGE" ntfy.sh/hshshehgag
+          TUNNEL_URL=""
+          for i in {1..30}; do
+            TUNNEL_URL=$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' tunnel.log | head -n 1 || true)
+            if [ -n "$TUNNEL_URL" ]; then break; fi
+            sleep 2
+          done
+
+          if [ -z "$TUNNEL_URL" ]; then
+            echo "!!! Cloudflare temporary URL nahi mila. tunnel.log:"
+            cat tunnel.log
+          else
+            echo "TUNNEL_URL=$TUNNEL_URL" >> "$GITHUB_ENV"
+            echo ""
+            echo "=============================================="
+            echo "  LIVE URL: $TUNNEL_URL"
+            echo "=============================================="
+            echo ""
+          fi
 
       - name: Realtime HTTP Access Logs & Error Stream
         if: env.STOP_AFTER_MIGRATE != 'true'
