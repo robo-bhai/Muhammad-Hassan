@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block title %}Storage{% endblock %}
+{% block extra_css %}
+<style>
+  .st-card{background:#fff;border:1px solid #e8ebf0;border-radius:16px;padding:18px;box-shadow:0 4px 18px rgba(16,24,40,.05);height:100%}
+  .st-card h6{font-weight:700;margin-bottom:12px}
+  .st-big{font-size:1.6rem;font-weight:800;line-height:1.1}
+  .st-sub{color:#6b7280;font-size:.82rem}
+  .st-bar{height:14px;border-radius:99px;background:#eef1f5;overflow:hidden;display:flex}
+  .st-bar span{display:block;height:100%}
+  .st-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+  .st-table td,.st-table th{font-size:.88rem;vertical-align:middle}
+  .st-mini{height:6px;border-radius:99px;background:#eef1f5;overflow:hidden;min-width:70px}
+  .st-mini i{display:block;height:100%;background:#3b5bdb}
+  .st-path{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;word-break:break-all}
+  .st-warn{color:#b45309}.st-bad{color:#dc2626}
+  .table-responsive{-webkit-overflow-scrolling:touch}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width:1200px">
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-0">🗄️ Storage</h1>
+      <div class="st-sub">Server, uploads aur database ka mukammal hisaab. Aakhri hisaab: {{ s.generated|slice:":19"|cut:"T" }}</div>
+    </div>
+    <a href="?refresh=1" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> Dobara naapein</a>
+  </div>
+
+  {% if messages %}{% for m in messages %}<div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags|default:'info' }}{% endif %} py-2">{{ m }}</div>{% endfor %}{% endif %}
+
+  {# ---------- Top cards ---------- #}
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="st-card">
+        <h6>💽 Server disk</h6>
+        {% if s.disk %}
+          <div class="st-big {% if s.disk.pct >= 90 %}st-bad{% elif s.disk.pct >= 75 %}st-warn{% endif %}">{{ s.disk.free_h }} <span class="st-sub">khali</span></div>
+          <div class="st-bar my-2"><span style="width:{{ s.disk.pct }}%;background:{% if s.disk.pct >= 90 %}#dc2626{% elif s.disk.pct >= 75 %}#f59e0b{% else %}#3b5bdb{% endif %}"></span></div>
+          <div class="st-sub">{{ s.disk.used_h }} use / {{ s.disk.total_h }} kul ({{ s.disk.pct }}%)</div>
+          {% if s.disk.pct >= 90 %}<div class="st-bad small mt-2">⚠️ Disk lagbhag bhar gayi hai. Purane backups ya logs saaf karein.</div>
+          {% elif s.disk.pct >= 75 %}<div class="st-warn small mt-2">Disk 75% se zyada bhari hai.</div>{% endif %}
+        {% else %}<div class="st-sub">Disk ka hisaab nahi mil saka.</div>{% endif %}
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-4">
+      <div class="st-card">
+        <h6>📦 Project ka total</h6>
+        <div class="st-big">{{ s.project_total_h }}</div>
+        <div class="st-sub">Database + uploads + backups + logs + cache + static</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 col-lg-4">
+      <div class="st-card">
+        <h6>🖼️ Uploaded files</h6>
+        <div class="st-big">{{ s.media_files }}</div>
+        <div class="st-sub">{% if s.local_media %}Is computer par save hain{% else %}⚠️ Media cloud (Cloudinary) par hai - neeche ka media hisaab sirf local files ka hai{% endif %}</div>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Breakdown ---------- #}
+  <div class="st-card mb-3">
+    <h6>Kis cheez ne kitni jagah li</h6>
+    <div class="st-bar mb-3">
+      {% for p in s.parts %}{% if p.pct > 0 %}<span style="width:{{ p.pct }}%;background:{{ p.color }}" title="{{ p.label }}: {{ p.human }}"></span>{% endif %}{% endfor %}
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm st-table mb-0">
+        <thead><tr><th>Cheez</th><th class="text-end">Size</th><th class="text-end d-none d-sm-table-cell">Files</th><th class="text-end">%</th><th></th></tr></thead>
+        <tbody>
+        {% for p in s.parts %}
+          <tr>
+            <td><span class="st-dot" style="background:{{ p.color }}"></span><b>{{ p.label }}</b><div class="st-sub">{{ p.hint }}</div></td>
+            <td class="text-end">{{ p.human }}</td>
+            <td class="text-end d-none d-sm-table-cell">{% if p.files != None %}{{ p.files }}{% else %}-{% endif %}</td>
+            <td class="text-end">{{ p.pct }}%</td>
+            <td class="text-end">
+              {% if p.clean %}
+              <form method="post" action="{% url 'storage_clean' %}" onsubmit="return confirm('{% if p.clean == 'thumbs' %}Thumbnails saaf karein? Tasveerein dobara khulne par khud ban jayengi.{% else %}Logs saaf karein? Har log ki sirf aakhri 500 lines rahengi.{% endif %}')">
+                {% csrf_token %}<input type="hidden" name="action" value="{{ p.clean }}">
+                <button class="btn btn-outline-danger btn-sm py-0">Saaf karein</button>
+              </form>
+              {% elif p.key == 'backups' %}<a class="btn btn-outline-secondary btn-sm py-0" href="{% url 'database_backup' %}">Manage</a>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    {# ---------- Media folders ---------- #}
+    <div class="col-12 col-lg-6">
+      <div class="st-card">
+        <h6>📁 Media folders</h6>
+        {% if s.folders %}
+        <div class="table-responsive"><table class="table table-sm st-table mb-0">
+          <thead><tr><th>Folder</th><th class="text-end">Files</th><th class="text-end">Size</th><th style="width:30%"></th></tr></thead>
+          <tbody>{% for f in s.folders %}
+            <tr><td class="st-path">{{ f.name }}/</td><td class="text-end">{{ f.files }}</td><td class="text-end">{{ f.human }}</td>
+                <td><div class="st-mini"><i style="width:{{ f.pct }}%"></i></div></td></tr>
+          {% endfor %}</tbody>
+        </table></div>
+        {% else %}<div class="st-sub">Koi media folder nahi mila.</div>{% endif %}
+      </div>
+    </div>
+
+    {# ---------- Database ---------- #}
+    <div class="col-12 col-lg-6">
+      <div class="st-card">
+        <h6>🛢️ Database <span class="st-sub">({{ s.db.engine }})</span></h6>
+        <div class="st-big mb-2">{{ s.db.size_h }}</div>
+        {% if s.db.tables %}
+        <div class="table-responsive"><table class="table table-sm st-table mb-0">
+          <thead><tr><th>Sab se bare tables</th><th class="text-end">Size</th></tr></thead>
+          <tbody>{% for t in s.db.tables %}<tr><td class="st-path">{{ t.name }}</td><td class="text-end">{{ t.human }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+        {% endif %}
+        {% if s.db.note %}<div class="st-sub mt-2">{{ s.db.note }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Largest files ---------- #}
+  <div class="st-card mb-3">
+    <h6>🐘 Sab se bari 20 uploaded files</h6>
+    {% if s.top_files %}
+    <div class="table-responsive"><table class="table table-sm st-table mb-0">
+      <thead><tr><th>File</th><th class="text-end">Size</th></tr></thead>
+      <tbody>{% for f in s.top_files %}
+        <tr><td class="st-path"><a href="/media/{{ f.path }}" target="_blank" rel="noopener">{{ f.path }}</a></td><td class="text-end">{{ f.human }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    <div class="st-sub mt-2">Bari tasveerein shop mein ab chhoti (compressed) copy se dikhti hain, magar original disk par rehti hai. Zaroorat na ho to usay product se hata dein.</div>
+    {% else %}<div class="st-sub">Koi file nahi mili.</div>{% endif %}
+  </div>
+
+  {# ---------- This device (PWA / browser) ---------- #}
+  <div class="st-card mb-4" id="deviceCard">
+    <h6>📱 Is device ka storage (browser / PWA)</h6>
+    <div id="devEmpty" class="st-sub">Naap rahe hain...</div>
+    <div id="devBody" style="display:none">
+      <div class="row g-3 mb-2">
+        <div class="col-6 col-md-3"><div class="st-sub">Use hua</div><div class="st-big" id="devUsed">-</div></div>
+        <div class="col-6 col-md-3"><div class="st-sub">Kul hadd (quota)</div><div class="st-big" id="devQuota">-</div></div>
+        <div class="col-6 col-md-3"><div class="st-sub">Persistent storage</div><div class="fw-bold" id="devPersist">-</div></div>
+        <div class="col-6 col-md-3"><div class="st-sub">Offline worker</div><div class="fw-bold" id="devSw">-</div></div>
+      </div>
+      <div class="st-bar my-2"><span id="devBar" style="width:0;background:#3b5bdb"></span></div>
+      <div class="table-responsive"><table class="table table-sm st-table mb-2">
+        <thead><tr><th>Saved cache</th><th class="text-end">Entries</th></tr></thead>
+        <tbody id="devCaches"></tbody>
+      </table></div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-primary btn-sm" id="btnCleanup">Purani entries abhi saaf karein</button>
+        <button class="btn btn-outline-danger btn-sm" id="btnClear">Saved cache saaf karein</button>
+      </div>
+      <div class="st-sub mt-2">Yeh sirf isi phone / computer ka hisaab hai. Cache saaf karne se login ya data nahi jata; pages dobara download honge.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var LABEL = {shell: 'Offline page', static: 'Static files (CSS/JS)', shop: 'Shop pages', rider: 'Rider pages',
+               media: 'Tasveerein', pos: 'POS screen', cdn: 'CDN libraries', prefetch: 'Pehle se load pages'};
+  function mb(n) { return n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' GB' : (n / 1048576).toFixed(1) + ' MB'; }
+  function $(id) { return document.getElementById(id); }
+  function label(k) { var m = /^bms-([a-z]+)-v/.exec(k); return m ? (LABEL[m[1]] || m[1]) : (k.indexOf('tesseract') === 0 ? 'OCR (Tesseract)' : k); }
+
+  async function load() {
+    if (!(navigator.storage && navigator.storage.estimate)) { $('devEmpty').textContent = 'Is browser mein storage ka hisaab available nahi.'; return; }
+    var est = await navigator.storage.estimate();
+    var persisted = navigator.storage.persisted ? await navigator.storage.persisted() : null;
+    var reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    $('devUsed').textContent = mb(est.usage || 0);
+    $('devQuota').textContent = mb(est.quota || 0);
+    var pct = est.quota ? (est.usage / est.quota * 100) : 0;
+    $('devBar').style.width = Math.max(1, pct) + '%';
+    $('devBar').style.background = pct > 90 ? '#dc2626' : (pct > 70 ? '#f59e0b' : '#3b5bdb');
+    $('devPersist').textContent = persisted === null ? '-' : (persisted ? 'Haan (mehfooz)' : 'Nahi');
+    $('devSw').textContent = reg ? (navigator.serviceWorker.controller ? 'Chal raha hai' : 'Taiyar (page reload karein)') : 'Nahi';
+    var rows = '';
+    if (window.caches) {
+      var keys = await caches.keys();
+      for (var i = 0; i < keys.length; i++) {
+        var c = await caches.open(keys[i]); var n = (await c.keys()).length;
+        rows += '<tr><td>' + label(keys[i]) + '</td><td class="text-end">' + n + '</td></tr>';
+      }
+    }
+    $('devCaches').innerHTML = rows || '<tr><td colspan="2" class="st-sub">Koi saved cache nahi.</td></tr>';
+    $('devEmpty').style.display = 'none'; $('devBody').style.display = 'block';
+  }
+  function send(type) {
+    var c = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (!c) { alert('Offline worker abhi active nahi. Page reload karke dobara try karein.'); return false; }
+    c.postMessage({type: type}); setTimeout(load, 1200); return true;
+  }
+  $('btnCleanup').onclick = function () { send('CLEANUP'); };
+  $('btnClear').onclick = function () { if (confirm('Saved cache saaf karein?')) send('CLEAR_CACHE'); };
+  load().catch(function () { $('devEmpty').textContent = 'Device ka hisaab nahi mil saka.'; });
+})();
+</script>
+{% endblock %}

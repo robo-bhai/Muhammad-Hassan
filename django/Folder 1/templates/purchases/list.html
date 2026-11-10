@@ -1,0 +1,341 @@
+<!-- purchases/list.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Purchases{% endblock %}
+{% block page_title %}Purchases{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pl { --pl-border:#e5e9f0; --pl-text:#111827; --pl-muted:#6b7280; --pl-bg:#fff; --pl-soft:#f8fafc;
+          --pl-accent:#2563eb; --pl-ok:#059669; --pl-warn:#d97706; --pl-bad:#dc2626; }
+    .pl-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+    .pl-head h1 { font-size:1.35rem; font-weight:800; margin:0; color:var(--pl-text); }
+    .pl-head p { margin:2px 0 0; font-size:.85rem; color:var(--pl-muted); }
+    .pl-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .pl-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:10px; font-weight:600; font-size:.88rem;
+              border:1px solid var(--pl-border); background:var(--pl-bg); color:var(--pl-text); text-decoration:none; cursor:pointer; }
+    .pl-btn:hover { background:var(--pl-soft); color:var(--pl-text); }
+    .pl-btn.primary { background:var(--pl-accent); border-color:var(--pl-accent); color:#fff; }
+    .pl-btn.primary:hover { filter:brightness(.93); color:#fff; }
+
+    .pl-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:16px; }
+    .pl-kpi { background:var(--pl-bg); border:1px solid var(--pl-border); border-radius:14px; padding:14px 16px; }
+    .pl-kpi .lbl { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--pl-muted); font-weight:700; }
+    .pl-kpi .val { font-size:1.35rem; font-weight:800; color:var(--pl-text); margin-top:4px; line-height:1.15; }
+    .pl-kpi .sub { font-size:.78rem; color:var(--pl-muted); margin-top:4px; }
+    .pl-kpi.bad .val { color:var(--pl-bad); } .pl-kpi.warn .val { color:var(--pl-warn); } .pl-kpi.ok .val { color:var(--pl-ok); }
+    .pl-bar { height:6px; background:#e5e7eb; border-radius:99px; overflow:hidden; margin-top:8px; }
+    .pl-bar > i { display:block; height:100%; background:var(--pl-ok); border-radius:99px; }
+
+    .pl-chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; scrollbar-width:none; }
+    .pl-chips::-webkit-scrollbar { display:none; }
+    .pl-chip { white-space:nowrap; padding:7px 14px; border-radius:99px; font-size:.82rem; font-weight:600; text-decoration:none;
+               border:1px solid var(--pl-border); background:var(--pl-bg); color:var(--pl-muted); }
+    .pl-chip.on { background:var(--pl-text); border-color:var(--pl-text); color:#fff; }
+
+    .pl-filters { background:var(--pl-bg); border:1px solid var(--pl-border); border-radius:14px; padding:14px 16px; margin-bottom:16px; }
+    .pl-filters label { display:block; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--pl-muted); margin-bottom:4px; }
+    .pl-filters .form-control, .pl-filters .form-select { border-radius:10px; border:1px solid var(--pl-border); font-size:.9rem; padding:9px 12px; }
+    .pl-filters .form-control:focus, .pl-filters .form-select:focus { border-color:var(--pl-accent); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+
+    .pl-card { background:var(--pl-bg); border:1px solid var(--pl-border); border-radius:14px; overflow:hidden; }
+    .pl-card-head { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--pl-border); gap:8px; flex-wrap:wrap; }
+    .pl-card-head h2 { font-size:1rem; font-weight:700; margin:0; }
+    .pl-count { background:#eef2ff; color:#3730a3; border-radius:99px; padding:2px 10px; font-size:.78rem; font-weight:700; margin-left:6px; }
+    .pl-table { width:100%; border-collapse:collapse; }
+    .pl-table th { background:var(--pl-soft); font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--pl-muted); padding:10px 14px; text-align:left; white-space:nowrap; }
+    .pl-table td { padding:12px 14px; border-top:1px solid var(--pl-border); vertical-align:middle; font-size:.9rem; }
+    .pl-table tbody tr { cursor:pointer; } .pl-table tbody tr:hover { background:#f9fafb; }
+    .pl-table .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .pl-sub { display:block; font-size:.76rem; color:var(--pl-muted); }
+    .pl-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:99px; font-size:.76rem; font-weight:700; white-space:nowrap; }
+    .pl-badge.paid { background:#d1fae5; color:#047857; } .pl-badge.partial { background:#fef3c7; color:#b45309; } .pl-badge.credit { background:#fee2e2; color:#b91c1c; }
+    .pl-badge.t { background:#f3f4f6; color:#374151; }
+    .pl-over { color:var(--pl-bad); font-weight:700; font-size:.74rem; }
+    .pl-mini { height:4px; background:#e5e7eb; border-radius:99px; overflow:hidden; margin-top:5px; width:90px; margin-left:auto; }
+    .pl-mini > i { display:block; height:100%; background:var(--pl-ok); }
+    .pl-ico { display:inline-flex; width:32px; height:32px; align-items:center; justify-content:center; border-radius:8px; border:1px solid var(--pl-border);
+              background:#fff; color:#374151; text-decoration:none; }
+    .pl-ico:hover { background:var(--pl-soft); } .pl-ico.pay { background:var(--pl-ok); border-color:var(--pl-ok); color:#fff; }
+    .pl-empty { text-align:center; padding:48px 16px; color:var(--pl-muted); }
+    .pl-empty i { font-size:2rem; display:block; margin-bottom:8px; }
+    .pl-pager { padding:8px 16px 4px; }
+
+    /* ---------- Mobile: each row becomes a card ---------- */
+    @media (max-width: 767px) {
+        .pl-head h1 { font-size:1.15rem; }
+        .pl-kpis { grid-template-columns:1fr 1fr; gap:8px; }
+        .pl-kpi { padding:11px 12px; } .pl-kpi .val { font-size:1.05rem; }
+        .pl-actions { width:100%; } .pl-actions .pl-btn { flex:1; justify-content:center; }
+        .pl-table thead { display:none; }
+        .pl-table, .pl-table tbody, .pl-table tr, .pl-table td { display:block; width:100%; }
+        .pl-table tr { padding:12px 14px; border-top:1px solid var(--pl-border); }
+        .pl-table td { border:0; padding:3px 0; display:flex; justify-content:space-between; align-items:center; gap:12px; text-align:right; }
+        .pl-table td::before { content:attr(data-label); font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--pl-muted); font-weight:700; text-align:left; flex:0 0 34%; }
+        .pl-table td.first { justify-content:space-between; font-size:1rem; }
+        .pl-table td.first::before { display:none; }
+        .pl-table td.act { justify-content:flex-end; padding-top:8px; } .pl-table td.act::before { display:none; }
+        .pl-mini { margin-left:0; }
+    }
+    @media print {
+        .pl-actions, .pl-chips, .pl-filters, .pl-pager, .pl-table .act, .pl-table th.act { display:none !important; }
+        .pl-table tbody tr { cursor:default; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pl">
+
+    <div class="pl-head">
+        <div>
+            <h1>Purchases</h1>
+            <p>Bills received from vendors, payments and outstanding balances</p>
+        </div>
+        <div class="pl-actions">
+            <a href="?{{ qs }}{% if qs %}&{% endif %}export=xlsx" class="pl-btn"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+            <a href="?{{ qs }}{% if qs %}&{% endif %}export=pdf" class="pl-btn"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+            <button type="button" class="pl-btn" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+            <a href="{% url 'purchase_create' %}" class="pl-btn primary"><i class="bi bi-plus-lg"></i> New Purchase</a>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="pl-kpis">
+        <div class="pl-kpi">
+            <div class="lbl">Purchases</div>
+            <div class="val">{{ total_count }}</div>
+            <div class="sub">{% if filters_active %}matching your filters{% else %}all time{% endif %}</div>
+        </div>
+        <div class="pl-kpi">
+            <div class="lbl">Total purchased</div>
+            <div class="val">Rs. {{ total_amount|floatformat:0 }}</div>
+            <div class="sub">across {{ total_count }} bill{{ total_count|pluralize }}</div>
+        </div>
+        <div class="pl-kpi ok">
+            <div class="lbl">Paid</div>
+            <div class="val">Rs. {{ total_paid|floatformat:0 }}</div>
+            <div class="pl-bar"><i style="width:{{ paid_percent }}%"></i></div>
+            <div class="sub">{{ paid_percent }}% of total settled</div>
+        </div>
+        <div class="pl-kpi {% if total_outstanding > 0 %}warn{% endif %}">
+            <div class="lbl">Outstanding</div>
+            <div class="val">Rs. {{ total_outstanding|floatformat:0 }}</div>
+            <div class="sub">still to pay vendors</div>
+        </div>
+        <div class="pl-kpi {% if overdue_count %}bad{% endif %}">
+            <div class="lbl">Overdue (30+ days)</div>
+            <div class="val">Rs. {{ overdue_amount|floatformat:0 }}</div>
+            <div class="sub">{{ overdue_count }} unpaid bill{{ overdue_count|pluralize }} older than 30 days</div>
+        </div>
+    </div>
+
+    <!-- Quick status chips -->
+    <div class="pl-chips">
+        <a class="pl-chip {% if not selected_status %}on{% endif %}" href="{% url 'purchase_list' %}">All</a>
+        <a class="pl-chip {% if selected_status == 'due' or selected_status == 'pending' %}on{% endif %}" href="?status=due">Outstanding</a>
+        <a class="pl-chip {% if selected_status == 'credit' %}on{% endif %}" href="?status=credit">Unpaid</a>
+        <a class="pl-chip {% if selected_status == 'partial' %}on{% endif %}" href="?status=partial">Partial</a>
+        <a class="pl-chip {% if selected_status == 'paid' %}on{% endif %}" href="?status=paid">Paid</a>
+        <a class="pl-chip {% if selected_status == 'overdue' %}on{% endif %}" href="?status=overdue">Overdue 30+ days</a>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="pl-filters">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-3">
+                <label>Search</label>
+                <input type="search" name="search" class="form-control" placeholder="Bill no, vendor name or code" value="{{ search }}">
+            </div>
+            <div class="col-6 col-lg-2">
+                <label>Vendor</label>
+                <select name="vendor" class="form-select">
+                    <option value="">All vendors</option>
+                    {% for v in vendors %}<option value="{{ v.id }}" {% if selected_vendor == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-lg-2">
+                <label>Warehouse</label>
+                <select name="warehouse" class="form-select">
+                    <option value="">All warehouses</option>
+                    {% for wh in warehouses %}<option value="{{ wh.id }}" {% if selected_warehouse == wh.id|stringformat:"s" %}selected{% endif %}>{{ wh.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-lg-2">
+                <label>Payment status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="paid" {% if selected_status == 'paid' %}selected{% endif %}>Fully paid</option>
+                    <option value="partial" {% if selected_status == 'partial' %}selected{% endif %}>Partially paid</option>
+                    <option value="credit" {% if selected_status == 'credit' %}selected{% endif %}>Unpaid (credit)</option>
+                    <option value="due" {% if selected_status == 'due' or selected_status == 'pending' %}selected{% endif %}>Anything outstanding</option>
+                    <option value="overdue" {% if selected_status == 'overdue' %}selected{% endif %}>Overdue 30+ days</option>
+                </select>
+            </div>
+            <div class="col-6 col-lg-3">
+                <label>Purchase type</label>
+                <select name="ptype" class="form-select">
+                    <option value="">All types</option>
+                    <option value="cash" {% if selected_ptype == 'cash' %}selected{% endif %}>Cash</option>
+                    <option value="credit" {% if selected_ptype == 'credit' %}selected{% endif %}>Credit</option>
+                    <option value="mixed" {% if selected_ptype == 'mixed' %}selected{% endif %}>Mixed</option>
+                </select>
+            </div>
+            <div class="col-6 col-lg-2">
+                <label>From</label>
+                <input type="date" name="from" class="form-control" value="{{ date_from }}">
+            </div>
+            <div class="col-6 col-lg-2">
+                <label>To</label>
+                <input type="date" name="to" class="form-control" value="{{ date_to }}">
+            </div>
+            <div class="col-6 col-lg-2">
+                <label>Sort by</label>
+                <select name="sort" class="form-select">
+                    <option value="date_desc" {% if selected_sort == 'date_desc' %}selected{% endif %}>Newest first</option>
+                    <option value="date_asc" {% if selected_sort == 'date_asc' %}selected{% endif %}>Oldest first</option>
+                    <option value="amount_desc" {% if selected_sort == 'amount_desc' %}selected{% endif %}>Highest amount</option>
+                    <option value="due_desc" {% if selected_sort == 'due_desc' %}selected{% endif %}>Highest outstanding</option>
+                    <option value="vendor" {% if selected_sort == 'vendor' %}selected{% endif %}>Vendor A-Z</option>
+                </select>
+            </div>
+            <div class="col-6 col-lg-1">
+                <label>Rows</label>
+                <select name="per_page" class="form-select">
+                    <option value="10" {% if selected_per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if selected_per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if selected_per_page == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if selected_per_page == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            <div class="col-12 col-lg-3 d-flex gap-2">
+                <button type="submit" class="pl-btn primary flex-fill justify-content-center"><i class="bi bi-funnel"></i> Apply</button>
+                {% if filters_active %}<a href="{% url 'purchase_list' %}" class="pl-btn justify-content-center"><i class="bi bi-x-lg"></i> Clear</a>{% endif %}
+            </div>
+        </div>
+    </form>
+
+    <!-- Table -->
+    <div class="pl-card">
+        <div class="pl-card-head">
+            <h2>Purchase bills <span class="pl-count">{{ page_obj.paginator.count }}</span></h2>
+            <small class="text-muted">Click a row to open the bill</small>
+        </div>
+
+        <table class="pl-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Bill</th>
+                    <th>Vendor</th>
+                    <th>Warehouse</th>
+                    <th class="num">Items</th>
+                    <th class="num">Total</th>
+                    <th class="num">Paid</th>
+                    <th class="num">Outstanding</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th class="act">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for purchase in page_obj %}
+                <tr data-href="{% url 'purchase_detail' purchase.pk %}">
+                    <td class="first" data-label="Date">
+                        <span><strong>{{ purchase.pur_date|date:"d M Y" }}</strong><span class="pl-sub">{{ purchase.pur_date|date:"h:i A" }}</span></span>
+                    </td>
+                    <td data-label="Bill"><strong>{{ purchase.bill_no|default:"Pending" }}</strong></td>
+                    <td data-label="Vendor">
+                        <span><strong>{{ purchase.vendor.name|truncatechars:22 }}</strong>
+                        {% if purchase.vendor.vendor_code %}<span class="pl-sub">{{ purchase.vendor.vendor_code }}</span>{% endif %}</span>
+                    </td>
+                    <td data-label="Warehouse">{{ purchase.warehouse.name|default:"-" }}</td>
+                    <td class="num" data-label="Items">{{ purchase.item_count }}</td>
+                    <td class="num" data-label="Total">Rs. {{ purchase.total_value|floatformat:0 }}</td>
+                    <td class="num" data-label="Paid">
+                        <span>Rs. {{ purchase.paid|floatformat:0 }}
+                        {% if purchase.total_value %}<div class="pl-mini"><i style="width:{{ purchase.paid_percent }}%"></i></div>{% endif %}</span>
+                    </td>
+                    <td class="num" data-label="Outstanding">
+                        {% if purchase.due_value > 0 %}
+                            <span style="color:var(--pl-bad);font-weight:700;">Rs. {{ purchase.due_value|floatformat:0 }}</span>
+                            {% if purchase.is_overdue %}<span class="pl-over d-block">{{ purchase.age_days }} days old</span>{% endif %}
+                        {% else %}<span style="color:var(--pl-ok);">Rs. 0</span>{% endif %}
+                    </td>
+                    <td data-label="Type">
+                        <span class="pl-badge t">
+                            {% if purchase.payment_type == 'cash' %}<i class="bi bi-cash"></i> Cash
+                            {% elif purchase.payment_type == 'mixed' %}<i class="bi bi-arrow-left-right"></i> Mixed
+                            {% else %}<i class="bi bi-journal-text"></i> Credit{% endif %}
+                        </span>
+                    </td>
+                    <td data-label="Status">
+                        {% if purchase.pay_state == 'paid' %}<span class="pl-badge paid"><i class="bi bi-check-circle-fill"></i> Paid</span>
+                        {% elif purchase.pay_state == 'partial' %}<span class="pl-badge partial"><i class="bi bi-hourglass-split"></i> Partial</span>
+                        {% else %}<span class="pl-badge credit"><i class="bi bi-clock-history"></i> Unpaid</span>{% endif %}
+                    </td>
+                    <td class="act" onclick="event.stopPropagation();">
+                        <a href="{% url 'purchase_detail' purchase.pk %}" class="pl-ico" title="View bill"><i class="bi bi-eye"></i></a>
+                        {% if purchase.due_value > 0 %}
+                        <a href="{% url 'purchase_detail' purchase.pk %}#payModal" class="pl-ico pay" title="Pay Rs. {{ purchase.due_value|floatformat:0 }}"><i class="bi bi-cash-coin"></i></a>
+                        {% endif %}
+                        <a href="{% url 'vendor_ledger' purchase.vendor.pk %}" class="pl-ico" title="Vendor ledger"><i class="bi bi-book"></i></a>
+                        <a href="{% url 'purchase_pdf' purchase.pk %}" target="_blank" class="pl-ico" title="Download PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="11" style="cursor:default;">
+                    <div class="pl-empty">
+                        <i class="bi bi-inbox"></i>
+                        <strong>No purchases found</strong>
+                        <div>{% if filters_active %}Try changing or clearing the filters.{% else %}Create your first purchase to see it here.{% endif %}</div>
+                        {% if not filters_active %}<a href="{% url 'purchase_create' %}" class="pl-btn primary mt-3"><i class="bi bi-plus-lg"></i> New Purchase</a>{% endif %}
+                    </div>
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pl-pager">{% include 'components/pagination.html' %}</div>
+    </div>
+</div>
+
+<div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;"></div>
+
+<script>
+    // Click a row to open the bill (buttons inside the row keep their own links)
+    document.querySelectorAll('.pl-table tbody tr[data-href]').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+            if (e.target.closest('a, button, input, select')) return;
+            window.location.href = row.dataset.href;
+        });
+    });
+
+    function showToast(message, type) {
+        type = type || 'success';
+        var container = document.getElementById('toastContainer');
+        var colors = {success: 'bg-success', danger: 'bg-danger', warning: 'bg-warning', info: 'bg-info'};
+        var toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white ' + (colors[type] || 'bg-primary') + ' border-0';
+        toast.setAttribute('role', 'alert');
+        toast.style.cssText = 'min-width:250px;border-radius:12px;margin-bottom:10px;box-shadow:0 10px 30px rgba(0,0,0,.2)';
+        var body = document.createElement('div');
+        body.className = 'd-flex';
+        var text = document.createElement('div');
+        text.className = 'toast-body';
+        text.textContent = message;
+        body.appendChild(text);
+        toast.appendChild(body);
+        container.appendChild(toast);
+        if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { new bootstrap.Toast(toast, {delay: 5000}).show(); }
+        setTimeout(function () { if (toast.parentNode) toast.remove(); }, 5500);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.django-message').forEach(function (msg) {
+            showToast(msg.textContent, msg.dataset.type || 'info');
+            msg.remove();
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+"""
+Rider login + Register as a Rider pages: mobile-first layout and the shop's own colours
+(blue -> purple gradient, Inter font) instead of orange.
+
+Rewrites two standalone templates:
+  templates/customer_portal/rider/login.html
+  templates/customer_portal/rider/register.html
+Same form fields, URLs and switches as before (rider_login_enabled / rider_register_enabled).
+
+Run from the project root:   python scripts/patches/apply_rider_auth_pages_theme.py
+Safe to run twice.
+"""
+import sys
+from pathlib import Path
+
+ROOT = Path.cwd()
+
+HEAD = '''<!DOCTYPE html>
+<!-- rider-auth -->
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<title>%(title)s - {{ company_name }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#2563eb;--secondary:#7c3aed;--ink:#1a1d2e;--muted:#64748b;--line:#e2e8f0}
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%%}
+  body{margin:0;min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+    background:linear-gradient(135deg,var(--primary) 0%%,var(--secondary) 100%%);
+    padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  .card{width:100%%;max-width:420px;background:#fff;border-radius:24px;padding:clamp(20px,6vw,32px);box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .logo{width:64px;height:64px;margin:0 auto 12px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:32px;
+    background:linear-gradient(135deg,var(--primary),var(--secondary));box-shadow:0 8px 20px rgba(37,99,235,.35)}
+  h1{margin:0 0 6px;text-align:center;font-size:clamp(22px,6vw,26px);font-weight:800;line-height:1.2}
+  .sub{margin:0 0 20px;text-align:center;color:var(--muted);font-size:14px;line-height:1.5}
+  .field{position:relative;margin-bottom:14px}
+  label{display:block;margin:0 0 6px;font-size:13px;font-weight:600;color:#334155}
+  input{display:block;width:100%%;height:50px;padding:0 14px;border:1.5px solid var(--line);border-radius:14px;background:#f8fafc;
+    color:var(--ink);font:inherit;font-size:16px;outline:none;transition:border-color .15s,box-shadow .15s,background .15s}
+  input:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.15)}
+  .pw input{padding-right:70px}
+  .toggle{position:absolute;right:6px;bottom:6px;height:38px;padding:0 12px;border:0;border-radius:10px;background:transparent;
+    color:var(--primary);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .btn{display:block;width:100%%;height:52px;margin-top:6px;border:0;border-radius:14px;color:#fff;font:inherit;font-size:16px;font-weight:800;cursor:pointer;
+    background:linear-gradient(135deg,var(--primary),var(--secondary));box-shadow:0 8px 20px rgba(37,99,235,.35)}
+  .btn:active{transform:scale(.99)}
+  .m{margin-bottom:14px;padding:11px 13px;border-radius:12px;font-size:14px;font-weight:600;line-height:1.4}
+  .error{background:#fee2e2;color:#991b1b}.success{background:#dcfce7;color:#166534}.warning,.info{background:#fef3c7;color:#92400e}
+  .alt{margin:18px 0 0;text-align:center;font-size:14px;color:var(--muted)}
+  .alt a,.back a{color:var(--primary);font-weight:700;text-decoration:none}
+  .back{margin:12px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+  @media (max-width:360px){.card{border-radius:18px}.sub{font-size:13px}}
+  @media (max-height:560px) and (orientation:landscape){body{align-items:flex-start}}
+</style></head><body>
+<div class="card">
+  <div class="logo">🏍️</div>
+'''
+
+TOGGLE_JS = '''<script>
+  document.querySelectorAll('.toggle').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var i = b.parentNode.querySelector('input');
+      var show = i.type === 'password';
+      i.type = show ? 'text' : 'password';
+      b.textContent = show ? 'Hide' : 'Show';
+    });
+  });
+</script>
+</body></html>
+'''
+
+LOGIN = HEAD % {'title': 'Rider Login'} + '''  <h1>Rider Login</h1>
+  <p class="sub">{{ company_name }} &mdash; apna phone aur password likhein.</p>
+  {% for m in messages %}<div class="m {{ m.tags }}">{{ m }}</div>{% endfor %}
+  <form method="post" novalidate>{% csrf_token %}
+    <div class="field">
+      <label for="phone">Phone number</label>
+      <input id="phone" type="tel" name="phone" placeholder="03XX XXXXXXX" required autocomplete="username" inputmode="tel">
+    </div>
+    <div class="field pw">
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" placeholder="Password" required autocomplete="current-password">
+      <button type="button" class="toggle" aria-label="Show or hide password">Show</button>
+    </div>
+    <button type="submit" class="btn">Login</button>
+  </form>
+  {% if SHOP.rider_register_enabled %}<p class="alt">Naye rider? <a href="{% url 'rider_register' %}">Register as a Rider</a></p>{% endif %}
+  <p class="back"><a href="{% url 'shop_home' %}">&larr; Back to shop</a></p>
+</div>
+''' + TOGGLE_JS
+
+REGISTER = HEAD % {'title': 'Register as a Rider'} + '''  <h1>Register as a Rider</h1>
+  <p class="sub">{{ company_name }} ke saath delivery karein. Admin approval ke baad aap login kar sakenge.</p>
+  {% for m in messages %}<div class="m {{ m.tags }}">{{ m }}</div>{% endfor %}
+  <form method="post" novalidate>{% csrf_token %}
+    <div class="field">
+      <label for="name">Poora naam</label>
+      <input id="name" type="text" name="name" placeholder="Aap ka naam" value="{{ form.name }}" required maxlength="100" autocomplete="name">
+    </div>
+    <div class="field">
+      <label for="phone">Phone number</label>
+      <input id="phone" type="tel" name="phone" placeholder="03XX XXXXXXX" value="{{ form.phone }}" required inputmode="tel" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="vehicle">Gaari <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+      <input id="vehicle" type="text" name="vehicle" placeholder="Bike / Car" value="{{ form.vehicle }}" maxlength="50">
+    </div>
+    <div class="field pw">
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" placeholder="Kam az kam 6 harf" required minlength="6" autocomplete="new-password">
+      <button type="button" class="toggle" aria-label="Show or hide password">Show</button>
+    </div>
+    <div class="field pw">
+      <label for="confirm">Password dobara</label>
+      <input id="confirm" type="password" name="confirm" placeholder="Password dobara likhein" required minlength="6" autocomplete="new-password">
+      <button type="button" class="toggle" aria-label="Show or hide password">Show</button>
+    </div>
+    <button type="submit" class="btn">Register as a Rider</button>
+  </form>
+  {% if SHOP.rider_login_enabled %}<p class="alt">Pehle se account hai? <a href="{% url 'rider_login' %}">Rider Login</a></p>{% endif %}
+  <p class="back"><a href="{% url 'shop_home' %}">&larr; Back to shop</a></p>
+</div>
+''' + TOGGLE_JS
+
+for rel, html in (('templates/customer_portal/rider/login.html', LOGIN),
+                  ('templates/customer_portal/rider/register.html', REGISTER)):
+    p = ROOT / rel
+    if not p.parent.exists():
+        sys.exit('MISSING FOLDER: %s (run from the project root)' % p.parent)
+    if p.exists() and '<!-- rider-auth -->' in p.read_text(encoding='utf-8'):
+        print('skip', rel)
+        continue
+    p.write_text(html, encoding='utf-8')
+    print('ok ', rel)

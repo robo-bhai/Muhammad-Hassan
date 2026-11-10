@@ -1,0 +1,100 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Offers{% endblock %}
+
+{% block content %}
+<style>
+    .vo2-wrap { max-width: 700px; margin: 26px auto; padding: 0 14px; }
+    .vo2-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .vo2-card { background: #fff; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 16px; }
+    .vo2-head { background: linear-gradient(135deg, #e11d48 0%, #f59e0b 100%); color: #fff; padding: 18px 22px; }
+    .vo2-head h3 { margin: 0; font-size: 20px; font-weight: 700; }
+    .vo2-head p { margin: 3px 0 0; opacity: .95; font-size: 13px; }
+    .vo2-body { padding: 14px 20px 18px; }
+    .vo2-field { margin-bottom: 12px; }
+    .vo2-field label.t { display: block; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .vo2-field input[type=number], .vo2-field select { width: 100%; padding: 11px 12px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 16px; }
+    .vo2-radio { display: block; padding: 8px 2px; font-size: 15px; }
+    .vo2-list { max-height: 220px; overflow-y: auto; border: 2px solid #f1f1f1; border-radius: 12px; padding: 4px 10px; margin-top: 6px; }
+    .vo2-list label { display: flex; gap: 8px; align-items: center; padding: 7px 0; font-size: 14.5px; }
+    .vo2-btn { border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 800; color: #fff; cursor: pointer; background: linear-gradient(135deg,#e11d48,#f59e0b); font-size: 15px; width: 100%; }
+    .vo2-btn.sec { background: #fff; color: #b91c1c; border: 2px solid #fecaca; margin-top: 8px; }
+    .vo2-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #f1f1f1; font-size: 14.5px; }
+    .vo2-row:first-child { border-top: 0; }
+    .vo2-row .n { flex: 1; min-width: 0; }
+    .vo2-old { color: #9ca3af; text-decoration: line-through; font-size: 12.5px; }
+    .vo2-new { color: #198754; font-weight: 800; }
+    .vo2-off { background: #fee2e2; color: #b91c1c; font-weight: 800; border-radius: 999px; padding: 2px 9px; font-size: 12.5px; }
+    .vo2-mini { border: 1px solid #fecaca; background: #fff; color: #b91c1c; border-radius: 8px; padding: 5px 10px; font-size: 13px; cursor: pointer; }
+    .vo2-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .vo2-alert.error { background: #f8d7da; color: #721c24; }
+    .vo2-note { font-size: 12.5px; color: #6b7280; margin-top: 8px; }
+</style>
+
+<div class="vo2-wrap">
+    <a class="vo2-back" href="{% url 'vendor_dashboard' %}">← Dashboard</a>
+    {% for m in messages %}<div class="vo2-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="vo2-card">
+        <div class="vo2-head"><h3>🏷️ Naya offer</h3><p>Discount lagte hi store card par "Up to N% off" dikhega aur "Deals" mein aap ka store aayega.</p></div>
+        <div class="vo2-body">
+            <form method="post" id="offerForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="apply">
+                <div class="vo2-field">
+                    <label class="t" for="pct">Kitna discount (%)</label>
+                    <input type="number" id="pct" name="percent" min="1" max="{{ max_discount }}" step="1" inputmode="numeric" placeholder="Jaise 20" required>
+                </div>
+                <div class="vo2-field">
+                    <label class="t">Kin products par</label>
+                    <label class="vo2-radio"><input type="radio" name="scope" value="all" checked> Poora store ({{ products|length }} products)</label>
+                    <label class="vo2-radio"><input type="radio" name="scope" value="category"> Ek category</label>
+                    <select name="category_id" id="catSel" style="display:none;">
+                        {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                    <label class="vo2-radio"><input type="radio" name="scope" value="selected"> Chune hue products</label>
+                    <div class="vo2-list" id="prodList" style="display:none;">
+                        {% for p in products %}<label><input type="checkbox" name="product_ids" value="{{ p.id }}"> {{ p.name }}</label>{% endfor %}
+                    </div>
+                </div>
+                <button class="vo2-btn" type="submit">Offer lagayein</button>
+            </form>
+            <div class="vo2-note">Discount aap ke hissay se katta hai (commission discounted price par lagti hai). Offer khatam karne tak chalta rehta hai; neeche se khatam karein.</div>
+        </div>
+    </div>
+
+    <div class="vo2-card">
+        <div class="vo2-body">
+            <div style="font-weight:800;margin-bottom:6px;">Chalte hue offers ({{ on_offer|length }})</div>
+            {% for p in on_offer %}
+            <div class="vo2-row">
+                <span class="n">{{ p.name }}<br><span class="vo2-old">Rs {{ p.original_price|floatformat:0 }}</span> <span class="vo2-new">Rs {{ p.price|floatformat:0 }}</span></span>
+                <span class="vo2-off">{{ p.discount_percentage|floatformat:0 }}% off</span>
+                <form method="post">{% csrf_token %}<input type="hidden" name="action" value="clear_one"><input type="hidden" name="product_id" value="{{ p.id }}">
+                    <button class="vo2-mini" type="submit">Khatam</button></form>
+            </div>
+            {% empty %}
+            <div class="vo2-note" style="margin:0;">Abhi koi offer nahi chal raha.</div>
+            {% endfor %}
+            {% if on_offer %}
+            <form method="post" onsubmit="return confirm('Saare offers khatam kar dun?');">{% csrf_token %}
+                <input type="hidden" name="action" value="clear_scope"><input type="hidden" name="scope" value="all">
+                <button class="vo2-btn sec" type="submit">Saare offers khatam karein</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>
+  (function () {
+    var radios = document.querySelectorAll('input[name="scope"]'), cat = document.getElementById('catSel'), list = document.getElementById('prodList');
+    function sync() {
+      var v = document.querySelector('input[name="scope"]:checked').value;
+      cat.style.display = v === 'category' ? '' : 'none';
+      list.style.display = v === 'selected' ? '' : 'none';
+    }
+    Array.prototype.forEach.call(radios, function (r) { r.addEventListener('change', sync); });
+    sync();
+  })();
+</script>
+{% endblock %}

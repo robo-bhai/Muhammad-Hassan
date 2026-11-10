@@ -1,0 +1,445 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% load static %}
+
+{% block title %}Order Confirmed - {{ company_name }}{% endblock %}
+
+{% block content %}
+
+<!-- ✅ Hide Mobile Bottom Navigation on Order Success Page -->
+<style>
+    .mobile-bottom-nav {
+        display: none !important;
+    }
+    
+    body {
+        padding-bottom: 20px !important;
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            <!-- Success Card -->
+            <div class="success-card text-center">
+                
+                <!-- Success Icon -->
+                <div class="success-icon">
+                    <div class="checkmark-circle">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                </div>
+                
+                <!-- Heading -->
+                <h1 class="success-title">🎉 Order Confirmed!</h1>
+                <p class="success-subtitle">
+                    Shukriya <strong>{{ customer.name }}</strong>! 
+                    We have received your order.
+                </p>
+                
+                <!-- Order Number Box -->
+                <div class="order-number-box">
+                    <div class="order-label">Order Number</div>
+                    <div class="order-number">{{ order.order_no }}</div>
+                    <button class="btn-copy-number" onclick="copyOrderNo('{{ order.order_no }}')">
+                        <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                </div>
+                
+                <!-- Order Details -->
+                <div class="order-details">
+                    <div class="detail-row">
+                        <span class="detail-label">📅 Date:</span>
+                        <span class="detail-value">{{ order.order_date|date:"d M, Y - h:i A" }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">💰 Total Amount:</span>
+                        <span class="detail-value">Rs. {{ total_amount|floatformat:0 }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">💳 Payment:</span>
+                        <span class="detail-value">{{ payment_method|upper }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">📦 Items:</span>
+                        <span class="detail-value">{{ order_summary|length }} item(s)</span>
+                    </div>
+                </div>
+                
+                <!-- Order Summary -->
+                <div class="order-summary-box">
+                    <h6 class="summary-heading">Order Summary</h6>
+                    {% for item in order_summary %}
+                    <div class="summary-item-row">
+                        <span class="item-name">{{ item.name|truncatechars:30 }}</span>
+                        <span class="item-qty">×{{ item.qty }}</span>
+                        <span class="item-total">Rs. {{ item.total|floatformat:0 }}</span>
+                    </div>
+                    {% endfor %}
+                    <div class="summary-total-row">
+                        <strong>Total:</strong>
+                        <strong>Rs. {{ total_amount|floatformat:0 }}</strong>
+                    </div>
+                </div>
+                
+                <!-- What's Next -->
+                <div class="next-steps">
+                    <h6 class="next-heading">📌 What Happens Next?</h6>
+                    <div class="step-item">
+                        <div class="step-icon">1️⃣</div>
+                        <div class="step-text">
+                            <strong>Order Confirmation</strong>
+                            <p>Admin will confirm in 5 minutes</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon">2️⃣</div>
+                        <div class="step-text">
+                            <strong>Packing</strong>
+                            <p>Your order will be packed</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon">3️⃣</div>
+                        <div class="step-text">
+                            <strong>Delivery</strong>
+                            <p>Delivery in 24-48 hours</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-icon">4️⃣</div>
+                        <div class="step-text">
+                            <strong>Cash on Delivery</strong>
+                            <p>Pay at the time of delivery</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <a href="{% url 'track_order' %}?order_no={{ order.order_no }}" 
+                       class="btn-action btn-track">
+                        <i class="bi bi-truck"></i> Track Order
+                    </a>
+                    <a href="{% url 'my_orders' %}" 
+                       class="btn-action btn-orders">
+                        <i class="bi bi-bag-check"></i> My Orders
+                    </a>
+                    <a href="{% url 'shop_home' %}" 
+                       class="btn-action btn-shop">
+                        <i class="bi bi-shop"></i> Continue Shopping
+                    </a>
+                </div>
+                
+                <!-- Contact Info -->
+                <div class="contact-info">
+                    <p class="mb-1">Any questions? Contact us:</p>
+                    {% if company %}
+                    <p class="mb-0">
+                        {% if company.contact_number %}
+                        <i class="bi bi-telephone"></i> {{ company.contact_number }}
+                        {% endif %}
+                        {% if company.email %}
+                        • <i class="bi bi-envelope"></i> {{ company.email }}
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.success-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px 30px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    border: 2px solid #eef0f5;
+}
+
+/* Success Icon */
+.success-icon {
+    margin-bottom: 20px;
+}
+.checkmark-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+    font-size: 2.5rem;
+    animation: scaleIn 0.5s ease-out;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+@keyframes scaleIn {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Title */
+.success-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #1a1a2e;
+    margin-bottom: 10px;
+}
+.success-subtitle {
+    color: #6b7280;
+    font-size: 0.95rem;
+    margin-bottom: 25px;
+}
+
+/* Order Number Box */
+.order-number-box {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    position: relative;
+}
+.order-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+.order-number {
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+.btn-copy-number {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-copy-number:hover {
+    background: white;
+    color: #2563eb;
+}
+
+/* Order Details */
+.order-details {
+    background: #f8f9fc;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 25px;
+}
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #e0e3eb;
+    font-size: 0.9rem;
+}
+.detail-row:last-child {
+    border-bottom: none;
+}
+.detail-label {
+    color: #6b7280;
+    font-weight: 500;
+}
+.detail-value {
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+/* Order Summary */
+.order-summary-box {
+    background: white;
+    border: 2px solid #eef0f5;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 25px;
+    text-align: left;
+}
+.summary-heading {
+    font-weight: 800;
+    color: #1a1a2e;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #eef0f5;
+}
+.summary-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 0.85rem;
+    color: #4b5563;
+}
+.item-name {
+    flex: 1;
+    margin-right: 10px;
+}
+.item-qty {
+    color: #94a3b8;
+    margin-right: 15px;
+    font-weight: 600;
+}
+.item-total {
+    font-weight: 700;
+    color: #1a1a2e;
+}
+.summary-total-row {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 10px;
+    margin-top: 10px;
+    border-top: 2px solid #eef0f5;
+    font-size: 1rem;
+    color: #10b981;
+}
+
+/* Next Steps */
+.next-steps {
+    background: #fffbeb;
+    border: 2px solid #fef3c7;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 25px;
+    text-align: left;
+}
+.next-heading {
+    font-weight: 800;
+    color: #92400e;
+    margin-bottom: 12px;
+}
+.step-item {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    align-items: flex-start;
+}
+.step-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.step-text strong {
+    display: block;
+    font-size: 0.85rem;
+    color: #1a1a2e;
+    font-weight: 700;
+}
+.step-text p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+.btn-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+}
+.btn-track {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    color: white;
+}
+.btn-track:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+    color: white;
+}
+.btn-orders {
+    background: white;
+    color: #2563eb;
+    border: 2px solid #2563eb;
+}
+.btn-orders:hover {
+    background: #2563eb;
+    color: white;
+}
+.btn-shop {
+    background: #f8f9fc;
+    color: #4b5563;
+    border: 2px solid #eef0f5;
+}
+.btn-shop:hover {
+    background: #eef0f5;
+    color: #1a1a2e;
+}
+
+/* Contact Info */
+.contact-info {
+    padding-top: 20px;
+    border-top: 1px solid #eef0f5;
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    .success-card {
+        padding: 25px 20px;
+    }
+    .success-title {
+        font-size: 1.3rem;
+    }
+    .order-number {
+        font-size: 1.2rem;
+    }
+    .checkmark-circle {
+        width: 65px;
+        height: 65px;
+        font-size: 2rem;
+    }
+}
+
+.success-card { border-radius: 28px; }
+.success-card .btn { border-radius: 26px; }
+</style>
+
+<script>
+// Copy Order Number
+function copyOrderNo(orderNo) {
+    navigator.clipboard.writeText(orderNo).then(() => {
+        // Show toast
+        const toast = document.createElement('div');
+        toast.textContent = '✅ Order number copied!';
+        toast.style.cssText = `
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; background: #10b981; color: white;
+            padding: 12px 24px; border-radius: 8px; font-weight: 700;
+            box-shadow: 0 4px 15px rgba(16,185,129,0.4);
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    });
+}
+</script>
+
+{% endblock %}

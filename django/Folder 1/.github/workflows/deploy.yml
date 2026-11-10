@@ -1,0 +1,437 @@
+name: Django CI/CD Pipeline
+
+# DB design: MySQL runs ONLY on the GitHub runner (service container).
+# Persistence = encrypted snapshot stored in the GitHub Actions CACHE (no rclone / Google Drive).
+#   start of run : restore latest cache entry -> local MySQL (first ever run: fresh DB)
+#   every 30 min : local snapshot only (cache can only be saved at the end of the job)
+#   end of run   : stop server, final snapshot -> save as new cache entry, keep latest 3
+# Note: GitHub deletes cache entries not used for 7 days, so keep the workflow running at least weekly.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      restore_action:
+        description: 'Empty = latest. Or snapshot file name to restore, or "list" to print available snapshots.'
+        required: false
+        default: ''
+  repository_dispatch:
+    types: [ backup_now, restore_now, migrate_now ]
+
+permissions:
+  contents: read
+  actions: write   # needed to delete old cache entries
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      local-mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: local_django_db
+        ports:
+          - 3306:3306
+        options: "--health-cmd=\"mysqladmin ping -proot\" --health-interval=10s --health-timeout=5s --health-retries=10"
+
+        
+        
+    env:
+      EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      BREVO_SENDER_NAME: ${{ secrets.BREVO_SENDER_NAME }}
+      BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
+      EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+      DEFAULT_FROM_EMAIL: ${{ secrets.DEFAULT_FROM_EMAIL }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+      # Pictures/media Cloudinary pe save hon (runner restart pe local media/ khali ho jata hai)
+      MEDIA_STORAGE: "cloudinary"
+      CI_MODE: 'true'
+      # Django -> runner-local MySQL (hardcoded, no secrets needed)
+      DB_HOST: "127.0.0.1"
+      DB_PORT: "3306"
+      DB_USER: "root"
+      DB_PASS: "root"
+      DB_NAME: "local_django_db"
+      BACKUP_SECRET_KEY: ${{ secrets.BACKUP_SECRET_KEY }}
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      DJANGO_SALT_KEY: ${{ secrets.DJANGO_SALT_KEY }}
+      SUPERUSER_NAME: ${{ secrets.SUPERUSER_NAME }}
+      SUPERUSER_EMAIL: ${{ secrets.SUPERUSER_EMAIL }}
+      SUPERUSER_PASSWORD: ${{ secrets.SUPERUSER_PASSWORD }}
+      # Fixed Cloudflare tunnel domain
+      CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
+      SITE_DOMAIN: "kwl.uqn88.store"
+      ALLOWED_HOSTS: "kwl.uqn88.store,localhost,127.0.0.1"
+      CSRF_TRUSTED_ORIGINS: "https://kwl.uqn88.store"
+      # License: fixed machine id (runner machine-id changes every run) + optional first-time key
+      LICENSE_MACHINE_SEED: ${{ secrets.LICENSE_MACHINE_SEED }}
+      LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+      PYTHONUNBUFFERED: "1"
+      RUNNING_IN_TERMUX: "false"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Wait for Previous Workflow Runs to Complete
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The older run must finish (stop server + final snapshot) BEFORE this run restores.
+          CURRENT_RUN_ID="${{ github.run_id }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          while true; do
+            OLDER_RUNS=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=20" --jq "[.workflow_runs[] | select(.id < $CURRENT_RUN_ID and (.status == \"in_progress\" or .status == \"queued\")) | .id]")
+            TOTAL_PENDING=$(echo "$OLDER_RUNS" | jq 'length')
+            if [ "${TOTAL_PENDING:-0}" -gt 0 ]; then
+              echo "Older run(s) $OLDER_RUNS still active. Holding (ID: $CURRENT_RUN_ID)..."
+              sleep 10
+            else
+              echo "No older active runs. Proceeding."
+              break
+            fi
+          done
+
+      - name: Install Pips & System Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-client libmysqlclient-dev pkg-config build-essential
+          python -m pip install --upgrade pip
+          pip install mysqlclient gunicorn "django-import-export>=3.3.0" "django>=5.2,<5.3" django-dbbackup django-axes reportlab openpyxl pillow python-barcode qrcode cryptography python-dotenv requests django-pwa whitenoise django-cloudinary-storage rembg numpy
+
+      - name: Parse Trigger Source & Inputs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VAL: ${{ github.event.inputs.restore_action }}
+          CLIENT_PAYLOAD_FILE: ${{ github.event.client_payload.file }}
+        run: |
+          RESTORE_TARGET="latest"
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            ACTION_TYPE="${{ github.event.action }}"
+            if [ "$ACTION_TYPE" = "restore_now" ]; then
+              RESTORE_TARGET="${CLIENT_PAYLOAD_FILE:-latest}"
+            fi
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Web trigger: waiting 10 seconds buffer..."
+            sleep 10
+            if [ -n "$INPUT_VAL" ]; then RESTORE_TARGET="$INPUT_VAL"; fi
+          fi
+          echo "RESTORE_TARGET=$RESTORE_TARGET" >> "$GITHUB_ENV"
+          # latest -> placeholder key (never exists, so restore-keys prefix picks the newest entry)
+          # otherwise the given value is treated as an exact cache key
+          if [ "$RESTORE_TARGET" = "latest" ] || [ "$RESTORE_TARGET" = "r" ] || [ "$RESTORE_TARGET" = "list" ] || [ "$RESTORE_TARGET" = "ls" ] || [ -z "$RESTORE_TARGET" ]; then
+            echo "RESTORE_KEY=db-snapshot-latest-placeholder" >> "$GITHUB_ENV"
+          else
+            echo "RESTORE_KEY=$RESTORE_TARGET" >> "$GITHUB_ENV"
+          fi
+          echo "Restore target: $RESTORE_TARGET"
+
+      - name: Setup Snapshot Helpers
+        run: |
+          mkdir -p "$RUNNER_TEMP/snapshots"
+          echo "SNAP_DIR=$RUNNER_TEMP/snapshots" >> "$GITHUB_ENV"
+          echo "HELPER_DIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+
+          # --- encrypt / decrypt helper (same Fernet scheme as old snapshots) ---
+          cat > "$RUNNER_TEMP/crypt.py" <<'PYEOF'
+          import base64, os, sys
+          from cryptography.fernet import Fernet
+          from cryptography.hazmat.primitives import hashes
+          from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+          mode, src, dst = sys.argv[1], sys.argv[2], sys.argv[3]
+          kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32,
+                           salt=b'django_backup_salt_2026', iterations=100000)
+          f = Fernet(base64.urlsafe_b64encode(kdf.derive(os.environ['BACKUP_SECRET_KEY'].encode())))
+          data = open(src, 'rb').read()
+          open(dst, 'wb').write(f.encrypt(data) if mode == 'enc' else f.decrypt(data))
+          PYEOF
+
+          # --- snapshot script: dump -> sanity check -> encrypt -> write to SNAP_DIR (saved to cache at job end) ---
+          cat > "$RUNNER_TEMP/snapshot.sh" <<'SHEOF'
+          #!/usr/bin/env bash
+          # usage: snapshot.sh <periodic|final>
+          MODE="${1:-periodic}"
+          cd "$GITHUB_WORKSPACE"
+          exec 9>"$HELPER_DIR/snapshot.lock"
+          flock 9
+          set -uo pipefail
+
+          # --- license.key lives in a file, not in the DB: keep an encrypted copy in the cache dir ---
+          if [ -f license.key ]; then
+            python "$HELPER_DIR/crypt.py" enc license.key "$SNAP_DIR/license.key.enc" \
+              && echo "[snapshot:$MODE] license.key stored" \
+              || echo "[snapshot:$MODE] license.key store FAILED"
+          fi
+
+          TS=$(date +"%Y%m%d_%H%M%S")
+          NAME="db_snapshot_${TS}.sql.gz.enc"
+          RAW="$HELPER_DIR/raw_${TS}.sql.gz"
+
+          if ! MYSQL_PWD=root mysqldump -h 127.0.0.1 -P 3306 -u root \
+                --set-gtid-purged=OFF --column-statistics=0 --single-transaction \
+                --no-tablespaces local_django_db | gzip > "$RAW"; then
+            echo "[snapshot:$MODE] mysqldump FAILED - nothing uploaded"; exit 1
+          fi
+
+          NEW_SIZE=$(stat -c %s "$RAW")
+          OLD_SIZE=$(cat "$HELPER_DIR/restored_size" 2>/dev/null || echo 0)
+          # Safety: never overwrite good history with a near-empty dump
+          if [ "$NEW_SIZE" -lt 5000 ] || { [ "$OLD_SIZE" -gt 0 ] && [ "$NEW_SIZE" -lt $((OLD_SIZE / 2)) ]; }; then
+            echo "[snapshot:$MODE] SUSPICIOUS dump size ($NEW_SIZE bytes vs restored $OLD_SIZE) - upload skipped"
+            curl -s -H "Title: DB snapshot SKIPPED (suspicious size)" -H "Tags: warning" \
+              -d "new=$NEW_SIZE restored=$OLD_SIZE run=$GITHUB_RUN_ID" ntfy.sh/hassan_shops_db || true
+            rm -f "$RAW"; exit 1
+          fi
+
+          python "$HELPER_DIR/crypt.py" enc "$RAW" "$HELPER_DIR/$NAME" || { echo "encrypt failed"; exit 1; }
+          # keep only the newest snapshot in SNAP_DIR (the cache entry stays small)
+          rm -f "$SNAP_DIR"/db_snapshot_*.enc
+          mv "$HELPER_DIR/$NAME" "$SNAP_DIR/$NAME"
+          rm -f "$RAW"
+          echo "[snapshot:$MODE] stored $NAME ($NEW_SIZE bytes raw)"
+
+          if [ "$MODE" = "final" ]; then
+            curl -s -H "Title: DB Backup Successful" -H "Tags: white_check_mark,database" \
+              -d "Snapshot: $NAME (raw $NEW_SIZE bytes)" ntfy.sh/hassan_shops_db || true
+          fi
+          SHEOF
+          chmod +x "$RUNNER_TEMP/snapshot.sh"
+
+      - name: List available cache snapshots
+        if: ${{ env.RESTORE_TARGET == 'list' || env.RESTORE_TARGET == 'ls' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "=== AVAILABLE SNAPSHOTS (cache keys) ==="
+          gh cache list -R "${{ github.repository }}" --key db-snapshot- --sort created_at --order desc || true
+          echo "=== list done; continuing with LATEST ==="
+
+      - name: Restore snapshot from GitHub cache
+        id: restore_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/snapshots
+          key: ${{ env.RESTORE_KEY }}
+          restore-keys: |
+            db-snapshot-
+
+      - name: Restore Database from cache (or start fresh)
+        run: |
+          echo "Cache matched key: '${{ steps.restore_cache.outputs.cache-matched-key }}'"
+
+          FILE=$(ls "$SNAP_DIR"/db_snapshot_*.enc 2>/dev/null | sort | tail -n 1 || true)
+
+          # --- license.key: cache copy wins (it has the latest renewal); else bootstrap from secret LICENSE_KEY ---
+          if [ -f "$SNAP_DIR/license.key.enc" ]; then
+            python "$HELPER_DIR/crypt.py" dec "$SNAP_DIR/license.key.enc" ./license.key \
+              && echo "License restored from cache."
+          elif [ -n "${LICENSE_KEY:-}" ]; then
+            printf '%s' "$LICENSE_KEY" > ./license.key
+            echo "License written from secret LICENSE_KEY."
+          else
+            echo "No license in cache and no LICENSE_KEY secret (trial/read-only rules apply)."
+          fi
+          [ -f license.key ] && sha256sum license.key | cut -d' ' -f1 > "$HELPER_DIR/license_hash"
+
+          if [ -z "$FILE" ]; then
+            echo "No snapshot in cache -> FIRST RUN, starting with a fresh empty database."
+            echo "0" > "$HELPER_DIR/restored_size"
+            echo "DB_READY=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Restoring snapshot: $(basename "$FILE")"
+          python "$HELPER_DIR/crypt.py" dec "$FILE" ./restored.sql.gz
+          stat -c %s ./restored.sql.gz > "$HELPER_DIR/restored_size"
+          gunzip -c ./restored.sql.gz > ./restored.sql
+
+          MYSQL_PWD=root mysql -h 127.0.0.1 -P 3306 -u root -e "DROP DATABASE IF EXISTS local_django_db; CREATE DATABASE local_django_db CHARACTER SET utf8mb4;"
+          MYSQL_PWD=root mysql -h 127.0.0.1 -P 3306 -u root local_django_db < ./restored.sql
+          rm -f ./restored.sql ./restored.sql.gz
+
+          TABLES=$(MYSQL_PWD=root mysql -h 127.0.0.1 -P 3306 -u root -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='local_django_db';")
+          echo "Restore OK: $TABLES tables loaded."
+          echo "DB_READY=true" >> "$GITHUB_ENV"
+
+      - name: Apply Migrations & Ensure Superuser
+        run: |
+          python manage.py makemigrations --noinput || true
+          if python manage.py migrate --noinput; then
+            echo "Migrations applied."
+          else
+            echo "Migration conflict. Forcing state sync with --fake..."
+            python manage.py migrate --fake --noinput
+          fi
+
+          python manage.py shell -c "
+          import os
+          from django.contrib.auth import get_user_model
+          User = get_user_model()
+          username = os.environ.get('SUPERUSER_NAME')
+          email = os.environ.get('SUPERUSER_EMAIL')
+          password = os.environ.get('SUPERUSER_PASSWORD')
+          if username and password:
+              user, created = User.objects.get_or_create(username=username, defaults={'email': email})
+              user.set_password(password)
+              user.is_staff = True
+              user.is_superuser = True
+              user.save()
+              print(f'Superuser {username} verified.')
+          else:
+              print('Skipping superuser (credentials not set).')
+          "
+
+      - name: Stop Here for migrate_now
+        if: ${{ github.event_name == 'repository_dispatch' && github.event.action == 'migrate_now' }}
+        run: |
+          bash "$HELPER_DIR/snapshot.sh" final || true
+          curl -d "Forced migration done on local DB and snapshot saved." ntfy.sh/hshshehgag
+          echo "STOP_AFTER_MIGRATE=true" >> "$GITHUB_ENV"
+
+      - name: Process & Place PWA Icons from Project Root
+        if: env.STOP_AFTER_MIGRATE != 'true'
+        run: |
+          python -c "
+          import os
+          from PIL import Image
+
+          project_dir = os.getcwd()
+          target_dir = os.path.join(project_dir, 'ceo_module', 'static', 'ceo', 'images')
+          os.makedirs(target_dir, exist_ok=True)
+          extensions = ('.png', '.jpg', '.jpeg', '.webp')
+          found_images = [os.path.join(project_dir, f) for f in os.listdir(project_dir) if f.lower().endswith(extensions)]
+          if not found_images:
+              print('No source image found in project root.')
+          else:
+              src = found_images[0]
+              print(f'Processing source image: {src}')
+              with Image.open(src) as img:
+                  img = img.convert('RGBA')
+                  for w, h, fn in [(192, 192, 'icon-192.png'), (512, 512, 'icon-512.png')]:
+                      img.resize((w, h), Image.Resampling.LANCZOS).save(os.path.join(target_dir, fn), 'PNG')
+                      print(f'Saved: {fn}')
+          "
+
+      - name: Collect Static Files
+        if: env.STOP_AFTER_MIGRATE != 'true'
+        run: |
+          mkdir -p static
+          python manage.py collectstatic --noinput --clear
+
+      - name: Install Cloudflare Tunnel (cloudflared)
+        if: env.STOP_AFTER_MIGRATE != 'true'
+        run: |
+          curl -L --output cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x cloudflared
+          sudo mv cloudflared /usr/local/bin/cloudflared
+
+      - name: Check and Kill Existing Local Processes
+        if: env.STOP_AFTER_MIGRATE != 'true'
+        run: |
+          pkill -f "manage.py runserver" || true
+          pkill -f "cloudflared" || true
+          sleep 2
+
+      - name: Start Django Server & Cloudflare Tunnel (fixed domain)
+        if: env.STOP_AFTER_MIGRATE != 'true'
+        run: |
+          touch django.log tunnel.log
+          PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 --insecure > django.log 2>&1 &
+          # Named tunnel: token from secret CLOUDFLARE_TOKEN, hostname is set in Cloudflare Zero Trust dashboard
+          cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARE_TOKEN" > tunnel.log 2>&1 &
+          # periodic snapshot every 30 min (local copy; saved to cache at job end)
+          setsid nohup bash -c 'while true; do sleep 1800; bash "$HELPER_DIR/snapshot.sh" periodic; done' > periodic_snapshot.log 2>&1 &
+
+          TUNNEL_OK=""
+          for i in {1..30}; do
+            if grep -q "Registered tunnel connection" tunnel.log; then TUNNEL_OK="yes"; break; fi
+            sleep 2
+          done
+
+          TUNNEL_URL="https://$SITE_DOMAIN"
+          echo "TUNNEL_URL=$TUNNEL_URL" >> "$GITHUB_ENV"
+          if [ -z "$TUNNEL_OK" ]; then
+            echo "!!! Tunnel connect hota nazar nahi aaya. tunnel.log:"
+            cat tunnel.log
+          else
+            echo ""
+            echo "=============================================="
+            echo "  LIVE URL: $TUNNEL_URL"
+            echo "=============================================="
+            echo ""
+          fi
+
+      - name: Realtime HTTP Access Logs & Error Stream
+        if: env.STOP_AFTER_MIGRATE != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT_RUN_ID="${{ github.run_id }}"
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+
+          for i in {1..65}; do
+            for s in {1..60}; do
+              LATEST_RUN_ID=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=1" --jq '.workflow_runs[0].id' 2>/dev/null || echo "$CURRENT_RUN_ID")
+              if [ "$LATEST_RUN_ID" -gt "$CURRENT_RUN_ID" ]; then
+                echo "Newer run ($LATEST_RUN_ID) detected. Ending log stream -> final snapshot."
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "------------------------------------------"
+            echo "TIMESTAMP: $(date)"
+            echo "--- SERVER HTTP ACCESS LOGS ---"
+            grep -E '"GET|POST|PUT|DELETE|HEAD' django.log | tail -n 50 || echo "No HTTP requests logged yet."
+            echo "--- RECENT EXCEPTIONS / ERRORS ---"
+            grep -i -C 3 "error\|exception\|traceback" django.log | tail -n 50 || echo "No errors detected."
+          done || true
+
+      - name: Final Snapshot (stop server first)
+        if: ${{ always() && env.DB_READY == 'true' && env.STOP_AFTER_MIGRATE != 'true' }}
+        run: |
+          # Stop writers first so nothing is written after the snapshot
+          pkill -f "manage.py runserver" || true
+          pkill -f "cloudflared" || true
+          pkill -f "snapshot.sh" || true
+          sleep 3
+          bash "$HELPER_DIR/snapshot.sh" final || true
+
+      - name: Check snapshot exists
+        if: ${{ always() && env.DB_READY == 'true' }}
+        run: |
+          if ls "$SNAP_DIR"/db_snapshot_*.enc >/dev/null 2>&1; then
+            echo "HAVE_SNAP=true" >> "$GITHUB_ENV"
+          else
+            echo "No snapshot file to save - cache save skipped."
+          fi
+
+      - name: Save snapshot to GitHub cache
+        if: ${{ always() && env.HAVE_SNAP == 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/snapshots
+          key: db-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Rotate old cache entries (keep latest 3)
+        if: ${{ always() && env.HAVE_SNAP == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh cache list -R "${{ github.repository }}" --key db-snapshot- --sort created_at --order desc --limit 100 --json id,key \
+            --jq '.[3:][] | .id' | while read -r ID; do
+              [ -n "$ID" ] && gh cache delete "$ID" -R "${{ github.repository }}" && echo "rotated out cache id $ID"
+            done || true

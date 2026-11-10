@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Test Cases{% endblock %}
+{% block extra_css %}{% include 'testing/_qa_ui.html' %}{% endblock %}
+
+{% block content %}
+<div class="qa-wrap">
+  <div class="qa-head">
+    <div>
+      <h1><span class="qa-ico"><i class="bi bi-list-check"></i></span> Test Cases</h1>
+      <p>{% if suite %}{{ suite.project.name }} › {{ suite.name }}{% else %}All projects and suites{% endif %} · {{ total_count }} case{{ total_count|pluralize }}</p>
+    </div>
+    <div class="qa-actions">
+      {% if suite %}<a href="{% url 'test_case_create' suite.id %}" class="qa-btn primary"><i class="bi bi-plus-lg"></i> New Case</a>{% endif %}
+    </div>
+  </div>
+
+  {% include 'testing/_qa_nav.html' with active='cases' %}
+
+  <div class="qa-kpis">
+    <div class="qa-kpi" style="--c:#3b5bdb"><div class="v">{{ kpi.total }}</div><div class="l">Total</div></div>
+    <div class="qa-kpi" style="--c:#2f9e44"><div class="v">{{ kpi.passed }}</div><div class="l">Passed</div></div>
+    <div class="qa-kpi" style="--c:#e03131"><div class="v">{{ kpi.failed }}</div><div class="l">Failed</div></div>
+    <div class="qa-kpi" style="--c:#f08c00"><div class="v">{{ kpi.blocked }}</div><div class="l">Blocked</div></div>
+    <div class="qa-kpi" style="--c:#7048e8">
+      <div class="v">{{ kpi.pass_rate }}%</div><div class="l">Pass rate</div>
+      <div class="qa-bar mt-2"><span style="width:{{ kpi.pass_rate }}%;background:#2f9e44"></span></div>
+    </div>
+  </div>
+
+  <div class="qa-card">
+    <form method="GET" class="qa-filter">
+      <input type="text" name="search" class="form-control" placeholder="Search test cases" value="{{ search }}">
+      <select name="status" class="form-select">
+        <option value="">All statuses</option>
+        {% for key, value in status_choices %}<option value="{{ key }}" {% if key == status %}selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select>
+      <select name="priority" class="form-select">
+        <option value="">All priorities</option>
+        {% for key, value in priority_choices %}<option value="{{ key }}" {% if key == priority %}selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select>
+      <select name="type" class="form-select">
+        <option value="">All types</option>
+        {% for key, value in type_choices %}<option value="{{ key }}" {% if key == test_type %}selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select>
+      <div class="d-flex gap-2">
+        <button type="submit" class="qa-btn primary flex-fill"><i class="bi bi-funnel"></i> Filter</button>
+        {% if status or priority or test_type or search %}<a href="?" class="qa-btn" title="Clear"><i class="bi bi-x-lg"></i></a>{% endif %}
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="qa-table">
+        <thead><tr>
+          <th>Test case</th><th>Type</th><th>Priority</th><th>Status</th>
+          <th class="d-none d-lg-table-cell">Last run</th><th style="width:90px"></th>
+        </tr></thead>
+        <tbody>
+        {% for case in page_obj %}
+          <tr>
+            <td>
+              <span class="qa-title">{{ case.title|truncatechars:70 }}</span>
+              <span class="qa-sub">{% if not suite %}{{ case.suite.project.name }} › {{ case.suite.name }} · {% endif %}{{ case.description|truncatechars:60 }}</span>
+            </td>
+            <td><span class="qa-tag">{{ case.type_label }}</span></td>
+            <td><span class="qa-pill qa-{{ case.priority }}">{{ case.priority_label }}</span></td>
+            <td><span class="qa-pill qa-{{ case.status }}">{{ case.status_label }}</span></td>
+            <td class="d-none d-lg-table-cell">
+              {% if case.executed_at %}{{ case.executed_at|date:"d M Y" }}<span class="qa-sub">{{ case.executed_by.username|default:"System" }}</span>{% else %}<span class="text-muted">Never</span>{% endif %}
+            </td>
+            <td><a href="{% url 'test_case_execute' case.id %}" class="qa-btn sm primary"><i class="bi bi-play-fill"></i> Run</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6"><div class="qa-empty"><i class="bi bi-inbox"></i>No test cases found.
+            {% if suite %}<div class="mt-2"><a href="{% url 'test_case_create' suite.id %}" class="qa-btn sm primary">Create test case</a></div>{% endif %}</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="qa-pager">
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      <span class="d-flex gap-2">
+        {% if page_obj.has_previous %}<a class="qa-btn sm" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}"><i class="bi bi-arrow-left"></i> Prev</a>{% endif %}
+        {% if page_obj.has_next %}<a class="qa-btn sm" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">Next <i class="bi bi-arrow-right"></i></a>{% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'customer_portal/rider/base.html' %}
+{% block title %}Masle{% endblock %}
+{% block header %}<div class="top"><div class="nm">⚠️ Masle</div><div class="hi">Aap ki deliveries par customer ke reports</div></div>{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="acts" style="margin:0 0 12px">
+    {% for key, label in tabs.items %}<a class="btn s {% if tab == key %}o{% else %}l{% endif %}" href="?tab={{ key }}">{{ label }}</a>{% endfor %}
+  </div>
+  {% for r in rows %}
+  <a class="card" href="{% url 'rider_dispute_detail' r.d.pk %}" style="display:block">
+    <div class="row"><span class="no">#{{ r.d.sale_order.order_no }}</span>
+      {% if r.d.is_open %}
+        {% if r.responded %}<span class="pill g">Jawab de diya</span>{% else %}<span class="pill">Jawab chahiye</span>{% endif %}
+      {% else %}<span class="pill b">{{ r.d.get_status_display }}</span>{% endif %}
+    </div>
+    <div class="row"><span>{{ r.d.get_reason_display }}</span><small>{{ r.customer }}</small></div>
+    <div class="row"><small>{{ r.d.created_at|date:"d M, h:i A" }}</small></div>
+  </a>
+  {% empty %}<div class="card empty">{% if tab == 'open' %}Koi open masla nahi.{% else %}Abhi koi band masla nahi.{% endif %}</div>{% endfor %}
+</div>
+{% endblock %}

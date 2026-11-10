@@ -1,0 +1,81 @@
+{% if user.is_authenticated %}
+<!-- Push notifications: login wale user ko "Notifications on karein" button -->
+<div id="pushPrompt" style="display:none;position:fixed;left:12px;bottom:84px;z-index:1050;">
+    <button type="button" id="pushEnableBtn" class="btn btn-sm btn-dark shadow"
+            style="border-radius:20px;padding:6px 14px;">🔔 Notifications on karein</button>
+    <button type="button" id="pushDismissBtn" class="btn btn-sm btn-link text-muted" aria-label="Close">✕</button>
+</div>
+<script>
+(function () {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+    var box = document.getElementById('pushPrompt');
+    var enableBtn = document.getElementById('pushEnableBtn');
+    var dismissBtn = document.getElementById('pushDismissBtn');
+    var DISMISS_KEY = 'push_prompt_dismissed_at';
+
+    function cookie(name) {
+        var m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return m ? decodeURIComponent(m.pop()) : '';
+    }
+    function keyToBytes(b64) {
+        var pad = '='.repeat((4 - b64.length % 4) % 4);
+        var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+        var out = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+        return out;
+    }
+    function post(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {'X-CSRFToken': cookie('csrftoken'), 'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+    }
+    function saveSub(sub) {
+        return post('{% url "push_subscribe" %}', sub.toJSON());
+    }
+    function getReg() {
+        return navigator.serviceWorker.register('{% url "push_service_worker" %}', {scope: '/shop/'})
+            .then(function () { return navigator.serviceWorker.ready; });
+    }
+
+    function subscribe(serverKey) {
+        return getReg().then(function (reg) {
+            return reg.pushManager.getSubscription().then(function (sub) {
+                return sub || reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: keyToBytes(serverKey)
+                });
+            });
+        }).then(saveSub);
+    }
+
+    fetch('{% url "push_public_key" %}').then(function (r) { return r.json(); }).then(function (cfg) {
+        if (!cfg.enabled || !cfg.key) return;
+
+        // Pehle se ijazat di hui: chupchap is user ke naam se dobara jod do (shared phone par bhi theek)
+        if (Notification.permission === 'granted') { subscribe(cfg.key).catch(function () {}); return; }
+        if (Notification.permission === 'denied') return;
+
+        var d = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+        if (d && Date.now() - d < 7 * 24 * 3600 * 1000) return;       // 7 din tak dobara na poochho
+        box.style.display = 'block';
+
+        enableBtn.addEventListener('click', function () {
+            enableBtn.disabled = true;
+            Notification.requestPermission().then(function (perm) {
+                if (perm !== 'granted') { box.style.display = 'none'; return; }
+                return subscribe(cfg.key).then(function () {
+                    enableBtn.textContent = '✅ Notifications on';
+                    setTimeout(function () { box.style.display = 'none'; }, 1500);
+                });
+            }).catch(function () { enableBtn.disabled = false; });
+        });
+        dismissBtn.addEventListener('click', function () {
+            localStorage.setItem(DISMISS_KEY, String(Date.now()));
+            box.style.display = 'none';
+        });
+    }).catch(function () {});
+})();
+</script>
+{% endif %}

@@ -1,0 +1,51 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Disputes - {{ company_name }}{% endblock %}
+
+{% block content %}
+<style>
+  .vdp-wrap { max-width: 900px; margin: 24px auto; padding: 0 12px; }
+  .vdp-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .vdp-top h3 { margin: 0; font-weight: 700; }
+  .vdp-back { text-decoration: none; border: 1px solid #ddd; background: #fff; border-radius: 10px; padding: 6px 14px; color: #333; }
+  .vdp-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .vdp-tab { flex: 1; text-align: center; text-decoration: none; padding: 10px 14px; border-radius: 12px; background: #fff; color: #444; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  .vdp-tab.active { background: #1f2937; color: #fff; }
+  .vdp-card { display: block; text-decoration: none; color: inherit; background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.06); padding: 16px; margin-bottom: 12px; }
+  .vdp-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .vdp-no { font-weight: 700; font-size: 17px; }
+  .vdp-meta { font-size: 13px; color: #777; margin-top: 4px; }
+  .vdp-pill { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .vdp-need { background: #fff3cd; color: #856404; }
+  .vdp-done { background: #d4edda; color: #155724; }
+  .vdp-closed { background: #e2e3e5; color: #383d41; }
+  .vdp-empty { text-align: center; color: #777; padding: 40px 10px; background: #fff; border-radius: 16px; }
+</style>
+<div class="vdp-wrap">
+  <div class="vdp-top">
+    <h3>Disputes</h3>
+    <a class="vdp-back" href="{% url 'vendor_dashboard' %}">Dashboard</a>
+  </div>
+  <div class="vdp-tabs">
+    {% for key, label in tabs.items %}
+    <a class="vdp-tab {% if tab == key %}active{% endif %}" href="?tab={{ key }}">{{ label }}{% if key == 'open' and pending %} ({{ pending }} jawab baqi){% endif %}</a>
+    {% endfor %}
+  </div>
+
+  {% for r in rows %}
+  <a class="vdp-card" href="{% url 'vendor_dispute_detail' r.d.pk %}">
+    <div class="vdp-row">
+      <span class="vdp-no">Order #{{ r.d.sale_order.order_no }}</span>
+      {% if r.d.is_open %}
+        {% if r.responded %}<span class="vdp-pill vdp-done">Jawab de diya</span>{% else %}<span class="vdp-pill vdp-need">Jawab chahiye</span>{% endif %}
+      {% else %}
+        <span class="vdp-pill vdp-closed">{{ r.d.get_status_display }}</span>
+      {% endif %}
+    </div>
+    <div class="vdp-meta">{{ r.d.get_reason_display }} &middot; {{ r.customer }} &middot; {{ r.d.created_at|date:"d M, h:i A" }}</div>
+  </a>
+  {% empty %}
+  <div class="vdp-empty">{% if tab == 'open' %}Koi open dispute nahi hai.{% else %}Abhi koi band dispute nahi.{% endif %}</div>
+  {% endfor %}
+</div>
+{% endblock %}

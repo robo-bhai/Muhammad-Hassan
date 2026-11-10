@@ -1,0 +1,36 @@
+{% extends 'customer_portal/info/base_info.html' %}
+{% block page_title %}Help Center{% endblock %}
+{% block heading %}<i class="bi bi-life-preserver text-primary"></i> Help Center{% endblock %}
+{% block subheading %}Aap ko kis cheez mein madad chahiye?{% endblock %}
+
+{% block info_body %}
+<div class="row g-3 mb-3">
+  <div class="col-sm-6"><a href="{% url 'track_order' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
+      <h2><i class="bi bi-truck text-primary"></i> Order track karein</h2><p class="mb-0 small">Order ya bill number se status dekhein.</p></a></div>
+  <div class="col-sm-6"><a href="{% url 'my_orders' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
+      <h2><i class="bi bi-receipt text-primary"></i> Mere orders</h2><p class="mb-0 small">Purane aur maujooda orders.</p></a></div>
+  <div class="col-sm-6"><a href="{% url 'shop_returns' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
+      <h2><i class="bi bi-arrow-return-left text-primary"></i> Return aur refund</h2><p class="mb-0 small">Policy aur tareeqa.</p></a></div>
+  <div class="col-sm-6"><a href="{% url 'shop_faq' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
+      <h2><i class="bi bi-question-circle text-primary"></i> FAQ</h2><p class="mb-0 small">Aam sawalon ke jawab.</p></a></div>
+</div>
+
+<div class="info-card">
+  <h2>Aam masail</h2>
+  <ul>
+    <li><b>Login nahi ho raha:</b> sahi phone/email check karein, OTP aaye to usay time par enter karein.</li>
+    <li><b>Order place nahi hua:</b> cart mein items aur checkout ka address dobara dekhein, phir koshish karein.</li>
+    <li><b>Ghalat address likh diya:</b> fauran WhatsApp ya call par batayen.</li>
+    <li><b>Delivery late hai:</b> <a href="{% url 'track_order' %}">Track Order</a> par status dekhein, phir hamein rabta karein.</li>
+  </ul>
+</div>
+
+<div class="info-card">
+  <h2>Hum se rabta</h2>
+  <ul>
+    {% if company_contact_number %}<li>Phone: <a href="tel:{{ company_contact_number }}">{{ company_contact_number }}</a></li>{% endif %}
+    {% if company_email %}<li>Email: <a href="mailto:{{ company_email }}">{{ company_email }}</a></li>{% endif %}
+    {% if company_address %}<li>Address: {{ company_address }}</li>{% endif %}
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'customer_portal/info/base_info.html' %}
+{% block page_title %}FAQ{% endblock %}
+{% block heading %}<i class="bi bi-question-circle text-primary"></i> Aksar Pooche Jane Wale Sawal{% endblock %}
+{% block subheading %}Jaldi jawab, bina intezar ke{% endblock %}
+
+{% block info_body %}
+<div class="accordion mb-3" id="faqAcc">
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#f1">Order kaise karun?</button></h2>
+    <div id="f1" class="accordion-collapse collapse show" data-bs-parent="#faqAcc"><div class="accordion-body">Products chunein, Cart mein daalein, Checkout par apna address aur payment method select karein, phir Place Order dabayein. Order number aap ko screen par mil jaye ga.</div></div></div>
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#f2">Kya order karne ke liye account zaroori hai?</button></h2>
+    <div id="f2" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Account bananay se aap ke purane orders, addresses aur tracking asaan ho jati hai. Sidebar ke CUSTOMER section se register karein.</div></div></div>
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#f3">Mera order kahan hai?</button></h2>
+    <div id="f3" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Menu mein <a href="{% url 'track_order' %}">Track Order</a> kholen aur order number ya bill number likhein. Login hon to <a href="{% url 'my_orders' %}">My Orders</a> mein bhi status nazar aata hai.</div></div></div>
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#f4">Payment ke kaun se tareeqay hain?</button></h2>
+    <div id="f4" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Checkout page par jo options nazar aate hain wahi available hain. Mazeed madad ke liye hamein WhatsApp ya call karein.</div></div></div>
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#f5">Delivery mein kitna time lagta hai?</button></h2>
+    <div id="f5" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Delivery ka waqt aap ke area aur store par depend karta hai. Checkout par aap ke area ke mutabiq delivery ki maloomat dikhai jati hain.</div></div></div>
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#f6">Order change ya cancel kar sakta hoon?</button></h2>
+    <div id="f6" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Jab tak order deliver ke liye rawana na ho, hamein jaldi WhatsApp ya call karein. Hum madad ki koshish karenge.</div></div></div>
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#f7">Product kharab ya ghalat aaye to?</button></h2>
+    <div id="f7" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">{{ return_window_days }} din ke andar rabta karein. Tafseel <a href="{% url 'shop_returns' %}">Return Policy</a> mein hai.</div></div></div>
+
+  <div class="accordion-item"><h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#f8">Main apna saman yahan bechna chahta hoon.</button></h2>
+    <div id="f8" class="accordion-collapse collapse" data-bs-parent="#faqAcc"><div class="accordion-body">Sidebar ke SELLER section mein Register karein. Approval ke baad aap apni products list kar sakte hain.</div></div></div>
+</div>
+{% endblock %}

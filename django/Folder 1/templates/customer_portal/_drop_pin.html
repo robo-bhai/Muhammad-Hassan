@@ -1,0 +1,20 @@
+<div style="margin-bottom:12px;padding:10px;border-radius:12px;background:#eff6ff">
+  <button type="button" id="dropPinBtn" class="btn btn-sm btn-primary">📍 Meri current location pin karein</button>
+  <small id="dropPinMsg" style="display:block;margin-top:6px;color:#475569">Rider ko seedha aap ke ghar ka rasta milega. Pin 3 ghante tak valid rehta hai.</small>
+</div>
+<script>
+(function(){
+  var b=document.getElementById('dropPinBtn'), m=document.getElementById('dropPinMsg');
+  b.addEventListener('click',function(){
+    if(!navigator.geolocation){m.textContent='Browser location support nahi karta';return;}
+    m.textContent='Location le raha hoon...';
+    navigator.geolocation.getCurrentPosition(function(p){
+      var body=new URLSearchParams(); body.append('lat',p.coords.latitude); body.append('lng',p.coords.longitude);
+      fetch("{% url 'customer_set_drop_location' %}",{method:'POST',credentials:'same-origin',
+        headers:{'X-CSRFToken':"{{ csrf_token }}",'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(r){return r.json()}).then(function(d){m.textContent=d.ok?'✅ Pin lag gaya':'❌ Pin save nahi hua';})
+        .catch(function(){m.textContent='❌ Network masla';});
+    },function(){m.textContent='❌ Location ki ijazat dein';},{enableHighAccuracy:true,timeout:20000});
+  });
+})();
+</script>

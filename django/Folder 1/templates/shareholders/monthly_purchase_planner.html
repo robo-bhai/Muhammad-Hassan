@@ -1,0 +1,1922 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Monthly Purchase Planner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        border-radius: 15px;
+        padding: 20px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    .stats-card .stats-icon {
+        position: absolute;
+        right: 15px;
+        top: 15px;
+        font-size: 2.5rem;
+        opacity: 0.2;
+    }
+    .stats-card .stats-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .stats-card .stats-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+    }
+    
+    .table-custom thead {
+        background: linear-gradient(135deg, #1a1a2e 0%, #2d3436 100%);
+        color: white;
+    }
+    .table-custom thead th {
+        padding: 14px 16px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border: none;
+    }
+    .table-custom tbody td {
+        padding: 12px 16px;
+        vertical-align: middle;
+        border-bottom: 1px solid #eef0f3;
+    }
+    .table-custom tbody tr:hover {
+        background: #f8f9fc;
+    }
+    
+    .achievement-bar {
+        height: 8px;
+        border-radius: 10px;
+        background: #eef0f3;
+    }
+    .achievement-bar .progress-bar {
+        border-radius: 10px;
+    }
+    
+    .status-badge {
+        padding: 5px 14px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-draft { background: #e2e3e5; color: #383d41; }
+    .status-approved { background: #cce5ff; color: #004085; }
+    .status-in_progress { background: #fff3cd; color: #856404; }
+    .status-completed { background: #d4edda; color: #155724; }
+    .status-cancelled { background: #f8d7da; color: #721c24; }
+    
+    .version-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .version-latest {
+        background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+        color: white;
+    }
+    .version-old {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .info-box {
+        background: #f8f9fc;
+        border-left: 4px solid #667eea;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    
+    .month-selector {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 12px;
+        color: white;
+    }
+    
+    /* Auto-calculated field */
+    .auto-qty-field {
+        background: #f0f9ff !important;
+        border: 2px solid #667eea !important;
+        font-weight: 700 !important;
+        color: #1a1a2e !important;
+        cursor: not-allowed;
+    }
+    
+    .auto-badge {
+        background: linear-gradient(135deg, #17a2b8, #138496);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        animation: pulse 2s infinite;
+        margin-left: 4px;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+    
+    .calc-hint {
+        font-size: 0.7rem;
+        color: #17a2b8;
+        font-weight: 600;
+        margin-top: 4px;
+        display: block;
+    }
+    
+    .calc-hint b {
+        color: #667eea;
+    }
+    
+    .summary-box {
+        background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+        border: none;
+        border-radius: 12px;
+    }
+    
+    .summary-item {
+        text-align: center;
+        padding: 8px;
+    }
+    
+    .summary-item small {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+        font-weight: 600;
+    }
+    
+    .summary-item h5 {
+        font-weight: 800;
+        margin-bottom: 0;
+    }
+    
+    /* Header Buttons */
+    .btn-header {
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.82rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-header:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        color: white;
+    }
+    
+    .btn-history {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-history:hover { color: white; }
+    
+    .btn-pdf {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+    }
+    
+    .btn-pdf:hover { color: white; }
+    
+    .btn-back {
+        background: #f0f2f7;
+        color: #1a1a2e;
+        border: 1px solid #e0e3eb;
+    }
+    
+    .btn-back:hover {
+        background: #e0e3eb;
+        color: #1a1a2e;
+    }
+    
+    /* Risk Assessment Circle */
+    .risk-circle-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .risk-circle {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.5s;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .risk-circle-inner {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .risk-score-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #1a1a2e;
+        line-height: 1;
+    }
+    
+    .risk-score-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        font-weight: 600;
+    }
+    
+    .risk-category-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: white;
+        margin-top: 15px;
+    }
+    
+    /* Risk Factor Bars */
+    .risk-factor-row {
+        margin-bottom: 12px;
+    }
+    
+    .risk-factor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+    }
+    
+    .risk-factor-header small {
+        font-weight: 600;
+    }
+    
+    .risk-factor-bar {
+        height: 8px;
+        border-radius: 10px;
+        background: #eef0f3;
+        overflow: hidden;
+    }
+    
+    .risk-factor-bar-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s;
+    }
+    
+    /* Recommendation Box */
+    .recommendation-box {
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid;
+        margin-top: 15px;
+    }
+    
+    .recommendation-box.safe {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-color: #28a745;
+    }
+    
+    .recommendation-box.caution {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+        border-color: #ffc107;
+    }
+    
+    .recommendation-box.danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border-color: #dc3545;
+    }
+    
+    .recommendation-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+    
+    .action-steps {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 15px;
+        margin-top: 12px;
+    }
+    
+    .action-steps ol {
+        margin-bottom: 0;
+        padding-left: 20px;
+    }
+    
+    .action-steps li {
+        padding: 3px 0;
+        font-size: 0.85rem;
+    }
+    
+    /* ========================================== */
+    /* 🤖 AI PANEL STYLES                          */
+    /* ========================================== */
+    
+    .ai-panel {
+        border: none;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+        margin-top: 20px;
+    }
+    
+    .ai-panel-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .ai-panel-header h5 {
+        margin: 0;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .ai-brain-icon {
+        font-size: 1.5rem;
+        animation: brainPulse 2s infinite;
+    }
+    
+    @keyframes brainPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+    }
+    
+    .ai-panel-body {
+        padding: 20px;
+        background: #ffffff;
+    }
+    
+    /* AI Loading */
+    .ai-loading {
+        text-align: center;
+        padding: 40px 20px;
+    }
+    
+    .ai-loading-spinner {
+        display: inline-block;
+        width: 60px;
+        height: 60px;
+        border: 5px solid #e0e7ff;
+        border-top-color: #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* AI Confidence Badge */
+    .ai-confidence-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 1rem;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .ai-confidence-badge.high {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    
+    .ai-confidence-badge.medium {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    
+    .ai-confidence-badge.low {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+    
+    /* AI Quantity Box */
+    .ai-quantity-box {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        border-radius: 16px;
+        padding: 25px;
+        text-align: center;
+        border: 3px solid #667eea;
+        margin-bottom: 20px;
+    }
+    
+    .ai-quantity-value {
+        font-size: 4rem;
+        font-weight: 900;
+        color: #4f46e5;
+        line-height: 1;
+        margin: 10px 0;
+    }
+    
+    .ai-quantity-label {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #6b7280;
+        font-weight: 700;
+    }
+    
+    .ai-quantity-range {
+        color: #6b7280;
+        font-size: 0.85rem;
+        margin-top: 10px;
+    }
+    
+    /* AI Metric Cards */
+    .ai-metric-card {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s;
+    }
+    
+    .ai-metric-card:hover {
+        background: #f3f4f6;
+        transform: translateY(-2px);
+    }
+    
+    .ai-metric-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6b7280;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    
+    .ai-metric-value {
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: #1f2937;
+    }
+    
+    /* AI Section */
+    .ai-section {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 15px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .ai-section-title {
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .ai-reasoning-list {
+        margin: 0;
+        padding-left: 20px;
+    }
+    
+    .ai-reasoning-list li {
+        padding: 5px 0;
+        font-size: 0.9rem;
+        color: #374151;
+    }
+    
+    /* AI Warning Box */
+    .ai-warning-box {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-left: 4px solid #f59e0b;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .ai-warning-box h6 {
+        color: #92400e;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+    
+    .ai-warning-box ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #78350f;
+    }
+    
+    .ai-warning-box li {
+        padding: 4px 0;
+        font-size: 0.88rem;
+    }
+    
+    /* AI Opportunity Box */
+    .ai-opportunity-box {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        border-left: 4px solid #10b981;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .ai-opportunity-box h6 {
+        color: #065f46;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+    
+    .ai-opportunity-box .opp-item {
+        background: white;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+    }
+    
+    .ai-opportunity-box .opp-title {
+        font-weight: 700;
+        color: #065f46;
+        font-size: 0.9rem;
+    }
+    
+    .ai-opportunity-box .opp-desc {
+        color: #047857;
+        font-size: 0.8rem;
+        margin-top: 3px;
+    }
+    
+    /* AI Cash Impact */
+    .ai-cash-warning {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        border-left: 4px solid #dc2626;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 15px;
+    }
+    
+    .ai-cash-warning h6 {
+        color: #991b1b;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+    
+    /* AI Action Buttons */
+    .ai-action-btn {
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.95rem;
+    }
+    
+    .ai-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+    
+    .ai-action-btn.accept {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .ai-action-btn.apply {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .ai-action-btn.close {
+        background: #e5e7eb;
+        color: #374151;
+    }
+    
+    /* Historical Chart Mini */
+    .ai-history-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 80px;
+        padding: 10px 0;
+    }
+    
+    .ai-history-bar {
+        flex: 1;
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        border-radius: 6px 6px 0 0;
+        min-height: 8px;
+        position: relative;
+        transition: all 0.3s;
+    }
+    
+    .ai-history-bar:hover {
+        opacity: 0.8;
+    }
+    
+    .ai-history-bar-label {
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.65rem;
+        color: #6b7280;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    /* Run AI Button */
+    .btn-run-ai {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-run-ai:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-run-ai:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- ========================================== -->
+    <!-- HEADER                                      -->
+    <!-- ========================================== -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h4 class="mb-1 fw-bold">
+                <i class="bi bi-calendar-check text-primary me-2"></i>
+                Monthly Purchase & Investor Planner
+                <span class="badge ms-2" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    <i class="bi bi-robot"></i> AI Powered
+                </span>
+            </h4>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-calendar3 me-1"></i>
+                {{ selected_month|date:"F Y" }}
+                {% if latest_plan %}
+                | <span class="badge bg-success">Current Version: v{{ latest_plan.version }}</span>
+                {% endif %}
+            </p>
+        </div>
+        
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'monthly_plan_multi_create' %}?month={{ month_str }}" class="btn-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                <i class="bi bi-collection"></i> Multi-Product Plan
+            </a>
+            <a href="{% url 'ai_purchase_planner_dashboard' %}" class="btn-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                <i class="bi bi-robot"></i> AI Dashboard
+            </a>
+            <a href="{% url 'monthly_plan_history' %}" class="btn-header btn-history">
+                <i class="bi bi-clock-history"></i> All Plans History
+            </a>
+            <a href="{% url 'monthly_plan_report_pdf' %}" class="btn-header btn-pdf">
+                <i class="bi bi-file-pdf"></i> PDF Report
+            </a>
+            <a href="{% url 'dashboard' %}" class="btn-header btn-back">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+    
+    <!-- ========================================== -->
+    <!-- MONTH SELECTOR                              -->
+    <!-- ========================================== -->
+    <div class="month-selector mb-4">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-white">Select Month</label>
+                <input type="month" name="month" class="form-control" 
+                       value="{{ month_str }}" 
+                       onchange="this.form.submit()">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-light w-100">
+                    <i class="bi bi-search"></i> Go
+                </button>
+            </div>
+            <div class="col-md-6">
+                <div class="bg-white bg-opacity-25 p-3 rounded">
+                    <strong>Selected Month:</strong> {{ selected_month|date:"F Y" }}
+                    {% if plans_this_month %}
+                    | <span class="badge bg-success">{{ plans_this_month|length }} plan(s)</span>
+                    {% else %}
+                    | <span class="badge bg-warning text-dark">No plans yet</span>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- ========================================== -->
+    <!-- STATS CARDS                                 -->
+    <!-- ========================================== -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="stats-card bg-primary text-white">
+                <i class="bi bi-people stats-icon"></i>
+                <div class="stats-label">Total Investors</div>
+                <div class="stats-number">{{ total_investors }}</div>
+                <small class="opacity-75">Active</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stats-card bg-success text-white">
+                <i class="bi bi-cash-stack stats-icon"></i>
+                <div class="stats-label">Total Investment</div>
+                <div class="stats-number">Rs. {{ total_balance|floatformat:0 }}</div>
+                <small class="opacity-75">{{ total_balance|floatformat:2 }}</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stats-card bg-info text-white">
+                <i class="bi bi-wallet2 stats-icon"></i>
+                <div class="stats-label">Available Cash</div>
+                <div class="stats-number">Rs. {{ available_cash|floatformat:0 }}</div>
+                <small class="opacity-75">{{ available_cash|floatformat:2 }}</small>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stats-card bg-warning text-dark">
+                <i class="bi bi-list-check stats-icon"></i>
+                <div class="stats-label">Total Plans</div>
+                <div class="stats-number">{{ total_plans }}</div>
+                <small class="opacity-75">{{ completed_plans }} completed</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ========================================== -->
+    <!-- MULTI-PRODUCT PLANS FOR SELECTED MONTH      -->
+    <!-- ========================================== -->
+    {% if multi_plans %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h6 class="mb-0">
+                <i class="bi bi-collection me-2"></i>
+                Multi-Product Plans for {{ selected_month|date:"F Y" }}
+                <span class="badge bg-light text-dark ms-2">{{ multi_plans|length }}</span>
+            </h6>
+            <a href="{% url 'monthly_plan_multi_create' %}?month={{ month_str }}" class="btn btn-sm btn-warning">
+                <i class="bi bi-plus-circle me-1"></i> New Multi-Product Plan
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Plan No</th>
+                            <th>Title</th>
+                            <th>Warehouse</th>
+                            <th class="text-end">Products</th>
+                            <th class="text-end">Purchase Qty</th>
+                            <th class="text-end">Grand Total</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in multi_plans %}
+                        <tr>
+                            <td><strong>{{ b.batch_no }}</strong></td>
+                            <td>{{ b.title|default:"-" }}</td>
+                            <td>{{ b.warehouse.name|default:"-" }}</td>
+                            <td class="text-end">{{ b.totals.products }}</td>
+                            <td class="text-end">{{ b.totals.buy_qty|intcomma }}</td>
+                            <td class="text-end fw-bold">Rs. {{ b.totals.purchase_amount|floatformat:0|intcomma }}</td>
+                            <td><span class="badge bg-{{ b.overall_status_color }}">{{ b.overall_status_display }}</span></td>
+                            <td class="text-end">
+                                <a href="{% url 'monthly_plan_multi_detail' b.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- ========================================== -->
+    <!-- PLANS FOR SELECTED MONTH                    -->
+    <!-- ========================================== -->
+    {% if plans_this_month %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <h6 class="mb-0">
+                <i class="bi bi-list-check me-2"></i>
+                Plans for {{ selected_month|date:"F Y" }}
+                <span class="badge bg-light text-dark ms-2">{{ plans_this_month|length }} version(s)</span>
+            </h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Version</th>
+                            <th>Plan No</th>
+                            <th>Product</th>
+                            <th>Warehouse</th>
+                            <th>Purchase Qty</th>
+                            <th>Stock</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in plans_this_month %}
+                        <tr class="{% if p.is_latest %}table-success{% endif %}">
+                            <td>
+                                {% if p.is_latest %}
+                                <span class="version-badge version-latest">v{{ p.version }} ✅</span>
+                                {% else %}
+                                <span class="version-badge version-old">v{{ p.version }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ p.plan_no }}</strong></td>
+                            <td>{{ p.product_name|default:"-" }}</td>
+                            <td>
+                                {% if p.warehouse %}
+                                <span class="badge bg-secondary">{{ p.warehouse.name }}</span>
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ p.purchase_quantity }} units</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if p.stock_status == 'sufficient' %}success{% elif p.stock_status == 'low' %}warning{% else %}danger{% endif %}">
+                                    {{ p.available_stock|floatformat:0 }}
+                                </span>
+                            </td>
+                            <td>Rs. {{ p.total_purchase_amount|floatformat:0 }}</td>
+                            <td>
+                                <span class="status-badge status-{{ p.status }}">
+                                    {{ p.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'monthly_plan_detail' p.id %}" class="btn btn-outline-primary" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if p.status != 'completed' and p.status != 'cancelled' and p.is_latest %}
+                                    <a href="{% url 'monthly_plan_edit' p.id %}" class="btn btn-outline-warning" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- ========================================== -->
+    <!-- PLAN FORM                                   -->
+    <!-- ========================================== -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <h6 class="mb-0">
+                <i class="bi bi-{% if latest_plan %}pencil{% else %}plus-circle{% endif %} me-2"></i>
+                {% if latest_plan %}
+                    Update Plan v{{ latest_plan.version }} OR Create New Version
+                {% else %}
+                    Create New Plan for {{ selected_month|date:"F Y" }}
+                {% endif %}
+            </h6>
+        </div>
+        <div class="card-body">
+            
+            {% if latest_plan %}
+            <div class="info-box">
+                <i class="bi bi-info-circle text-primary me-2"></i>
+                <strong>Current Plan:</strong> v{{ latest_plan.version }} ({{ latest_plan.plan_no }})
+                <br>
+                <small class="text-muted">
+                    <strong>Update Plan:</strong> Existing plan update karein (same version)
+                    <br>
+                    <strong>Create New Version:</strong> Create a new version (the old version stays saved)
+                </small>
+            </div>
+            {% endif %}
+            
+            <form method="post" id="planForm">
+                {% csrf_token %}
+                
+                <div class="row g-3">
+                    
+                    <!-- Warehouse -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">🏭 Warehouse</label>
+                        <select name="warehouse" class="form-select" id="warehouseSelect">
+                            <option value="">Select Warehouse</option>
+                            {% for w in warehouses %}
+                            <option value="{{ w.id }}" {% if latest_plan and latest_plan.warehouse_id == w.id %}selected{% endif %}>
+                                {{ w.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Product -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">📦 Product</label>
+                        <select name="product" class="form-select" id="productSelect">
+                            <option value="">Select Product</option>
+                            {% for p in products %}
+                            <option value="{{ p.id }}" {% if latest_plan and latest_plan.product_id == p.id %}selected{% endif %}>
+                                {{ p.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Sale Qty -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">
+                            🎯 Sale Qty
+                        </label>
+                        <input type="number" 
+                               name="expected_sales_quantity" 
+                               class="form-control form-control-lg" 
+                               value="{{ latest_plan.expected_sales_quantity|default:0 }}" 
+                               id="expectedQty" 
+                               placeholder="e.g., 100">
+                        <small class="text-muted" style="font-size:0.7rem;">
+                            Sales to be achieved
+                        </small>
+                    </div>
+                    
+                    <!-- Purchase Qty - AUTO -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">
+                            🛒 Purchase Qty
+                            <span class="auto-badge">AUTO</span>
+                        </label>
+                        <input type="number" 
+                               name="purchase_quantity" 
+                               class="form-control form-control-lg auto-qty-field" 
+                               value="{{ latest_plan.purchase_quantity|default:0 }}" 
+                               id="purchaseQty"
+                               readonly>
+                        <small class="calc-hint" id="purchaseQtyHint">
+                            = Sale Qty - Available Stock
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- 🤖 AI ANALYZE BUTTON -->
+                <div class="mt-3 d-flex align-items-center gap-3 flex-wrap">
+                    <button type="button" 
+                            class="btn-run-ai" 
+                            id="btnRunAI" 
+                            onclick="runAIAnalysis()">
+                        <i class="bi bi-robot"></i>
+                        <span>🤖 Run AI Analysis</span>
+                    </button>
+                    <span class="text-muted small">
+                        <i class="bi bi-info-circle"></i>
+                        AI will suggest optimal purchase quantity with confidence score
+                    </span>
+                </div>
+                
+                <div class="row g-3 mt-2">
+                    <!-- Unit Price -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">💰 Unit Price</label>
+                        <input type="number" 
+                               name="purchase_price_per_unit" 
+                               class="form-control form-control-lg" 
+                               value="{{ latest_plan.purchase_price_per_unit|default:0 }}" 
+                               id="purchasePrice" 
+                               placeholder="e.g., 5000">
+                        <small class="text-muted" style="font-size:0.7rem;">
+                            Per unit price
+                        </small>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">📝 Notes</label>
+                        <input type="text" 
+                               name="notes" 
+                               class="form-control form-control-lg" 
+                               value="{{ latest_plan.notes|default:'' }}"
+                               placeholder="Additional notes...">
+                    </div>
+                </div>
+                
+                <!-- ========================================== -->
+                <!-- LIVE CALCULATION SUMMARY BOX                -->
+                <!-- ========================================== -->
+                <div class="summary-box mt-4 p-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-3 summary-item">
+                            <small>🎯 Sale Qty</small>
+                            <h5 class="text-primary" id="summarySaleQty">0</h5>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <i class="bi bi-dash-circle fs-3 text-secondary"></i>
+                        </div>
+                        <div class="col-md-3 summary-item">
+                            <small>📦 Available Stock</small>
+                            <h5 class="text-success" id="summaryStock">0</h5>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <i class="bi bi-equals fs-3 text-secondary"></i>
+                        </div>
+                        <div class="col-md-2 summary-item">
+                            <small>🛒 Purchase Qty</small>
+                            <h5 class="text-danger" id="summaryPurchase">0</h5>
+                        </div>
+                        <div class="col-md-2 summary-item">
+                            <small>💰 Total Amount</small>
+                            <h5 class="text-dark" id="summaryAmount">Rs. 0</h5>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ========================================== -->
+                <!-- 🤖 AI ANALYSIS PANEL                        -->
+                <!-- ========================================== -->
+                <div id="aiAnalysisPanel" style="display:none;">
+                    <div class="ai-panel">
+                        <div class="ai-panel-header">
+                            <h5>
+                                <span class="ai-brain-icon">🤖</span>
+                                <span>AI Purchase Analysis</span>
+                            </h5>
+                            <button type="button" 
+                                    class="btn btn-sm btn-light" 
+                                    onclick="closeAIPanel()"
+                                    style="border-radius: 20px;">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="ai-panel-body" id="aiAnalysisContent">
+                            <!-- Content loaded via AJAX -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ========================================== -->
+                <!-- INVESTOR REQUIREMENTS - LIVE                -->
+                <!-- ========================================== -->
+                <div class="card mt-3" id="investorCard" style="display:none;background:linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);border:none;">
+                    <div class="card-header" style="background:transparent;border-bottom:2px solid rgba(0,0,0,0.1);">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bi bi-people me-2"></i> Investor Requirements (Live)
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3" id="investorContent">
+                            <div class="col-md-3 text-center">
+                                <small class="text-muted d-block">Total Purchase</small>
+                                <h5 class="text-primary mb-0" id="investTotalPurchase">Rs. 0</h5>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <small class="text-muted d-block">Existing Investment</small>
+                                <h5 class="text-info mb-0" id="investExisting">Rs. 0</h5>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <small class="text-muted d-block">Additional Needed</small>
+                                <h5 class="text-warning mb-0" id="investAdditional">Rs. 0</h5>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <small class="text-muted d-block">Additional Investors</small>
+                                <h5 class="text-success mb-0" id="investInvestors">0</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ========================================== -->
+                <!-- RISK ASSESSMENT CARD                        -->
+                <!-- ========================================== -->
+                <div class="card mt-3" id="riskCard" style="display:none;border:none;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+                    <div class="card-header" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;">
+                        <h6 class="mb-0 fw-bold">
+                            <i class="bi bi-shield-check me-2"></i> 🎯 Risk Assessment (Live)
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        
+                        <!-- Risk Score Circle -->
+                        <div class="risk-circle-container">
+                            <div id="riskCircle" class="risk-circle" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                <div class="risk-circle-inner">
+                                    <div id="riskScore" class="risk-score-value">0</div>
+                                    <div class="risk-score-label">/ 100</div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <span id="riskCategory" class="risk-category-badge" style="background:#10b981;">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Factors Breakdown -->
+                        <div class="mb-3">
+                            <h6 class="fw-bold mb-3">
+                                <i class="bi bi-bar-chart me-2"></i> Risk Factors
+                            </h6>
+                            <div id="riskFactors"></div>
+                        </div>
+                        
+                        <!-- Positives -->
+                        <div id="riskPositives" class="mb-3"></div>
+                        
+                        <!-- Alerts -->
+                        <div id="riskAlerts" class="mb-3"></div>
+                        
+                        <!-- Recommendation -->
+                        <div id="riskRecommendation"></div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Hidden field for available stock -->
+                <input type="hidden" id="availableStock" value="{{ latest_plan.available_stock|default:0 }}">
+                
+                <!-- ACTION BUTTONS -->
+                <div class="mt-4 d-flex gap-2 flex-wrap">
+                    <button type="submit" name="action" value="save" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save"></i> 
+                        {% if latest_plan %}Update Plan v{{ latest_plan.version }}{% else %}Save Plan{% endif %}
+                    </button>
+                    
+                    {% if latest_plan %}
+                    <button type="submit" name="action" value="create_new" class="btn btn-success btn-lg" 
+                            onclick="return confirm('Create new version?')">
+                        <i class="bi bi-plus-circle"></i> Create New Version
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ============================================
+// CONSTANTS FROM BACKEND
+// ============================================
+const EXISTING_INVESTMENT = parseFloat("{{ total_balance|default:0 }}") || 0;
+const CURRENT_INVESTORS = parseInt("{{ total_investors|default:0 }}") || 0;
+const AVG_INVESTMENT = 10000;
+
+// ============================================
+// 🤖 AI ANALYSIS - GLOBAL VARIABLES
+// ============================================
+let currentAIData = null;
+
+// ============================================
+// CHECK STOCK
+// ============================================
+function checkStock() {
+    const productId = document.getElementById('productSelect').value;
+    const warehouseId = document.getElementById('warehouseSelect').value;
+    const requiredQty = parseFloat(document.getElementById('expectedQty').value) || 0;
+    
+    if (!productId || !warehouseId) {
+        document.getElementById('availableStock').value = 0;
+        autoCalculatePurchaseQty();
+        return;
+    }
+    
+    fetch(`/api/check-stock-for-plan/?product_id=${productId}&warehouse_id=${warehouseId}&required_qty=${requiredQty}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('availableStock').value = data.available_stock;
+                autoCalculatePurchaseQty();
+            }
+        })
+        .catch(error => {
+            console.error('Stock check error:', error);
+            document.getElementById('availableStock').value = 0;
+            autoCalculatePurchaseQty();
+        });
+}
+
+// ============================================
+// AUTO CALCULATE PURCHASE QUANTITY
+// ============================================
+function autoCalculatePurchaseQty() {
+    const expectedQty = parseFloat(document.getElementById('expectedQty').value) || 0;
+    const availableStock = parseFloat(document.getElementById('availableStock').value) || 0;
+    
+    let purchaseQty = expectedQty - availableStock;
+    if (purchaseQty < 0) purchaseQty = 0;
+    purchaseQty = Math.round(purchaseQty);
+    
+    document.getElementById('purchaseQty').value = purchaseQty;
+    
+    const hint = document.getElementById('purchaseQtyHint');
+    if (hint) {
+        hint.innerHTML = `${expectedQty} - ${availableStock.toFixed(0)} = <b>${purchaseQty}</b>`;
+    }
+    
+    document.getElementById('summarySaleQty').textContent = expectedQty;
+    document.getElementById('summaryStock').textContent = availableStock.toFixed(0);
+    document.getElementById('summaryPurchase').textContent = purchaseQty;
+    
+    updateAmount();
+    updateInvestorRequirements(purchaseQty);
+    
+    // Risk Assessment Calculate
+    setTimeout(calculateRiskAssessment, 500);
+    
+    return purchaseQty;
+}
+
+// ============================================
+// UPDATE AMOUNT
+// ============================================
+function updateAmount() {
+    const purchaseQty = parseFloat(document.getElementById('purchaseQty').value) || 0;
+    const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+    const total = purchaseQty * price;
+    
+    document.getElementById('summaryAmount').textContent = 'Rs. ' + total.toLocaleString('en-PK', {maximumFractionDigits: 0});
+}
+
+// ============================================
+// UPDATE INVESTOR REQUIREMENTS
+// ============================================
+function updateInvestorRequirements(purchaseQty) {
+    const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+    
+    if (purchaseQty <= 0 || price <= 0) {
+        document.getElementById('investorCard').style.display = 'none';
+        return;
+    }
+    
+    const totalPurchase = purchaseQty * price;
+    const additionalNeeded = Math.max(0, totalPurchase - EXISTING_INVESTMENT);
+    const requiredInvestors = Math.ceil(totalPurchase / AVG_INVESTMENT);
+    const additionalInvestors = Math.max(0, requiredInvestors - CURRENT_INVESTORS);
+    
+    document.getElementById('investTotalPurchase').textContent = 'Rs. ' + totalPurchase.toLocaleString('en-PK', {maximumFractionDigits: 0});
+    document.getElementById('investExisting').textContent = 'Rs. ' + EXISTING_INVESTMENT.toLocaleString('en-PK', {maximumFractionDigits: 0});
+    document.getElementById('investAdditional').textContent = 'Rs. ' + additionalNeeded.toLocaleString('en-PK', {maximumFractionDigits: 0});
+    document.getElementById('investInvestors').textContent = additionalInvestors;
+    
+    document.getElementById('investorCard').style.display = 'block';
+}
+
+// ============================================
+// RISK ASSESSMENT
+// ============================================
+function calculateRiskAssessment() {
+    const productId = document.getElementById('productSelect').value;
+    const warehouseId = document.getElementById('warehouseSelect').value;
+    const saleQty = parseFloat(document.getElementById('expectedQty').value) || 0;
+    const purchaseQty = parseFloat(document.getElementById('purchaseQty').value) || 0;
+    const unitPrice = parseFloat(document.getElementById('purchasePrice').value) || 0;
+    
+    if (!productId || !warehouseId || purchaseQty <= 0 || unitPrice <= 0) {
+        document.getElementById('riskCard').style.display = 'none';
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('riskScore').textContent = '...';
+    document.getElementById('riskCard').style.display = 'block';
+    
+    fetch(`/api/risk-assessment/?product_id=${productId}&warehouse_id=${warehouseId}&sale_qty=${saleQty}&purchase_qty=${purchaseQty}&unit_price=${unitPrice}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayRiskAssessment(data);
+            } else {
+                document.getElementById('riskCard').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Risk assessment error:', error);
+            document.getElementById('riskCard').style.display = 'none';
+        });
+}
+
+function displayRiskAssessment(data) {
+    const circle = document.getElementById('riskCircle');
+    const score = document.getElementById('riskScore');
+    const category = document.getElementById('riskCategory');
+    
+    // Update score
+    score.textContent = data.score;
+    
+    // Colors
+    const colors = {
+        'success': 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        'warning': 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        'danger': 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        'info': 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+    };
+    
+    const bgColors = {
+        'success': '#10b981',
+        'warning': '#f59e0b',
+        'danger': '#ef4444',
+        'info': '#3b82f6',
+    };
+    
+    circle.style.background = colors[data.color] || colors['info'];
+    
+    // Update category
+    category.textContent = data.category;
+    category.style.background = bgColors[data.color] || '#3b82f6';
+    
+    // Display factors
+    let factorsHtml = '';
+    if (data.factors) {
+        for (const [key, factor] of Object.entries(data.factors)) {
+            const percent = (factor.score / factor.max_score) * 100;
+            const barColor = factor.color === 'success' ? '#10b981' :
+                            factor.color === 'warning' ? '#f59e0b' :
+                            factor.color === 'danger' ? '#ef4444' : '#3b82f6';
+            
+            factorsHtml += `
+                <div class="risk-factor-row">
+                    <div class="risk-factor-header">
+                        <small class="fw-bold">${factor.name}</small>
+                        <small class="text-muted">${factor.value} - ${factor.status}</small>
+                    </div>
+                    <div class="risk-factor-bar">
+                        <div class="risk-factor-bar-fill" style="width:${percent}%;background:${barColor};"></div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    document.getElementById('riskFactors').innerHTML = factorsHtml;
+    
+    // Display positives
+    if (data.positives && data.positives.length > 0) {
+        let positivesHtml = '<div class="alert alert-success py-2 mb-0">';
+        positivesHtml += '<strong>✅ Good Points:</strong><ul class="mb-0 mt-1" style="font-size:0.85rem;">';
+        data.positives.forEach(p => {
+            positivesHtml += `<li>${p}</li>`;
+        });
+        positivesHtml += '</ul></div>';
+        document.getElementById('riskPositives').innerHTML = positivesHtml;
+    } else {
+        document.getElementById('riskPositives').innerHTML = '';
+    }
+    
+    // Display alerts
+    if (data.alerts && data.alerts.length > 0) {
+        let alertsHtml = '<div class="alert alert-warning py-2 mb-0">';
+        alertsHtml += '<strong>⚠️ Watch Out:</strong><ul class="mb-0 mt-1" style="font-size:0.85rem;">';
+        data.alerts.forEach(a => {
+            alertsHtml += `<li>${a}</li>`;
+        });
+        alertsHtml += '</ul></div>';
+        document.getElementById('riskAlerts').innerHTML = alertsHtml;
+    } else {
+        document.getElementById('riskAlerts').innerHTML = '';
+    }
+    
+    // Display recommendation
+    if (data.recommendation) {
+        const action = data.recommendation.action;
+        let boxClass = 'safe';
+        if (action === 'SPLIT_PURCHASE' || action === 'PURCHASE_CAUTION') {
+            boxClass = 'caution';
+        } else if (action === 'WAIT' || action === 'DO_NOT_PURCHASE') {
+            boxClass = 'danger';
+        }
+        
+        let recHtml = `
+            <div class="recommendation-box ${boxClass}">
+                <div class="recommendation-title">${data.recommendation.title}</div>
+                <p class="mb-0 small">${data.recommendation.message}</p>
+                <div class="action-steps">
+                    <strong class="small">📋 Action Steps:</strong>
+                    <ol class="mb-0">
+        `;
+        data.recommendation.steps.forEach(step => {
+            recHtml += `<li>${step}</li>`;
+        });
+        recHtml += '</ol></div></div>';
+        document.getElementById('riskRecommendation').innerHTML = recHtml;
+    }
+}
+
+// ============================================
+// 🤖 AI ANALYSIS FUNCTIONS
+// ============================================
+function runAIAnalysis() {
+    const productId = document.getElementById('productSelect').value;
+    const warehouseId = document.getElementById('warehouseSelect').value;
+    
+    if (!productId) {
+        alert('⚠️ Please select a product first!');
+        return;
+    }
+    
+    if (!warehouseId) {
+        alert('⚠️ Please select a warehouse first!');
+        return;
+    }
+    
+    // Show panel with loading
+    const panel = document.getElementById('aiAnalysisPanel');
+    const content = document.getElementById('aiAnalysisContent');
+    const btn = document.getElementById('btnRunAI');
+    
+    panel.style.display = 'block';
+    content.innerHTML = `
+        <div class="ai-loading">
+            <div class="ai-loading-spinner"></div>
+            <h5 class="mt-3">🤖 AI Analyzing...</h5>
+            <p class="text-muted">Running 12 diagnostic engines</p>
+            <small class="text-muted">This may take a few seconds...</small>
+        </div>
+    `;
+    
+    // Disable button
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Analyzing...';
+    
+    // Scroll to panel
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Fetch AI analysis
+    fetch(`/ai/purchase-analysis/?product_id=${productId}&warehouse_id=${warehouseId}`)
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-robot"></i> <span>🤖 Run AI Analysis</span>';
+            
+            if (data.success) {
+                currentAIData = data;
+                renderAIAnalysis(data);
+            } else {
+                content.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>❌ AI Analysis Failed</h6>
+                        <p class="mb-0">${data.message || 'Unknown error'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-robot"></i> <span>🤖 Run AI Analysis</span>';
+            content.innerHTML = `
+                <div class="alert alert-danger">
+                    <h6>❌ Error</h6>
+                    <p class="mb-0">${err}</p>
+                </div>
+            `;
+        });
+}
+
+function renderAIAnalysis(data) {
+    const content = document.getElementById('aiAnalysisContent');
+    
+    // ✅ SAFE NUMBER CONVERSION - FIX FOR toFixed ERROR
+    const confidenceScore = parseFloat(data.confidence_score) || 0;
+    const avgDailySales = parseFloat(data.avg_daily_sales) || 0;
+    const salesTrend = parseFloat(data.sales_trend) || 0;
+    const unitCost = parseFloat(data.unit_cost) || 0;
+    const estimatedCost = parseFloat(data.estimated_cost) || 0;
+    const cashAfter = parseFloat(data.cash_after) || 0;
+    const cashBefore = parseFloat(data.cash_before) || 0;
+    const marginPercentage = parseFloat(data.margin_percentage) || 0;
+    const stockCoverageDays = parseInt(data.stock_coverage_days) || 0;
+    const currentStock = parseInt(data.current_stock) || 0;
+    const suggestedQuantity = parseInt(data.suggested_quantity) || 0;
+    const minQuantity = parseInt(data.min_quantity) || 0;
+    const maxQuantity = parseInt(data.max_quantity) || 0;
+    
+    // Confidence badge class
+    let confidenceClass = 'low';
+    let confidenceEmoji = '🔴';
+    if (confidenceScore >= 85) {
+        confidenceClass = 'high';
+        confidenceEmoji = '🟢';
+    } else if (confidenceScore >= 60) {
+        confidenceClass = 'medium';
+        confidenceEmoji = '🟡';
+    }
+    
+    // Risk color
+    const riskColor = data.risk_level === 'safe' ? 'success' :
+                     data.risk_level === 'warning' ? 'warning' : 'danger';
+    
+    // ==========================================
+    // BUILD HTML
+    // ==========================================
+    let html = '';
+    
+    // ==========================================
+    // 1. CONFIDENCE + RISK HEADER
+    // ==========================================
+    html += `
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="text-center">
+                    <div class="ai-confidence-badge ${confidenceClass}">
+                        <span style="font-size: 1.5rem;">${confidenceEmoji}</span>
+                        <span>Confidence: ${confidenceScore.toFixed(1)}%</span>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            ${(data.confidence_level || 'low').toUpperCase()} • Based on ${(data.reasoning || []).length} factors
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-center">
+                    <div class="ai-confidence-badge" style="background: linear-gradient(135deg, ${riskColor === 'success' ? '#10b981, #059669' : riskColor === 'warning' ? '#f59e0b, #d97706' : '#ef4444, #dc2626'});">
+                        <span style="font-size: 1.5rem;">${riskColor === 'success' ? '✅' : riskColor === 'warning' ? '⚠️' : '🚨'}</span>
+                        <span>Risk: ${(data.risk_level || 'safe').toUpperCase()}</span>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            ${(data.risk_factors || []).length} risk factor(s) detected
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // ==========================================
+    // 2. SUGGESTED QUANTITY - BIG BOX
+    // ==========================================
+    html += `
+        <div class="ai-quantity-box">
+            <div class="ai-quantity-label">🎯 AI Suggested Quantity</div>
+            <div class="ai-quantity-value">${suggestedQuantity}</div>
+            <div class="ai-quantity-range">
+                <i class="bi bi-arrow-left-right"></i>
+                Range: <strong>${minQuantity}</strong> to <strong>${maxQuantity}</strong> units
+                ${data.is_urgent ? '<span class="badge bg-danger ms-2">🚨 URGENT</span>' : ''}
+            </div>
+        </div>
+    `;
+    
+    // ==========================================
+    // 3. KEY METRICS GRID
+    // ==========================================
+    html += `
+        <div class="row g-2 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="ai-metric-card">
+                    <div class="ai-metric-label">Daily Sales</div>
+                    <div class="ai-metric-value text-primary">${avgDailySales.toFixed(1)}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="ai-metric-card">
+                    <div class="ai-metric-label">Current Stock</div>
+                    <div class="ai-metric-value text-success">${currentStock}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="ai-metric-card">
+                    <div class="ai-metric-label">Stock Coverage</div>
+                    <div class="ai-metric-value text-info">${stockCoverageDays}d</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="ai-metric-card">
+                    <div class="ai-metric-label">Sales Trend</div>
+                    <div class="ai-metric-value ${salesTrend > 0 ? 'text-success' : salesTrend < 0 ? 'text-danger' : 'text-secondary'}">
+                        ${salesTrend > 0 ? '↑' : salesTrend < 0 ? '↓' : '→'} ${Math.abs(salesTrend).toFixed(1)}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // ==========================================
+    // 4. FINANCIAL IMPACT
+    // ==========================================
+    html += `
+        <div class="ai-section">
+            <div class="ai-section-title">💰 Financial Impact</div>
+            <div class="row g-2">
+                <div class="col-6 col-md-3">
+                    <div class="ai-metric-card">
+                        <div class="ai-metric-label">Unit Cost</div>
+                        <div class="ai-metric-value" style="font-size: 1rem;">Rs. ${unitCost.toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="ai-metric-card">
+                        <div class="ai-metric-label">Total Cost</div>
+                        <div class="ai-metric-value text-danger" style="font-size: 1rem;">Rs. ${estimatedCost.toLocaleString()}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="ai-metric-card">
+                        <div class="ai-metric-label">Cash After</div>
+                        <div class="ai-metric-value ${cashAfter < 0 ? 'text-danger' : 'text-success'}" style="font-size: 1rem;">
+                            Rs. ${cashAfter.toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="ai-metric-card">
+                        <div class="ai-metric-label">Profit Margin</div>
+                        <div class="ai-metric-value ${marginPercentage > 15 ? 'text-success' : marginPercentage > 8 ? 'text-warning' : 'text-danger'}" style="font-size: 1rem;">
+                            ${marginPercentage.toFixed(1)}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // ==========================================
+    // 5. CASH WARNING (if needed)
+    // ==========================================
+    if (cashAfter < 0) {
+        html += `
+            <div class="ai-cash-warning">
+                <h6>🚨 CASH SHORTAGE WARNING!</h6>
+                <p class="mb-0">
+                    Cash will go <strong>NEGATIVE</strong> after this purchase!
+                    <br>
+                    <strong>Available:</strong> Rs. ${cashBefore.toLocaleString()}
+                    <br>
+                    <strong>Required:</strong> Rs. ${estimatedCost.toLocaleString()}
+                    <br>
+                    <strong>Shortage:</strong> Rs. ${Math.abs(cashAfter).toLocaleString()}
+                </p>
+            </div>
+        `;
+    }
+    
+    // ==========================================
+    // 6. AI REASONING
+    // ==========================================
+    if (data.reasoning && data.reasoning.length > 0) {
+        html += `
+            <div class="ai-section">
+                <div class="ai-section-title">🧠 AI Reasoning</div>
+                <ul class="ai-reasoning-list">
+                    ${data.reasoning.map(r => `<li>${r}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    // ==========================================
+    // 7. WARNINGS
+    // ==========================================
+    if (data.warnings && data.warnings.length > 0) {
+        html += `
+            <div class="ai-warning-box">
+                <h6>⚠️ Warnings</h6>
+                <ul class="mb-0">
+                    ${data.warnings.map(w => `<li>${w}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    // ==========================================
+    // 8. OPPORTUNITIES
+    // ==========================================
+    if (data.opportunities && data.opportunities.length > 0) {
+        html += `
+            <div class="ai-opportunity-box">
+                <h6>🎯 Opportunities Detected</h6>
+                ${data.opportunities.map(o => `
+                    <div class="opp-item">
+                        <div class="opp-title">${o.title}</div>
+                        <div class="opp-desc">${o.description}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // ==========================================
+    // 9. HISTORICAL SALES CHART (mini)
+    // ==========================================
+    if (data.historical_sales && data.historical_sales.length > 0) {
+        const historicalQtyValues = data.historical_sales.map(h => parseFloat(h.qty) || 0);
+        const maxQty = Math.max(...historicalQtyValues);
+        
+        html += `
+            <div class="ai-section">
+                <div class="ai-section-title">📊 Sales History (Last ${data.historical_sales.length} months)</div>
+                <div class="ai-history-bars">
+                    ${data.historical_sales.map(h => {
+                        const qty = parseFloat(h.qty) || 0;
+                        const height = maxQty > 0 ? (qty / maxQty) * 60 : 10;
+                        return `
+                            <div class="ai-history-bar" style="height: ${height}px;" title="${h.month}: ${qty} units">
+                                <div class="ai-history-bar-label">${h.month.slice(-2)}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div style="height: 25px;"></div>
+            </div>
+        `;
+    }
+    
+    // ==========================================
+    // 10. ACTION BUTTONS
+    // ==========================================
+    html += `
+        <div class="d-flex gap-2 mt-4 flex-wrap">
+            <button type="button" 
+                    class="ai-action-btn accept" 
+                    onclick="acceptAISuggestion(${suggestedQuantity})">
+                <i class="bi bi-check-circle"></i>
+                ✅ Accept (${suggestedQuantity} units)
+            </button>
+            <button type="button" 
+                    class="ai-action-btn apply" 
+                    onclick="applyAIToForm()">
+                <i class="bi bi-magic"></i>
+                🎯 Apply to Form
+            </button>
+            <button type="button" 
+                    class="ai-action-btn close" 
+                    onclick="closeAIPanel()">
+                <i class="bi bi-x-circle"></i>
+                Close
+            </button>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+}
+
+// ============================================
+// ACCEPT AI SUGGESTION
+// ============================================
+function acceptAISuggestion(quantity) {
+    if (!currentAIData) return;
+    
+    // ✅ SAFE NUMBER
+    const qty = parseInt(quantity) || 0;
+    
+    if (!confirm(`✅ Accept AI suggestion of ${qty} units?`)) return;
+    
+    // Apply to form
+    document.getElementById('expectedQty').value = qty;
+    
+    // Recalculate
+    autoCalculatePurchaseQty();
+    
+    // Show success
+    const content = document.getElementById('aiAnalysisContent');
+    const successMsg = document.createElement('div');
+    successMsg.className = 'alert alert-success mt-3';
+    successMsg.innerHTML = `
+        <i class="bi bi-check-circle-fill"></i>
+        <strong>✅ AI suggestion applied!</strong>
+        Sale quantity set to ${qty} units.
+    `;
+    content.insertBefore(successMsg, content.firstChild);
+}
+
+// ============================================
+// APPLY AI TO FORM
+// ============================================
+function applyAIToForm() {
+    if (!currentAIData) return;
+    
+    // ✅ SAFE NUMBER
+    const qty = parseInt(currentAIData.suggested_quantity) || 0;
+    
+    // Set sale qty
+    document.getElementById('expectedQty').value = qty;
+    
+    // Recalculate
+    autoCalculatePurchaseQty();
+    
+    // Scroll to form
+    document.getElementById('planForm').scrollIntoView({ behavior: 'smooth' });
+    
+    alert('✅ AI suggestion applied to form!');
+}
+
+// ============================================
+// CLOSE AI PANEL
+// ============================================
+function closeAIPanel() {
+    document.getElementById('aiAnalysisPanel').style.display = 'none';
+    currentAIData = null;
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const productSelect = document.getElementById('productSelect');
+    const warehouseSelect = document.getElementById('warehouseSelect');
+    const expectedQty = document.getElementById('expectedQty');
+    const purchasePrice = document.getElementById('purchasePrice');
+    
+    // Product/Warehouse change → Stock check + Close AI panel
+    productSelect.addEventListener('change', function() {
+        checkStock();
+        closeAIPanel();
+    });
+    
+    warehouseSelect.addEventListener('change', function() {
+        checkStock();
+        closeAIPanel();
+    });
+    
+    // Sale Qty change → Auto calculate
+    expectedQty.addEventListener('input', function() {
+        autoCalculatePurchaseQty();
+    });
+    
+    // Price change → Update amount + investor + risk
+    purchasePrice.addEventListener('input', function() {
+        updateAmount();
+        const purchaseQty = parseFloat(document.getElementById('purchaseQty').value) || 0;
+        updateInvestorRequirements(purchaseQty);
+        setTimeout(calculateRiskAssessment, 500);
+    });
+    
+    // Initial calculation
+    const initialStock = parseFloat(document.getElementById('availableStock').value) || 0;
+    const initialSaleQty = parseFloat(expectedQty.value) || 0;
+    
+    if (initialStock > 0 || initialSaleQty > 0) {
+        autoCalculatePurchaseQty();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Coupons & Offers{% endblock %}
+{% block page_title %}🏷️ Coupons &amp; Offers{% endblock %}
+
+{% block extra_css %}
+<style>
+  .cp-stat { border: 0; border-radius: 14px; padding: 14px 16px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+  .cp-stat .n { font-size: 26px; font-weight: 800; line-height: 1; }
+  .cp-stat .l { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; margin-top: 4px; }
+  .cp-row { background: #fff; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 14px; display: flex; gap: 16px; align-items: center; margin-bottom: 12px; }
+  .cp-row.is-dim { opacity: .65; }
+  .cp-code { flex: 0 0 190px; text-align: center; border: 2px dashed #7c3aed; border-radius: 12px; padding: 10px 8px; background: #f5f3ff; }
+  .cp-code b { font-size: 18px; letter-spacing: 1px; color: #5b21b6; display: block; }
+  .cp-code small { color: #6d28d9; font-weight: 700; }
+  .cp-info { flex: 1; min-width: 0; }
+  .cp-meta { font-size: 13px; color: #6b7280; display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+  .cp-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+  .cp-acts form { margin: 0; }
+  .cp-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; }
+  .cp-live { background: #d4edda; color: #155724; }
+  .cp-scheduled { background: #dbeafe; color: #1e40af; }
+  .cp-expired { background: #f3f4f6; color: #4b5563; }
+  .cp-used_up { background: #fef3c7; color: #92400e; }
+  .cp-off { background: #fee2e2; color: #991b1b; }
+  .cp-empty { background: #fff; border-radius: 18px; text-align: center; padding: 50px 20px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+  @media (max-width: 768px) {
+    .cp-row { flex-direction: column; align-items: stretch; }
+    .cp-code { flex-basis: auto; }
+    .cp-acts { justify-content: flex-start; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+      <h5 class="mb-0">Promo codes</h5>
+      <small class="text-muted">Customer cart/checkout mein code likhta hai. Store wale coupon ka badge Stores page par dikhta hai.</small>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'store_list' %}?offers=1" target="_blank" class="btn btn-outline-secondary">👁️ Offers dekhein</a>
+      <a href="{% url 'coupon_create' %}" class="btn btn-primary">➕ Add Coupon</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md"><div class="cp-stat"><div class="n text-success">{{ counts.live }}</div><div class="l">Live</div></div></div>
+    <div class="col-6 col-md"><div class="cp-stat"><div class="n text-primary">{{ counts.scheduled }}</div><div class="l">Scheduled</div></div></div>
+    <div class="col-6 col-md"><div class="cp-stat"><div class="n text-secondary">{{ counts.expired }}</div><div class="l">Expired</div></div></div>
+    <div class="col-6 col-md"><div class="cp-stat"><div class="n text-warning">{{ counts.used_up }}</div><div class="l">Used up</div></div></div>
+    <div class="col-6 col-md"><div class="cp-stat"><div class="n text-danger">{{ counts.off }}</div><div class="l">Off</div></div></div>
+  </div>
+
+  {% if coupons %}
+    {% for c in coupons %}
+    <div class="cp-row {% if c.state != 'live' %}is-dim{% endif %}">
+      <div class="cp-code"><b>{{ c.code }}</b><small>{{ c.badge }}</small></div>
+      <div class="cp-info">
+        <span class="cp-badge cp-{{ c.state }}">{% if c.state == 'used_up' %}Used up{% else %}{{ c.state|capfirst }}{% endif %}</span>
+        <strong class="ms-2">{% if c.store %}{{ c.store.business_name }}{% else %}Har store{% endif %}</strong>
+        <div class="cp-meta">
+          <span>{% if c.discount_type == 'percent' %}{{ c.value|floatformat:"-2" }}%{% if c.max_discount %} (max {{ c.max_discount|floatformat:"-2" }}){% endif %}{% else %}{{ c.value|floatformat:"-2" }} fixed{% endif %}</span>
+          {% if c.min_order %}<span>Min order {{ c.min_order|floatformat:"-2" }}</span>{% endif %}
+          {% if c.first_order_only %}<span>Pehla order</span>{% endif %}
+          <span>Used: {{ c.n_used }}{% if c.usage_limit %} / {{ c.usage_limit }}{% endif %}{% if c.total_off %} &middot; total off {{ c.total_off|floatformat:"-2" }}{% endif %}</span>
+          {% if c.starts_on or c.ends_on %}<span>{{ c.starts_on|default:"abhi se" }} &rarr; {{ c.ends_on|default:"hamesha" }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="cp-acts">
+        <a href="{% url 'coupon_edit' c.pk %}" class="btn btn-sm btn-outline-primary">✏️ Edit</a>
+        <form method="post" action="{% url 'coupon_toggle' c.pk %}">{% csrf_token %}
+          <button class="btn btn-sm btn-outline-secondary">{% if c.is_active %}⏸ Off{% else %}▶ On{% endif %}</button>
+        </form>
+        <form method="post" action="{% url 'coupon_delete' c.pk %}" onsubmit="return confirm('Coupon {{ c.code }} delete karein?');">{% csrf_token %}
+          <button class="btn btn-sm btn-outline-danger">🗑️</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="cp-empty">
+      <div style="font-size:48px;">🏷️</div>
+      <h5 class="mt-2">Abhi koi coupon nahi</h5>
+      <p class="text-muted">Pehla coupon banayein, jaise WELCOME20 (pehle order par 20% off).</p>
+      <a href="{% url 'coupon_create' %}" class="btn btn-primary">➕ Add Coupon</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

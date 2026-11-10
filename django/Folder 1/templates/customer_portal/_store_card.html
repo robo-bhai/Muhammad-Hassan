@@ -1,0 +1,30 @@
+{% load img_tools %}
+      <div class="sd-p {% if p.stock_int <= 0 %}oos{% endif %}{% if p.cart_qty %} has{% endif %}" id="{{ idp|default:'p' }}{{ p.id }}"
+           data-id="{{ p.id }}" data-price="{{ p.final_price|stringformat:'.3f' }}" data-stock="{{ p.stock_int }}">
+        <a class="sd-pimg" href="{% url 'shop_product_detail' p.pk %}">
+          {% if p.image %}<img src="{{ p.image|thumb:480 }}" alt="{{ p.name }}" loading="lazy">{% else %}<div class="ph"></div>{% endif %}
+          {% if p.has_discount and p.stock_int > 0 %}<span class="sd-off">-{{ p.discount_percentage|floatformat:0 }}%</span>{% endif %}
+          {% if p.stock_int <= 0 %}<span class="sd-oos-tag">Out of stock</span>{% endif %}
+        </a>
+        <div class="sd-pb">
+          <a class="sd-pn" href="{% url 'shop_product_detail' p.pk %}">{{ p.name }}</a>
+          {% if p.unit %}<div class="sd-pc">{{ p.unit.name }}</div>{% endif %}
+          <div class="sd-price">{{ currency }} {{ p.final_price|floatformat:0 }}{% if p.old_price %}<span class="sd-old">{{ p.old_price|floatformat:0 }}</span>{% endif %}</div>
+          <div class="sd-act">
+            {% if p.stock_int <= 0 %}
+              <button class="sd-add" disabled>Out of stock</button>
+            {% elif status == 'closed' %}
+              <button class="sd-add" disabled>Store closed</button>
+            {% elif p.has_options %}
+              <a class="sd-add" href="{% url 'shop_product_detail' p.id %}" style="text-decoration:none;text-align:center;"><i class="bi bi-sliders"></i> Options</a>
+            {% else %}
+              <button class="sd-add" type="button" onclick="cartAdd({{ p.id }})"><i class="bi bi-plus-lg"></i> Add</button>
+              <div class="sd-step">
+                <button type="button" onclick="cartSet({{ p.id }}, -1)" aria-label="Kam karein">&minus;</button>
+                <span class="q">{{ p.cart_qty }}</span>
+                <button type="button" class="plus" onclick="cartSet({{ p.id }}, 1)" aria-label="Zyada karein">+</button>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
