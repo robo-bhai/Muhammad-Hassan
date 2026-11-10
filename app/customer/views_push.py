@@ -16,16 +16,32 @@ self.addEventListener('push', function (event) {
   var data = {};
   try { data = event.data ? event.data.json() : {}; }
   catch (err) { data = {title: 'Notification', body: event.data ? event.data.text() : ''}; }
-  event.waitUntil(self.registration.showNotification(data.title || 'Notification', {
+  var actions = (data.actions || []).slice(0, 2).map(function (a) { return {action: a.action, title: a.title}; });
+  var opts = {
     body: data.body || '',
-    data: {url: data.url || '/shop/'},
-    tag: data.url || undefined
-  }));
+    icon: data.icon || undefined,              // company logo (portal ke rang mein)
+    badge: data.badge || undefined,            // status bar ka chhota monochrome icon
+    data: {url: data.url || '/shop/', actions: data.actions || []},
+    tag: data.url || undefined,                // same order ka naya status purane ko replace karta hai
+    renotify: !!data.url,                      // ... aur phone phir vibrate karta hai
+    vibrate: [120, 60, 120],
+    timestamp: Date.now()
+  };
+  if (actions.length) opts.actions = actions;
+  event.waitUntil(self.registration.showNotification(data.title || 'Notification', opts));
 });
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
-  var url = (event.notification.data && event.notification.data.url) || '/shop/';
+  var d = event.notification.data || {};
+  var url = d.url || '/shop/';
+  if (event.action) {                          // neeche wala button dabaya gaya
+    var list = d.actions || [];
+    for (var j = 0; j < list.length; j++) {
+      var u = list[j].url || '';
+      if (list[j].action === event.action && u.charAt(0) === '/' && u.charAt(1) !== '/' && u.indexOf('\\') === -1) { url = u; break; }
+    }
+  }
   event.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(function (list) {
     for (var i = 0; i < list.length; i++) {
       if (list[i].url.indexOf(url) !== -1 && 'focus' in list[i]) return list[i].focus();

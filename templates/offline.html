@@ -2,25 +2,117 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0d6efd">
-<title>Offline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d6efd" id="themeMeta">
+<title>Offline - {{ brand_name }}</title>
 <style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f4f6fb;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1f2937;text-align:center;padding:24px}
-  .box{max-width:360px}
-  .ic{font-size:64px}
-  h1{font-size:22px;margin:12px 0 6px}
-  p{color:#6b7280;margin:0 0 20px;line-height:1.5}
-  button{background:#0d6efd;color:#fff;border:0;border-radius:10px;padding:12px 24px;font-size:16px;cursor:pointer}
+  :root { --c: #0d6efd; --bg: #f4f6fb; --card: #ffffff; --tx: #1f2937; --mut: #6b7280; --line: #e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f172a; --card: #1e293b; --tx: #f1f5f9; --mut: #94a3b8; --line: #334155; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--tx); text-align: center;
+         font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         padding: calc(24px + env(safe-area-inset-top, 0px)) 18px calc(24px + env(safe-area-inset-bottom, 0px));
+         display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .card { width: 100%; max-width: 380px; background: var(--card); border-radius: 22px; padding: 28px 22px 22px;
+          box-shadow: 0 10px 40px rgba(0,0,0,.10); border-top: 6px solid var(--c); }
+  .logo { width: 84px; height: 84px; border-radius: 20px; object-fit: contain; background: #fff; padding: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,.12); margin: -62px auto 10px; display: block; }
+  .ic { font-size: 54px; line-height: 1; margin: 4px 0 6px; }
+  .brand { font-size: 13px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--c); margin: 6px 0 2px; }
+  h1 { font-size: 22px; margin: 6px 0 4px; }
+  .sub { color: var(--mut); margin: 0 0 4px; font-size: 14px; }
+  .msg { color: var(--mut); margin: 10px 0 18px; line-height: 1.5; font-size: 14px; }
+  button { background: var(--c); color: #fff; border: 0; border-radius: 12px; padding: 13px 28px; font-size: 16px;
+           font-weight: 600; cursor: pointer; width: 100%; }
+  button:active { transform: scale(.98); }
+  #saved { margin-top: 18px; text-align: left; display: none; }
+  #saved h2 { font-size: 13px; color: var(--mut); font-weight: 600; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .4px; }
+  #saved a { display: block; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px;
+             color: var(--tx); text-decoration: none; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #saved a:active { background: var(--bg); }
+  .foot { margin-top: 14px; font-size: 12px; color: var(--mut); }
+  #ok { display: none; color: #16a34a; font-weight: 600; margin-top: 12px; }
 </style>
 </head>
 <body>
-  <div class="box">
-    <div class="ic">📡</div>
+  <div class="card">
+    {% if brand_logo %}<img class="logo" src="{{ brand_logo }}" alt="">{% else %}<div class="ic">📡</div>{% endif %}
+    <div class="brand"><span id="brand">{{ brand_name }}</span><span id="pname"></span></div>
     <h1>Internet nahi hai</h1>
-    <p>You are offline. Connection wapas aate hi dobara try karein.</p>
-    <button onclick="location.reload()">Retry</button>
+    <p class="sub">You are offline</p>
+    <p class="msg" id="msg">Connection wapas aate hi ye page khud khul jayega. Tab tak saved pages dekh sakte hain.</p>
+    <button type="button" id="retry">🔄 Retry</button>
+    <div id="ok">✅ Internet wapas aa gaya…</div>
+    <div id="saved"><h2>Saved pages (offline dekh sakte hain)</h2><div id="list"></div></div>
   </div>
-  <script>window.addEventListener('online', function(){ location.reload(); });</script>
+  <div class="foot">Aap ka data safe hai. Nayi cheezein internet aane par update hongi.</div>
+  {{ portals|json_script:"portals-data" }}
+  <script>
+  (function () {
+    var portals = {};
+    try { portals = JSON.parse(document.getElementById('portals-data').textContent); } catch (e) {}
+    // Jis page par jana tha (SW offline page isi URL par dikhata hai) us se portal pehchano.
+    var path = location.pathname, key = 'erp', k;
+    for (k in portals) {
+      var pf = portals[k].prefixes || [];
+      for (var i = 0; i < pf.length; i++) if (path.indexOf(pf[i]) === 0) { key = k; }
+    }
+    var cfg = portals[key];
+    if (cfg) {
+      document.documentElement.style.setProperty('--c', cfg.theme);
+      document.getElementById('themeMeta').setAttribute('content', cfg.theme);
+      if (key !== 'erp') document.getElementById('pname').textContent = ' · ' + cfg.name;
+    }
+    var msgs = {
+      shop: 'Aap ke dekhe hue stores aur products neeche saved hain. Order dene ke liye internet chahiye.',
+      rider: 'Aap ke saved orders neeche hain (sirf dekhne ke liye). Status badalne ke liye internet chahiye.',
+      vendor: 'Naye orders aur products update karne ke liye internet chahiye.',
+      investor: 'Balance aur transactions dekhne ke liye internet chahiye.',
+      erp: 'Connection wapas aate hi ye page khud khul jayega.'
+    };
+    if (msgs[key]) document.getElementById('msg').textContent = msgs[key];
+
+    document.getElementById('retry').onclick = function () { location.reload(); };
+    window.addEventListener('online', function () {
+      document.getElementById('ok').style.display = 'block';
+      setTimeout(function () { location.reload(); }, 700);
+    });
+
+    // Saved pages ki list (cache se) - har page ka title us ki saved copy se
+    if (!window.caches) return;
+    caches.keys().then(function (names) {
+      names = names.filter(function (n) { return n.indexOf('bms-shop-') === 0 || n.indexOf('bms-rider-') === 0; });
+      return Promise.all(names.map(function (n) {
+        return caches.open(n).then(function (c) {
+          return c.keys().then(function (reqs) {
+            return Promise.all(reqs.slice(-6).map(function (r) {
+              var u = new URL(r.url);
+              if (u.pathname === path) return null;
+              return c.match(r).then(function (res) { return res ? res.text() : ''; }).then(function (t) {
+                var m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(t);
+                var title = m ? m[1].replace(/\s+/g, ' ').trim() : '';
+                return {path: u.pathname, title: title || u.pathname};
+              });
+            }));
+          });
+        });
+      }));
+    }).then(function (groups) {
+      var seen = {}, items = [];
+      groups.forEach(function (g) { g.forEach(function (x) { if (x && !seen[x.path]) { seen[x.path] = 1; items.push(x); } }); });
+      items = items.slice(0, 8);
+      if (!items.length) return;
+      var list = document.getElementById('list');
+      items.forEach(function (x) {
+        var a = document.createElement('a');
+        a.href = x.path; a.textContent = x.title.length > 60 ? x.title.slice(0, 57) + '…' : x.title;
+        list.appendChild(a);
+      });
+      document.getElementById('saved').style.display = 'block';
+    }).catch(function () {});
+  })();
+  </script>
 </body>
 </html>

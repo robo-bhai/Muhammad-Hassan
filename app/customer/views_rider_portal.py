@@ -184,7 +184,7 @@ def _assign(order, di, rider, user):
     store_orders._notify(store_orders._customer_user(order),
                          f'🏍️ Order #{order.order_no}: rider mil gaya',
                          f'Rider {rider.name} ({rider.phone}) aap ka order lene aa raha hai.',
-                         f'/shop/order/{order.id}/', 'info')
+                         f'/shop/order/{order.id}/', 'info', actions=store_orders.order_actions(order.id, 'track'))
     store_orders._notify(_vendor_user(order), f'🏍️ Order #{order.order_no}: rider {rider.name} aa raha hai',
                          f'{rider.name} ({rider.phone}) maal lene aa raha hai.',
                          '/shop/vendor/orders/?tab=active', 'info')
@@ -432,7 +432,8 @@ def rider_order_action(request, pk, action):
                        f'Rider {rider.name} ne {shop} se maal le liya.', request.user, rider)
                 store_orders._notify(cust, f'🛵 Order #{order.order_no} raaste mein hai',
                                      f'Rider {rider.name} ({rider.phone}) aap ka order le kar nikal chuka hai.',
-                                     f'/shop/order/{order.id}/', 'info')
+                                     f'/shop/order/{order.id}/', 'info',
+                                     actions=store_orders.order_actions(order.id, 'track'))
                 messages.success(request, f'📦 Order #{order.order_no}: maal le liya. Ab customer ke paas jayein.')
             else:
                 if di.status not in ('picked_up', 'in_transit') or order.status != 'ready':

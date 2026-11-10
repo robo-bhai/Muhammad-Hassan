@@ -54,50 +54,154 @@ if ('serviceWorker' in navigator) {
 </script>
 <meta name="mobile-web-app-capable" content="yes">
 <script>
-/* Install button (Android/Chrome/Edge) + iPhone hint. */
+/* Install bar (Android/Chrome/Edge) + iPhone hint.
+ * Sahi waqt par dikhti hai (aate hi nahi):
+ *  - Shop customer: pehla order hone ke baad (ya 4 alag din visit ke baad)
+ *  - Rider / Vendor / Investor / ERP: doosri dafa (alag din) aane par
+ * Cart / checkout / login jaise pages par kabhi nahi. "X" dabane par pehle 3 din, phir 14, phir 60 din na dikhaye.
+ */
 (function () {
-  var deferred = null, KEY = 'pwa_install_dismissed';
+  var deferred = null, shown = false, path = location.pathname;
+  var portal = /^\/shop\/rider\//.test(path) ? 'rider' : /^\/shop\/vendor\//.test(path) ? 'vendor'
+    : /^\/shop\//.test(path) ? 'shop' : /^\/(investor|shareholder|shareholders\/portal)\//.test(path) ? 'investor' : 'erp';
+  var KEY = 'pwa_install_dismissed', CNT = 'pwa_install_dismiss_count', ORD = 'pwa_ordered', VIS = 'pwa_visit_days_' + portal;
+  var QUIET = /\/(cart|checkout|place-order|payment|login|logout|register|signup|otp|password|sales\/pos)(\/|$)/i;
+
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function put(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
   function standalone() {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
-  function bar(html, onclick) {
-    if (document.getElementById('pwa-install-bar')) return;
-    var b = document.createElement('div');
+
+  // Pehla order ho gaya? (order success page)
+  if (/^\/shop\/order-success\/\d+\/?$/.test(path)) put(ORD, Date.now());
+
+  // Alag-alag din ki ginti (aakhri 10)
+  var today = new Date().toISOString().slice(0, 10), days = (get(VIS) || '').split(',').filter(Boolean);
+  if (days.indexOf(today) === -1) { days.push(today); days = days.slice(-10); put(VIS, days.join(',')); }
+
+  function dismissed() {
+    var t = +get(KEY) || 0, n = +get(CNT) || 0;
+    if (!t) return false;
+    var wait = [3, 14, 60][Math.min(Math.max(n, 1), 3) - 1] * 864e5;
+    return Date.now() - t < wait;
+  }
+  function ready() {
+    if (standalone() || dismissed() || QUIET.test(path)) return false;
+    if (portal === 'shop') return !!get(ORD) || days.length >= 4;
+    return days.length >= 2;
+  }
+  function text() {
+    if (portal === 'shop' && get(ORD)) return '🎉 Aap ka order ho gaya! App install karein — order ka status foran dekhein';
+    if (portal === 'shop') return '📲 Shop app install karein — tez khulti hai, order ka status foran milta hai';
+    return '📲 App install karein — home screen se seedha khulegi';
+  }
+  function color() {
+    var m = document.querySelector('meta[name="theme-color"]');
+    return (m && m.getAttribute('content')) || '#0d6efd';
+  }
+  function dismiss() { put(KEY, Date.now()); put(CNT, (+get(CNT) || 0) + 1); }
+
+  function bar(html, onInstall) {
+    if (shown || document.getElementById('pwa-install-bar')) return;
+    shown = true;
+    var c = color(), b = document.createElement('div');
     b.id = 'pwa-install-bar';
-    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;background:#0d6efd;color:#fff;' +
-      'border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.25);' +
+    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99999;background:' + c +
+      ';color:#fff;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,.25);' +
       'font:14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto';
     b.innerHTML = '<span style="flex:1">' + html + '</span>' +
-      (onclick ? '<button id="pwa-yes" style="background:#fff;color:#0d6efd;border:0;border-radius:8px;padding:8px 14px;font-weight:600">Install</button>' : '') +
+      (onInstall ? '<button id="pwa-yes" style="background:#fff;color:' + c + ';border:0;border-radius:8px;padding:8px 14px;font-weight:600">Install</button>' : '') +
       '<button id="pwa-no" aria-label="Close" style="background:transparent;color:#fff;border:0;font-size:20px;line-height:1">&times;</button>';
     document.body.appendChild(b);
-    document.getElementById('pwa-no').onclick = function () {
-      try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {}
-      b.remove();
-    };
-    if (onclick) document.getElementById('pwa-yes').onclick = function () { onclick(); b.remove(); };
+    document.getElementById('pwa-no').onclick = function () { dismiss(); b.remove(); };
+    if (onInstall) document.getElementById('pwa-yes').onclick = function () { onInstall(); b.remove(); };
   }
-  function dismissed() {
-    try { var t = +localStorage.getItem(KEY); return t && Date.now() - t < 7 * 864e5; } catch (e) { return false; }
+
+  function tryShow() {
+    if (shown || !document.body || !ready()) return;
+    setTimeout(function () {            // page khulte hi nahi, thori der baad
+      if (shown || !ready()) return;
+      if (deferred) {
+        bar(text(), function () {
+          deferred.prompt();
+          deferred.userChoice.then(function (r) { if (r && r.outcome === 'dismissed') dismiss(); })
+            .finally(function () { deferred = null; });
+        });
+      } else if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream) {
+        bar('iPhone: Share ⬆️ dabayein phir <b>Add to Home Screen</b>', null);
+      }
+    }, 1500);
   }
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault(); deferred = e;
-    if (standalone() || dismissed()) return;
-    var show = function () {
-      bar('📲 App install karein — home screen se seedha khulegi', function () {
-        deferred.prompt(); deferred.userChoice.finally(function () { deferred = null; });
-      });
-    };
-    if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
-  });
+
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; tryShow(); });
   window.addEventListener('appinstalled', function () {
     var b = document.getElementById('pwa-install-bar'); if (b) b.remove();
+    put(KEY, Date.now() + 365 * 864e5); put(CNT, 3);
   });
-  document.addEventListener('DOMContentLoaded', function () {
-    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-    if (ios && !standalone() && !dismissed()) {
-      bar('iPhone: Share ⬆️ dabayein phir <b>Add to Home Screen</b>', null);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryShow); else tryShow();
+})();
+</script>
+<script>
+/* Internet status bar: offline hone par amber, wapas aane par green.
+ * Saved copy par service worker ki bar (#pwa-net-bar) hoti hai: internet aate hi usay "Refresh" bar bana deta hai.
+ * POS screen ka apna offline/sync status hai, wahan ye bar nahi. */
+(function () {
+  if (/^\/sales\/pos\//.test(location.pathname)) return;
+  var hideT = 0;
+
+  function bar() {
+    var b = document.getElementById('pwa-net-bar');
+    if (b) return b;
+    b = document.createElement('div');
+    b.id = 'pwa-net-bar';
+    b.setAttribute('role', 'status');
+    b.style.cssText = 'position:sticky;top:0;z-index:99999;color:#fff;text-align:center;padding:6px 10px;' +
+      'font:13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+    document.body.insertBefore(b, document.body.firstChild);
+    return b;
+  }
+  function offline() {
+    clearTimeout(hideT);
+    var b = bar();
+    b.style.background = '#92400e';
+    b.textContent = b.getAttribute('data-saved') ? '📡 Offline — saved copy dikh rahi hai' : '📡 Internet nahi hai — saved pages chal rahi hain';
+  }
+  function online() {
+    var b = document.getElementById('pwa-net-bar');
+    if (!b) return;                                    // offline kabhi dikhaya hi nahi tha
+    clearTimeout(hideT);
+    b.style.background = '#166534';
+    b.textContent = '✅ Internet wapas aa gaya ';
+    if (b.getAttribute('data-saved')) {                // purani saved copy: taaza karne ka button
+      var r = document.createElement('button');
+      r.textContent = 'Refresh';
+      r.style.cssText = 'margin-left:8px;background:#fff;color:#166534;border:0;border-radius:6px;padding:2px 10px;font-weight:600';
+      r.onclick = function () { location.reload(); };
+      b.appendChild(r);
+    } else {
+      hideT = setTimeout(function () { b.remove(); }, 3000);
     }
+  }
+
+  function init() {
+    window.addEventListener('offline', offline);
+    window.addEventListener('online', online);
+    if (navigator.onLine === false) offline();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+  // Offline page (logo / naam) roz ek dafa taaza, jab internet ho
+  window.addEventListener('load', function () {
+    try {
+      if (!navigator.onLine || !('serviceWorker' in navigator)) return;
+      var last = +localStorage.getItem('pwa_offline_refreshed') || 0;
+      if (Date.now() - last < 864e5) return;
+      navigator.serviceWorker.ready.then(function (reg) {
+        if (reg.active) reg.active.postMessage({type: 'REFRESH_OFFLINE'});
+        localStorage.setItem('pwa_offline_refreshed', String(Date.now()));
+      });
+    } catch (e) {}
   });
 })();
 </script>

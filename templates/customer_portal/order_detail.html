@@ -25,9 +25,19 @@
         <i class="bi bi-arrow-left"></i> Back to Orders
     </a>
     {% if order.status == 'delivered' or order.status == 'invoiced' or order.status == 'cancelled' %}
-    <form method="post" action="{% url 'reorder' order.id %}" class="d-inline ms-2">{% csrf_token %}
+    <form method="post" action="{% url 'reorder' order.id %}" class="d-inline ms-2" id="reorderForm">{% csrf_token %}
         <button type="submit" class="btn btn-success btn-sm mb-3"><i class="bi bi-arrow-repeat"></i> Reorder</button>
     </form>
+    <script>
+    /* Phone notification ke "Dobara order" button se aaye hon to Reorder button ko numayan karo (khud submit nahi hota). */
+    if (/[?&]reorder=1/.test(location.search)) {
+        document.addEventListener('DOMContentLoaded', function () {
+            var f = document.getElementById('reorderForm'); if (!f) return;
+            var b = f.querySelector('button'); f.scrollIntoView({block: 'center'});
+            b.style.boxShadow = '0 0 0 4px rgba(25,135,84,.35)'; b.focus({preventScroll: true});
+        });
+    }
+    </script>
     {% endif %}
 
     <!-- Hero -->

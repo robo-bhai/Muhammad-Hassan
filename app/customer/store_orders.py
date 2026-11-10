@@ -315,13 +315,27 @@ def order_cash_due(order):
     return max(order_payable_total(order) - (getattr(order, 'wallet_paid', None) or ZERO), ZERO)
 
 
-def _notify(user, title, message, link=None, kind='info'):
+def order_actions(order_id, stage):
+    """Customer ki phone notification ke neeche buttons. stage: 'track' | 'done' | 'retry'."""
+    base = f'/shop/order/{order_id}/'
+    if stage == 'track':
+        return [{'action': 'track', 'title': '📍 Track order', 'url': base}]
+    if stage == 'done':
+        return [{'action': 'reorder', 'title': '🔁 Dobara order', 'url': base + '?reorder=1'},
+                {'action': 'details', 'title': '🧾 Order dekhein', 'url': base}]
+    if stage == 'retry':
+        return [{'action': 'reorder', 'title': '🔁 Dobara order', 'url': base + '?reorder=1'},
+                {'action': 'stores', 'title': '🏪 Doosra store', 'url': '/shop/stores/'}]
+    return None
+
+
+def _notify(user, title, message, link=None, kind='info', actions=None):
     if not user:
         return
     try:
         from ..models import Notification
         Notification.send(user=user, title=title, message=message,
-                          notification_type=kind, category='sales', link=link)
+                          notification_type=kind, category='sales', link=link, push_actions=actions)
     except Exception as exc:  # notification se order kabhi na rukey
         logger.error("Notification error: %s", exc)
 
@@ -526,13 +540,15 @@ def after_vendor_action(order, action, user):
     if action == 'accept':
         eta = f'\nTayyar hone mein ~{order.prep_minutes} minute.' if order.prep_minutes else ''
         _notify(cust_user, f'✅ Order #{order.order_no} qubool ho gaya',
-                f'{shop} ne aap ka order qubool kar liya.{eta}', link, 'success')
+                f'{shop} ne aap ka order qubool kar liya.{eta}', link, 'success',
+                actions=order_actions(order.id, 'track'))
     elif action == 'ready':
         _notify(cust_user, f'📦 Order #{order.order_no} tayyar hai',
-                f'{shop} ka maal tayyar hai.', link, 'info')
+                f'{shop} ka maal tayyar hai.', link, 'info', actions=order_actions(order.id, 'track'))
     elif action == 'delivered':
         _notify(cust_user, f'🎉 Order #{order.order_no} deliver ho gaya',
-                f'{shop} ka order aap tak pahunch gaya. Shukriya!', link, 'success')
+                f'{shop} ka order aap tak pahunch gaya. Shukriya!', link, 'success',
+                actions=order_actions(order.id, 'done'))
         try:
             from django.contrib.auth.models import User
             for admin in User.objects.filter(is_superuser=True, is_active=True):
@@ -547,7 +563,7 @@ def after_vendor_action(order, action, user):
         if action == 'expire':
             _notify(cust_user, f'⏰ Order #{order.order_no} cancel ho gaya',
                     f'{shop} ne waqt par jawab nahi diya.\n{refund_note(order)}\nDoosre store se order kar sakte hain.',
-                    link, 'warning')
+                    link, 'warning', actions=order_actions(order.id, 'retry'))
             prof = get_store_profile(order.vendor_id)
             _notify(getattr(prof, 'user', None), f'⏰ Order #{order.order_no} miss ho gaya',
                     f'Aap ne {accept_timeout_minutes()} minute mein jawab nahi diya, order khud cancel ho gaya. '
@@ -556,7 +572,7 @@ def after_vendor_action(order, action, user):
         else:
             _notify(cust_user, f'❌ Order #{order.order_no} reject ho gaya',
                     f'{shop} ne order qubool nahi kiya.\nWajah: {order.reject_reason}\n{refund_note(order)}',
-                    link, 'warning')
+                    link, 'warning', actions=order_actions(order.id, 'retry'))
         # Online payment ho to admin ko refund yaad dilao
         if (order.payment_method or 'cod') != 'cod':
             try:

@@ -6,12 +6,13 @@
 //   sab se kam istemal hui image pehle hatati hai. Offline aur image na ho to "No image" placeholder (toota icon nahi).
 // - /static/: stale-while-revalidate.  Tesseract (OCR): cache-first.
 // - POS screen (/sales/pos/) + CDN scripts/styles (bootstrap etc.): offline POS ke liye save hotay hain.
+// - Offline page (/offline/): company logo + naam, portal ke rang mein; roz ek dafa taaza ho jata hai (REFRESH_OFFLINE).
 // - POST / admin / api / cart / checkout / account / login kabhi cache nahi hotay.
 // - Logout par saved pages foran delete ho jati hain (shared phone par data na rahe).
 // - Navigation preload: page ki request SW start hone ke saath hi chal padti hai (tez load).
 // - Prefetch: user jis link par hath/touch rakhe uska page pehle se 60 sec ke liye save (sirf shop browse pages).
 // - Storage hisaab: purani cache entries khud delete; jagah kam ho to media/pages kam kar deta hai.
-var VERSION = 'v7';   // har release par badlein (cache refresh)
+var VERSION = 'v8';   // har release par badlein (cache refresh)
 var SHELL = 'bms-shell-' + VERSION;
 var STATIC = 'bms-static-' + VERSION;
 var SHOP = 'bms-shop-' + VERSION;
@@ -53,6 +54,7 @@ self.addEventListener('message', function (event) {
   if (event.data && event.data.type === 'CLEANUP') event.waitUntil(cleanup());
   if (event.data && event.data.type === 'CLEAR_CACHE') event.waitUntil(clearAll());
   if (event.data && event.data.type === 'PREFETCH') event.waitUntil(prefetchPage(event.data.url));
+  if (event.data && event.data.type === 'REFRESH_OFFLINE') event.waitUntil(refreshOffline());
 });
 
 self.addEventListener('activate', function (event) {
@@ -68,6 +70,10 @@ self.addEventListener('activate', function (event) {
       .then(function () { return self.clients.claim(); })
   );
 });
+
+function refreshOffline() {   // logo / company ka naam badla ho to offline page naya ho jaye
+  return caches.open(SHELL).then(function (c) { return c.add(new Request(OFFLINE_URL, {cache: 'reload'})); }).catch(function () {});
+}
 
 function clearPages() {
   return Promise.all([caches.delete(SHOP), caches.delete(RIDER), caches.delete(POS), caches.delete(PREFETCH)]);
@@ -249,7 +255,8 @@ function isHtml(res) {
 function offlineCopy(res, noBar) {   // saved page + chhota "Offline" bar
   if (noBar) return res.text().then(function (t) { return new Response(t, {status: 200, headers: {'Content-Type': 'text/html; charset=utf-8'}}); });
   return res.text().then(function (t) {
-    var bar = '<div style="position:sticky;top:0;z-index:99999;background:#92400e;color:#fff;text-align:center;' +
+    // id + data-saved: page ka status script (_pwa.html) internet wapas aane par isi bar ko "Refresh" bar bana deta hai
+    var bar = '<div id="pwa-net-bar" data-saved="1" style="position:sticky;top:0;z-index:99999;background:#92400e;color:#fff;text-align:center;' +
       'padding:6px 10px;font:13px system-ui,sans-serif">📡 Offline — saved copy dikh rahi hai</div>';
     t = /<body[^>]*>/i.test(t) ? t.replace(/<body[^>]*>/i, function (m) { return m + bar; }) : bar + t;
     return new Response(t, {status: 200, headers: {'Content-Type': 'text/html; charset=utf-8'}});

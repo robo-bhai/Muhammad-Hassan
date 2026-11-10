@@ -179,7 +179,7 @@ class Notification(models.Model):
         return f"{self.title} - {self.created_at.strftime('%d-%m-%Y %I:%M %p')}"
     
     @classmethod
-    def send(cls, user, title, message, notification_type='info', category='all', link=None):
+    def send(cls, user, title, message, notification_type='info', category='all', link=None, push_actions=None):
         """Create in-app notification and trigger email dispatch via email_helper."""
         notification = cls.objects.create(
             user=user,
@@ -194,7 +194,7 @@ class Notification(models.Model):
         if user:
             try:
                 from app.push_service import send_push_after_commit
-                send_push_after_commit(user, title, message, link)
+                send_push_after_commit(user, title, message, link, push_actions)
             except Exception as e:
                 logger.error(f"Push dispatch error: {e}")
 

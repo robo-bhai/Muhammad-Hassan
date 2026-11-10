@@ -27,6 +27,7 @@ ICON_SPECS = {
     'apple-152': (152, False),
     'apple-167': (167, False),
     'apple': (180, False),
+    'badge-96': (96, False),     # push notification ka chhota monochrome icon (safed + transparent)
 }
 SPLASH_SIZES = {'%dx%d' % (w * r, h * r) for w, h, r in SPLASH}
 _SPLASH_RE = re.compile(r'^splash-(\d{3,4})x(\d{3,4})$')
@@ -150,6 +151,29 @@ def _draw_icon(logo, rgb, size, maskable):
     return bg
 
 
+def _draw_badge(logo, name, size=96):
+    """Android status-bar badge: sirf safed shakal + transparency chahiye.
+    Logo mein transparency ho to uski shakal; warna company ke pehle harf wala safed gola."""
+    from PIL import Image, ImageDraw
+    alpha = logo.getchannel('A')
+    lo, _hi = alpha.getextrema()
+    mask = Image.new('L', (size, size), 0)
+    if lo < 200:
+        fitted = _fit(alpha, size - 14, size - 14)
+        mask.paste(fitted, ((size - fitted.width) // 2, (size - fitted.height) // 2))
+    else:
+        d = ImageDraw.Draw(mask)
+        d.ellipse([3, 3, size - 4, size - 4], fill=255)
+        letter = (name or 'B').strip()[:1].upper() or 'B'
+        font = _font(int(size * 0.58))
+        box = d.textbbox((0, 0), letter, font=font)
+        d.text(((size - (box[2] - box[0])) / 2 - box[0], (size - (box[3] - box[1])) / 2 - box[1]),
+               letter, fill=0, font=font)
+    out = Image.new('RGBA', (size, size), (255, 255, 255, 255))
+    out.putalpha(mask)
+    return out
+
+
 def _draw_splash(logo, cfg, name, w, h):
     from PIL import Image, ImageDraw
     rgb = _hex(cfg['theme'])
@@ -187,6 +211,8 @@ def render(portal, name):
     m = _SPLASH_RE.match(name)
     if m:
         img = _draw_splash(logo, cfg, brand['name'], int(m.group(1)), int(m.group(2)))
+    elif name == 'badge-96':
+        img = _draw_badge(logo, brand['name'], 96)
     else:
         size, maskable = ICON_SPECS[name]
         img = _draw_icon(logo, _hex(cfg['theme']), size, maskable)
