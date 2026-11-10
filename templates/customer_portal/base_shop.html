@@ -2794,6 +2794,7 @@
     {% block extra_css %}{% endblock %}
 {% if not SHOP.shop_search_enabled %}<style>.shop-search-section,.sidebar-search-box,.app-search,form#navbarSearchForm{display:none !important}</style>{% endif %}
 {% if not SHOP.shop_voice_search_enabled %}<style>.mic-btn,#voiceSearchBtn,.voice-indicator{display:none !important}</style>{% endif %}
+    {% include "pwa/_pwa.html" %}
 </head>
 <body>
 

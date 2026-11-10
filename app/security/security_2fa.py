@@ -47,7 +47,7 @@ class TwoFactorMiddleware:
     Place it after SecurityMiddleware in settings.MIDDLEWARE.
     """
 
-    exempt_prefixes = ("/static/", "/media/", "/favicon", "/login/", "/logout/")
+    exempt_prefixes = ("/static/", "/media/", "/favicon", "/login/", "/logout/", "/manifest.json", "/serviceworker.js", "/offline/")
 
     def __init__(self, get_response):
         self.get_response = get_response

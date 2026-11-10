@@ -436,7 +436,7 @@ BACKUP_MAX_AGE_HOURS = 26         # is se purana last backup = "unhealthy"
 BACKUP_NOTIFY_EMAIL = []          # backup fail ho to email, e.g. ['owner@example.com']
 
 PWA_APP_NAME = 'Business Management System'
-PWA_APP_SHORT_NAME = 'BMS App'
+PWA_APP_SHORT_NAME = 'BMS'
 PWA_APP_DESCRIPTION = "Executive & Business Management Platform"
 PWA_APP_THEME_COLOR = '#0d6efd'
 PWA_APP_BACKGROUND_COLOR = '#ffffff'
@@ -446,8 +446,12 @@ PWA_APP_ORIENTATION = 'any'
 PWA_APP_START_URL = '/'
 PWA_APP_STATUS_BAR_COLOR = 'default'
 PWA_APP_ICONS = [
-    {'src': '/static/ceo/images/icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
-    {'src': '/static/ceo/images/icon-512.png', 'sizes': '512x512', 'type': 'image/png'}
+    {'src': '/static/pwa/icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
+    {'src': '/static/pwa/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
+    {'src': '/static/pwa/icons/icon-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
+]
+PWA_APP_ICONS_APPLE = [
+    {'src': '/static/pwa/icons/apple-touch-icon.png', 'sizes': '180x180', 'type': 'image/png'},
 ]
 PWA_APP_DIR = 'ltr'
 PWA_APP_LANG = 'en-US'
