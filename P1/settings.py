@@ -446,12 +446,12 @@ PWA_APP_ORIENTATION = 'any'
 PWA_APP_START_URL = '/'
 PWA_APP_STATUS_BAR_COLOR = 'default'
 PWA_APP_ICONS = [
-    {'src': '/static/pwa/icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
-    {'src': '/static/pwa/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
-    {'src': '/static/pwa/icons/icon-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
+    {'src': '/static/pwa/icons/erp-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'},
+    {'src': '/static/pwa/icons/erp-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
+    {'src': '/static/pwa/icons/erp-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
 ]
 PWA_APP_ICONS_APPLE = [
-    {'src': '/static/pwa/icons/apple-touch-icon.png', 'sizes': '180x180', 'type': 'image/png'},
+    {'src': '/static/pwa/icons/erp-apple.png', 'sizes': '180x180', 'type': 'image/png'},
 ]
 PWA_APP_DIR = 'ltr'
 PWA_APP_LANG = 'en-US'

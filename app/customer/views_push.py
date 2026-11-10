@@ -8,7 +8,8 @@ from .. import push_service
 from ..models import PushSubscription
 
 SERVICE_WORKER_JS = r"""
-// Shop push notifications (sirf popup dikhata hai; koi caching nahi).
+importScripts('/serviceworker.js');   // offline page + static cache bhi /shop/ par chalay
+// Shop push notifications + root service worker ki offline/static caching.
 self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
 

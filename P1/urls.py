@@ -3,6 +3,7 @@ from django.urls import path, include, re_path
 from django.conf import settings
 from django.shortcuts import redirect
 from django.views.static import serve
+from app.pwa_portals import pwa_manifest
 
 # Custom Handlers
 handler404 = 'app.views.custom_page_not_found'
@@ -19,6 +20,7 @@ urlpatterns = [
     path('ceo/', include('ceo_module.urls')),
     
     # Progressive Web App (PWA) URLs
+    path('pwa/manifest/<slug:portal>.json', pwa_manifest, name='pwa_manifest'),
     path('', include('pwa.urls')),
     
     # Redirect /accounts/login/ to /login/

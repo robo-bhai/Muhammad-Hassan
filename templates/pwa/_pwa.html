@@ -1,5 +1,12 @@
-{% load pwa %}
-{% progressive_web_app_meta %}
+{% load pwa_portal %}
+{% pwa_portal_meta %}
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/serviceworker.js', {scope: '/'}).catch(function (e) { console.log('SW error', e); });
+  });
+}
+</script>
 <meta name="mobile-web-app-capable" content="yes">
 <script>
 /* Install button (Android/Chrome/Edge) + iPhone hint. */
