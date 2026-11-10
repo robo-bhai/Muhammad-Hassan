@@ -181,7 +181,7 @@ class ShareholderAdmin(admin.ModelAdmin):
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except:
+                except Exception:
                     pass
             ws.column_dimensions[col_letter].width = min(max_length + 2, 30)
         
@@ -694,7 +694,7 @@ Please clear your payment on time!"""
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except:
+                except Exception:
                     pass
             adjusted_width = min(max_length + 2, 30)
             ws.column_dimensions[col_letter].width = adjusted_width

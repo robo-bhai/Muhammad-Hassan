@@ -2774,7 +2774,7 @@ def track_order_public(request):
                     # Get delivery info
                     try:
                         delivery_info = order.delivery_info
-                    except:
+                    except Exception:
                         delivery_info = None
                         
             except Exception as e:
@@ -2816,7 +2816,7 @@ def customer_order_tracking(request, order_id):
     
     try:
         delivery_info = order.delivery_info
-    except:
+    except Exception:
         delivery_info = None
     
     context = {

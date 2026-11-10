@@ -418,7 +418,7 @@ class AIOperationsEngine:
                     ai_generated=True,
                 )
                 count += 1
-        except:
+        except Exception:
             pass
         
         # Alert 4: Overdue payments
@@ -439,7 +439,7 @@ class AIOperationsEngine:
                     ai_generated=True,
                 )
                 count += 1
-        except:
+        except Exception:
             pass
         
         return count

@@ -577,7 +577,7 @@ def announce_alerts_api(request):
                     'priority': 'critical',
                     'severity': 'danger',
                 })
-        except:
+        except Exception:
             pass
         
         # ==========================================
@@ -603,7 +603,7 @@ def announce_alerts_api(request):
                     'priority': 'medium',
                     'severity': 'warning',
                 })
-        except:
+        except Exception:
             pass
         
         # ==========================================
@@ -620,7 +620,7 @@ def announce_alerts_api(request):
                     'priority': 'high',
                     'severity': 'warning',
                 })
-        except:
+        except Exception:
             pass
         
         # ==========================================
@@ -646,7 +646,7 @@ def announce_alerts_api(request):
                     'priority': 'medium',
                     'severity': 'warning',
                 })
-        except:
+        except Exception:
             pass
         
         # ==========================================
@@ -669,7 +669,7 @@ def announce_alerts_api(request):
                     'priority': 'low',
                     'severity': 'info',
                 })
-        except:
+        except Exception:
             pass
         
         # Return top 5 alerts by priority

@@ -2111,7 +2111,7 @@ class BalanceDividendPayment(models.Model):
                     category='payments',
                     link=f"/balance-dividend/{self.dividend.id}/"
                 )
-            except:
+            except Exception:
                 pass
             
             return True

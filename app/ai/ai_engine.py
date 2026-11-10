@@ -510,7 +510,7 @@ class AIEngine:
                         'name': model_name,
                         'count': count
                     })
-            except:
+            except Exception:
                 pass
         
         if large_tables:
@@ -549,7 +549,7 @@ class AIEngine:
                     'recommendation': 'Consider archiving old records.',
                     'fix_url': '/database-backup/',
                 })
-        except:
+        except Exception:
             pass
     
     def get_database_size(self):
@@ -562,7 +562,7 @@ class AIEngine:
             if os.path.exists(db_path):
                 size = os.path.getsize(db_path)
                 return size / (1024 * 1024)
-        except:
+        except Exception:
             pass
         return 0
     

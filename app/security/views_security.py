@@ -333,3 +333,26 @@ def change_password_security(request):
         'company_name': CompanyInfo.objects.first().name if CompanyInfo.objects.exists() else 'ERP System',
     }
     return render(request, 'security/change_password.html', context)
+
+@login_required
+def locked_accounts_view(request):
+    """Accounts locked by too many failed logins; admin can unlock one."""
+    if not can_use_security(request.user):
+        messages.error(request, 'Access denied!')
+        return redirect('dashboard')
+
+    from app.security import account_lock
+    policy = SecuritySettings.get_settings()
+
+    if request.method == 'POST':
+        username = (request.POST.get('username') or '').strip()
+        if username:
+            account_lock.unlock_account(username, request.user)
+            messages.success(request, f"Account '{username}' unlocked.")
+        return redirect('locked_accounts')
+
+    return render(request, 'security/locked_accounts.html', {
+        'accounts': account_lock.list_locked_accounts(),
+        'threshold': account_lock.lock_threshold(policy.max_login_attempts),
+        'window': policy.lockout_time,
+    })

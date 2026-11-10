@@ -109,7 +109,7 @@ class Document(models.Model):
                 try:
                     last_num = int(last.document_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'

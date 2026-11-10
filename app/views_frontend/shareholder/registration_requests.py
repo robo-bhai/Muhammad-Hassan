@@ -75,7 +75,7 @@ def shareholder_register(request):
                         category='system',
                         link=f"/shareholder-requests/{request_obj.id}/"
                     )
-            except:
+            except Exception:
                 pass
             
             # ✅ THIS CHANGE - Redirect to the success page
@@ -324,7 +324,7 @@ def shareholder_requests_bulk_action(request):
                 try:
                     req.approve(request.user)
                     approved += 1
-                except:
+                except Exception:
                     failed += 1
             message = f'✅ {approved} requests approved! {failed} failed.'
             
@@ -335,7 +335,7 @@ def shareholder_requests_bulk_action(request):
                 try:
                     req.reject(request.user, reason)
                     rejected += 1
-                except:
+                except Exception:
                     pass
             message = f'❌ {rejected} requests rejected!'
             

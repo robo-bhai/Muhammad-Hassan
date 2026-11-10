@@ -1424,7 +1424,7 @@ def product_export_excel(request):
             try:
                 if cell.value and len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except Exception:
                 pass
         adjusted_width = min(max_length + 2, 50)
         ws.column_dimensions[col_letter].width = adjusted_width
@@ -1608,7 +1608,7 @@ def product_import(request):
                             price_val = str(row[col_map['price']]).replace(',', '').replace('$', '').replace('Rs.', '').strip()
                             if price_val:
                                 price = Decimal(price_val)
-                        except:
+                        except Exception:
                             warnings.append(f"Row {row_num}: Invalid price format, using 0.00")
                     
                     # Threshold
@@ -1618,7 +1618,7 @@ def product_import(request):
                             threshold_val = str(row[col_map['threshold']]).replace(',', '').strip()
                             if threshold_val:
                                 threshold = int(float(threshold_val))
-                        except:
+                        except Exception:
                             warnings.append(f"Row {row_num}: Invalid threshold, using 10")
                     
                     # Active
@@ -1839,7 +1839,7 @@ def product_set_discount(request, pk):
 
             try:
                 discount_percentage = Decimal(discount_percentage)
-            except:
+            except Exception:
                 discount_percentage = Decimal('0')
 
             if discount_percentage < 0 or discount_percentage > 100:

@@ -45,7 +45,7 @@ class WhatsAppSender:
             from ..models import CompanyInfo
             company = CompanyInfo.objects.first()
             return company.name if company else "Our Shop"
-        except:
+        except Exception:
             return "Our Shop"
     
     # ============================================

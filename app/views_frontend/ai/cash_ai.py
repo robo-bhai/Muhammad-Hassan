@@ -1017,7 +1017,7 @@ def business_ratios_dashboard(request):
     try:
         from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
         to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date = date.today() - timedelta(days=365)
         to_date = date.today()
     

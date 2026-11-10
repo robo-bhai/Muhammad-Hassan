@@ -54,7 +54,7 @@ def purchase_detail(request, pk):
         if hasattr(purchase, 'converted_from_grn'):
             grn = purchase.converted_from_grn
             related_grns = [grn]
-    except:
+    except Exception:
         pass
     
     context = {

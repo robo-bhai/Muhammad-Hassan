@@ -192,7 +192,7 @@ class AICSOTechEngine:
             used = total - free
             if total > 0:
                 return (used / total) * 100
-        except:
+        except Exception:
             pass
         return 0
     
@@ -218,7 +218,7 @@ class AICSOTechEngine:
                         'used_gb': used / (1024 * 1024),
                         'percent': (used / total) * 100
                     }
-        except:
+        except Exception:
             pass
         return {'total_gb': 0, 'used_gb': 0, 'percent': 0}
     
@@ -230,7 +230,7 @@ class AICSOTechEngine:
                 db_path = settings.DATABASES['default']['NAME']
                 if os.path.exists(db_path):
                     return os.path.getsize(db_path) / (1024 * 1024)
-        except:
+        except Exception:
             pass
         return 0
     
@@ -556,7 +556,7 @@ class AICSOTechEngine:
                         'message': 'Cloud backup not available',
                         'severity': 'medium'
                     })
-            except:
+            except Exception:
                 pass
             
         except Exception as e:
@@ -769,7 +769,7 @@ class AICSOTechEngine:
                 'warnings_count': len(self.warnings),
                 'findings_count': len(self.findings),
             }
-        except:
+        except Exception:
             return {}
     
     def calculate_potential_savings(self):
@@ -782,7 +782,7 @@ class AICSOTechEngine:
             from ..models import AIBugReport
             bug_count = AIBugReport.objects.filter(status__in=['new', 'investigating']).count()
             savings += bug_count * 5000  # Rs. 5K per bug
-        except:
+        except Exception:
             pass
         
         # Performance
@@ -801,7 +801,7 @@ class AICSOTechEngine:
             features = AIFeatureSuggestion.objects.filter(status='pending')
             for feature in features:
                 revenue += feature.roi_score * 1000
-        except:
+        except Exception:
             pass
         
         return revenue
@@ -817,5 +817,5 @@ class AICSOTechEngine:
                 'platform': platform.system(),
                 'python_version': platform.python_version(),
             }
-        except:
+        except Exception:
             return {}

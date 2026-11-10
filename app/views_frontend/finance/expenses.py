@@ -683,12 +683,14 @@ def expense_report(request):
     ).order_by('-total')
     
     # Monthly trend
-    monthly_data = expenses.extra(
-        select={'month': "strftime('%%Y-%%m', expense_date)"}
-    ).values('month').annotate(
-        total=Sum('amount'),
-        count=Count('id')
-    ).order_by('month')
+    from django.db.models.functions import TruncMonth   # works on SQLite, MySQL, PostgreSQL
+    monthly_data = [
+        {**row, 'month': row['month'].strftime('%Y-%m') if row['month'] else ''}
+        for row in expenses.annotate(month=TruncMonth('expense_date')).values('month').annotate(
+            total=Sum('amount'),
+            count=Count('id')
+        ).order_by('month')
+    ]
     
     # Vendor wise
     vendor_data = expenses.values('vendor__name').annotate(

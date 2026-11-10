@@ -333,7 +333,7 @@ class MonthlyPurchasePlan(models.Model):
                 if cleaned == '':
                     return Decimal(default)
                 return Decimal(cleaned)
-            except:
+            except Exception:
                 return Decimal(default)
         
         def safe_int(value, default=0):
@@ -349,7 +349,7 @@ class MonthlyPurchasePlan(models.Model):
                 if cleaned == '':
                     return default
                 return int(float(cleaned))
-            except:
+            except Exception:
                 return default
         
         def safe_float(value, default=0.0):
@@ -358,7 +358,7 @@ class MonthlyPurchasePlan(models.Model):
                 if value is None or value == '':
                     return default
                 return float(value)
-            except:
+            except Exception:
                 return default
         
         # ========================================== #

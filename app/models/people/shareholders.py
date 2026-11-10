@@ -949,7 +949,7 @@ class ShareholderLoginRequest(models.Model):
                         category='system',
                         link=f"/shareholder-requests/{self.id}/"
                     )
-                except:
+                except Exception:
                     pass
                 
                 # ========================================== #
@@ -1002,7 +1002,7 @@ class ShareholderLoginRequest(models.Model):
                 category='system',
                 link=f"/shareholder-requests/{self.id}/"
             )
-        except:
+        except Exception:
             pass
         
         return {

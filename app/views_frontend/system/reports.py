@@ -17,7 +17,7 @@ from datetime import date, timedelta, datetime
 from django.http import HttpResponse
 from io import BytesIO
 from ...models import CompanyInfo, Sale, Purchase, Expense, SalesTarget, Employee, SaleItem
-from django.db.models.functions import TruncMonth, TruncWeek
+from django.db.models.functions import TruncMonth, TruncWeek, ExtractHour, ExtractWeekDay
 from openpyxl.styles import Font, Alignment, PatternFill
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -38,7 +38,7 @@ def range_report_view(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     
@@ -340,7 +340,7 @@ def profit_loss_report(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     
@@ -494,7 +494,7 @@ def sales_summary_report(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     
@@ -698,8 +698,8 @@ def sales_by_hour_report(request):
     hourly_sales = Sale.objects.filter(
         sale_date__date__gte=from_date_obj,
         sale_date__date__lte=to_date_obj
-    ).extra(
-        {'hour': "strftime('%%H', sale_date)"}
+    ).annotate(
+        hour=ExtractHour('sale_date')       # DB-neutral (was SQLite strftime)
     ).values('hour').annotate(
         total=Sum('saleitem__total_amt'),
         count=Count('id')
@@ -710,7 +710,7 @@ def sales_by_hour_report(request):
         hour_str = f"{h:02d}"
         found = False
         for hs in hourly_sales:
-            if hs['hour'] == hour_str:
+            if hs['hour'] == h:
                 hours_data.append({
                     'hour': h,
                     'total': hs['total'] or 0,
@@ -748,8 +748,8 @@ def sales_by_day_report(request):
     weekday_sales = Sale.objects.filter(
         sale_date__date__gte=from_date_obj,
         sale_date__date__lte=to_date_obj
-    ).extra(
-        {'weekday': "strftime('%%w', sale_date)"}
+    ).annotate(
+        weekday=ExtractWeekDay('sale_date')  # DB-neutral: 1=Sunday ... 7=Saturday
     ).values('weekday').annotate(
         total=Sum('saleitem__total_amt'),
         count=Count('id')
@@ -757,7 +757,7 @@ def sales_by_day_report(request):
     
     days_data = []
     for i, name in enumerate(weekday_names):
-        sql_weekday = str(i + 1) if i < 6 else '0'
+        sql_weekday = ((i + 1) % 7) + 1      # Monday(i=0) -> 2 ... Saturday -> 7, Sunday(i=6) -> 1
         found = False
         for ws in weekday_sales:
             if ws['weekday'] == sql_weekday:
@@ -1660,7 +1660,7 @@ def export_report_excel(request, report_name):
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except Exception:
                 pass
         adjusted_width = min(max_length + 2, 40)
         ws.column_dimensions[col_letter].width = adjusted_width

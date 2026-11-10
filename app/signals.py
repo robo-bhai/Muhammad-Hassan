@@ -68,30 +68,28 @@ def cleanup_user_references(sender, instance, **kwargs):
         # ========================================== #
         # 2. Orphan tables cleanup (SQLite)          #
         # ========================================== #
+        # Works on SQLite, PostgreSQL and MySQL: only touches tables/columns that exist,
+        # uses quoted names and a bound parameter (no PRAGMA, no string-built SQL values).
+        orphan_tables = [
+            'app_subscriptionhistory',
+            'app_subscriptionpayment',
+            'app_subscriptionplan',
+            'app_adminpresence',
+        ]
+        user_columns = ['performed_by_id', 'created_by_id', 'user_id', 'shared_with_id', 'approver_id']
+        qn = connection.ops.quote_name
         with connection.cursor() as cursor:
-            # Foreign keys temporarily OFF
-            cursor.execute("PRAGMA foreign_keys = OFF;")
-            
-            # All orphan tables that reference User
-            orphan_tables = [
-                'app_subscriptionhistory',
-                'app_subscriptionpayment',
-                'app_subscriptionplan',
-                'app_adminpresence',
-            ]
-            
+            existing_tables = set(connection.introspection.table_names(cursor))
             for table in orphan_tables:
-                # Try each possible column name
-                for column in ['performed_by_id', 'created_by_id', 'user_id', 'shared_with_id', 'approver_id']:
-                    try:
-                        cursor.execute(f"DELETE FROM {table} WHERE {column} = {user_id}")
-                        if cursor.rowcount > 0:
-                            logger.info(f"   ✅ Cleared {cursor.rowcount} rows from {table}.{column}")
-                    except Exception:
-                        pass  # The column does not exist, ignore
-            
-            # Foreign keys ON wapas
-            cursor.execute("PRAGMA foreign_keys = ON;")
+                if table not in existing_tables:
+                    continue
+                columns = {c.name for c in connection.introspection.get_table_description(cursor, table)}
+                for column in user_columns:
+                    if column not in columns:
+                        continue
+                    cursor.execute(f"DELETE FROM {qn(table)} WHERE {qn(column)} = %s", [user_id])
+                    if cursor.rowcount > 0:
+                        logger.info(f"   ✅ Cleared {cursor.rowcount} rows from {table}.{column}")
         
         logger.info(f"✅ User cleanup complete: {username}")
         

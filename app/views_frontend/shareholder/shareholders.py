@@ -1,3 +1,4 @@
+import secrets
 """Frontend views: shareholder/shareholders (split from the former shareholders.py)."""
 from ...security.permissions import perm_required
 from ...models import *
@@ -215,7 +216,7 @@ def shareholder_create(request):
                     username = shareholder.name.lower().replace(' ', '').replace('-', '').replace('_', '')
                     
                     # ✅ Form se password lo
-                    password = request.POST.get('password', '123456')
+                    password = (request.POST.get('password') or '').strip() or secrets.token_urlsafe(9)   # no fixed default password
                     
                     # ✅ Check existing user
                     existing_user = User.objects.filter(username__iexact=username).first()
