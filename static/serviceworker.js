@@ -7,7 +7,10 @@
 // - POS screen (/sales/pos/) + CDN scripts/styles (bootstrap etc.): offline POS ke liye save hotay hain.
 // - POST / admin / api / cart / checkout / account / login kabhi cache nahi hotay.
 // - Logout par saved pages foran delete ho jati hain (shared phone par data na rahe).
-var VERSION = 'v5';   // har release par badlein (cache refresh)
+// - Navigation preload: page ki request SW start hone ke saath hi chal padti hai (tez load).
+// - Prefetch: user jis link par hath/touch rakhe uska page pehle se 60 sec ke liye save (sirf shop browse pages).
+// - Storage hisaab: purani cache entries khud delete; jagah kam ho to media/pages kam kar deta hai.
+var VERSION = 'v6';   // har release par badlein (cache refresh)
 var SHELL = 'bms-shell-' + VERSION;
 var STATIC = 'bms-static-' + VERSION;
 var SHOP = 'bms-shop-' + VERSION;
@@ -15,10 +18,12 @@ var RIDER = 'bms-rider-' + VERSION;
 var MEDIA = 'bms-media-' + VERSION;
 var POS = 'bms-pos-' + VERSION;
 var CDN = 'bms-cdn-' + VERSION;
+var PREFETCH = 'bms-prefetch-' + VERSION;
+var PREFETCH_TTL = 60 * 1000;
 var CDN_HOSTS = ['cdn.jsdelivr.net', 'code.jquery.com', 'unpkg.com', 'cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 var TESS_CACHE = 'tesseract-v1';
 var OFFLINE_URL = '/offline/';
-var KEEP = [SHELL, STATIC, SHOP, RIDER, MEDIA, POS, CDN];
+var KEEP = [SHELL, STATIC, SHOP, RIDER, MEDIA, POS, CDN, PREFETCH];
 
 // Sirf yehi pages offline save hotay hain (exact patterns).
 var SHOP_PAGES = /^\/shop\/(?:|stores\/|stores\/\d+\/|product\/\d+\/|faq\/|help\/|about\/|terms\/|privacy\/|returns\/)$/;
@@ -36,6 +41,9 @@ self.addEventListener('install', function (event) {
 self.addEventListener('message', function (event) {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
   if (event.data && event.data.type === 'CLEAR_PAGES') clearPages();
+  if (event.data && event.data.type === 'CLEANUP') event.waitUntil(cleanup());
+  if (event.data && event.data.type === 'CLEAR_CACHE') event.waitUntil(clearAll());
+  if (event.data && event.data.type === 'PREFETCH') event.waitUntil(prefetchPage(event.data.url));
 });
 
 self.addEventListener('activate', function (event) {
@@ -45,12 +53,87 @@ self.addEventListener('activate', function (event) {
         return (k.indexOf('bms-') === 0 && KEEP.indexOf(k) === -1) ||
                (k.indexOf('tesseract-') === 0 && k !== TESS_CACHE);
       }).map(function (k) { return caches.delete(k); }));
-    }).then(function () { return self.clients.claim(); })
+    }).then(function () {
+      return self.registration.navigationPreload ? self.registration.navigationPreload.enable() : null;
+    }).then(function () { return cleanup().catch(function () {}); })
+      .then(function () { return self.clients.claim(); })
   );
 });
 
 function clearPages() {
-  return Promise.all([caches.delete(SHOP), caches.delete(RIDER), caches.delete(POS)]);
+  return Promise.all([caches.delete(SHOP), caches.delete(RIDER), caches.delete(POS), caches.delete(PREFETCH)]);
+}
+
+function clearAll() {   // "Cache saaf karein" - offline page (SHELL) rehta hai
+  return Promise.all([caches.delete(SHOP), caches.delete(RIDER), caches.delete(POS), caches.delete(PREFETCH),
+                      caches.delete(MEDIA), caches.delete(STATIC), caches.delete(CDN)]);
+}
+
+// ---- Storage hisaab ------------------------------------------------------
+function ageOf(res) {
+  var d = res.headers.get('date');
+  var t = d ? Date.parse(d) : 0;
+  return t ? Date.now() - t : 0;
+}
+
+function purgeOld(name, maxAge) {   // maxAge (ms) se purani entries delete
+  return caches.open(name).then(function (c) {
+    return c.keys().then(function (keys) {
+      return Promise.all(keys.map(function (k) {
+        return c.match(k).then(function (r) { if (r && ageOf(r) > maxAge) return c.delete(k); });
+      }));
+    });
+  });
+}
+
+function storageUsage() {
+  if (!(navigator.storage && navigator.storage.estimate)) return Promise.resolve({usage: 0, quota: 0});
+  return navigator.storage.estimate().then(function (e) { return {usage: e.usage || 0, quota: e.quota || 0}; });
+}
+
+function cleanup() {
+  var DAY = 864e5;
+  return Promise.all([
+    purgeOld(MEDIA, 14 * DAY), purgeOld(SHOP, 7 * DAY), purgeOld(RIDER, 3 * DAY),
+    purgeOld(STATIC, 30 * DAY), purgeOld(POS, 30 * DAY), purgeOld(PREFETCH, 5 * 60 * 1000)
+  ]).then(storageUsage).then(function (u) {
+    if (!u.quota) return;
+    var used = u.usage / u.quota;
+    if (used > 0.9) return Promise.all([caches.delete(MEDIA), caches.delete(SHOP), caches.delete(RIDER), trim(STATIC, 100)]);
+    if (used > 0.7) return Promise.all([trim(MEDIA, 60), trim(SHOP, 20), trim(RIDER, 10), trim(STATIC, 150)]);
+  });
+}
+
+// ---- Prefetch (shop browse pages) -----------------------------------------
+function prefetchPage(rawUrl) {
+  var u;
+  try { u = new URL(rawUrl, self.location.origin); } catch (e) { return Promise.resolve(); }
+  if (u.origin !== self.location.origin || u.search || !SHOP_PAGES.test(u.pathname)) return Promise.resolve();
+  var key = new Request(u.pathname);
+  return caches.open(PREFETCH).then(function (c) {
+    return c.match(key).then(function (hit) {
+      if (hit && Date.now() - (+hit.headers.get('X-Prefetched-At') || 0) < PREFETCH_TTL) return;
+      return fetch(u.pathname, {credentials: 'same-origin', headers: {'X-Purpose': 'prefetch'}}).then(function (res) {
+        if (!res || !res.ok || res.redirected || res.type !== 'basic' || !isHtml(res)) return;
+        return res.blob().then(function (b) {
+          return c.put(key, new Response(b, {status: 200, headers: {
+            'Content-Type': res.headers.get('Content-Type'), 'X-Prefetched-At': String(Date.now())}}));
+        }).then(function () { return trim(PREFETCH, 8); });
+      });
+    });
+  }).catch(function () {});
+}
+
+function prefetched(path) {   // 60 sec ke andar ka saved page (ek hi dafa use hota hai)
+  return caches.open(PREFETCH).then(function (c) {
+    var key = new Request(path);
+    return c.match(key).then(function (hit) {
+      if (!hit) return null;
+      return c.delete(key).then(function () {
+        return Date.now() - (+hit.headers.get('X-Prefetched-At') || 0) < PREFETCH_TTL ? hit : null;
+      });
+    });
+  }).catch(function () { return null; });
 }
 
 function trim(name, max) {
@@ -77,8 +160,8 @@ function offlineCopy(res, noBar) {   // saved page + chhota "Offline" bar
 }
 
 // Network-first page with saved-copy fallback.
-function pageStrategy(req, cacheName, max, noBar) {
-  return fetch(req).then(function (res) {
+function pageStrategy(req, cacheName, max, noBar, preload) {
+  return Promise.resolve(preload).then(function (p) { return p || fetch(req); }).then(function (res) {
     if (res && res.ok && !res.redirected && res.type === 'basic' && isHtml(res)) {
       var copy = res.clone();
       caches.open(cacheName).then(function (c) { return c.put(req, copy); }).then(function () { return trim(cacheName, max); });
@@ -93,7 +176,7 @@ function pageStrategy(req, cacheName, max, noBar) {
 
 self.addEventListener('fetch', function (event) {
   var req = event.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== 'GET') { event.waitUntil(caches.delete(PREFETCH)); return; }   // cart/order badla - pehle se load page purana ho sakta hai
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) {
     // CDN files (bootstrap, icons, jquery...): stale-while-revalidate, taake POS offline bhi sahi dikhe
@@ -143,7 +226,7 @@ self.addEventListener('fetch', function (event) {
   }
 
   // Product images: stale-while-revalidate (limit 150)
-  if (path.indexOf('/media/') === 0 && req.destination === 'image') {
+  if ((path.indexOf('/media/') === 0 || path.indexOf('/img/') === 0) && req.destination === 'image') {
     event.respondWith(caches.open(MEDIA).then(function (cache) {
       return cache.match(req).then(function (hit) {
         var net = fetch(req).then(function (res) {
@@ -159,12 +242,20 @@ self.addEventListener('fetch', function (event) {
   if (req.mode !== 'navigate') return;
 
   // Rider pages / Shop browse pages: saved copy offline
-  if (path === '/sales/pos/') { event.respondWith(pageStrategy(req, POS, 3, true)); return; }
-  if (RIDER_PAGES.test(path)) { event.respondWith(pageStrategy(req, RIDER, 30)); return; }
-  if (SHOP_PAGES.test(path)) { event.respondWith(pageStrategy(req, SHOP, 60)); return; }
+  var pre = event.preloadResponse;   // navigation preload (agar browser support kare)
+  if (path === '/sales/pos/') { event.respondWith(pageStrategy(req, POS, 3, true, pre)); return; }
+  if (RIDER_PAGES.test(path)) { event.respondWith(pageStrategy(req, RIDER, 30, false, pre)); return; }
+  if (SHOP_PAGES.test(path)) {
+    event.respondWith(prefetched(path).then(function (hit) {
+      if (hit) { event.waitUntil(Promise.resolve(pre).catch(function () {})); return hit; }
+      return pageStrategy(req, SHOP, 60, false, pre);
+    }));
+    return;
+  }
 
   // Baqi pages: network, warna offline page
   if (!/^\/(admin|api|ajax|login|logout|security|media)\//.test(path) && path !== '/login/') {
-    event.respondWith(fetch(req).catch(function () { return caches.match(OFFLINE_URL); }));
+    event.respondWith(Promise.resolve(pre).then(function (p) { return p || fetch(req); })
+      .catch(function () { return caches.match(OFFLINE_URL); }));
   }
 });

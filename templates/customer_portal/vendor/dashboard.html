@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load img_tools %}
 {% load static %}
 
 {% block title %}Vendor Dashboard - {{ company_name }}{% endblock %}
@@ -177,7 +178,7 @@
             <tbody>
             {% for p in products %}
                 <tr>
-                    <td data-label="" class="vd-c-img">{% if p.image %}<img class="vd-thumb" src="{{ p.image.url }}" alt="">{% else %}<div class="vd-thumb"></div>{% endif %}</td>
+                    <td data-label="" class="vd-c-img">{% if p.image %}<img class="vd-thumb" src="{{ p.image|thumb:480 }}" alt="">{% else %}<div class="vd-thumb"></div>{% endif %}</td>
                     <td class="vd-c-name">
                         <b>{{ p.name }}</b><br>
                         <small class="text-muted">{{ p.category.name|default:"-" }}</small>

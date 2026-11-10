@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load img_tools %}
 {% load static %}
 
 {% block title %}{{ page_title }} - {{ company_name }}{% endblock %}
@@ -121,13 +122,13 @@
         <div class="ss-row">
           <div class="ss-group">
             <label>Logo</label>
-            {% if profile.logo %}<img class="ss-logo" src="{{ profile.logo.url }}" alt="">
+            {% if profile.logo %}<img class="ss-logo" src="{{ profile.logo|thumb:160 }}" alt="">
               <label class="ss-check"><input type="checkbox" name="remove_logo" value="1"> Logo hata dein</label>{% endif %}
             <input type="file" name="logo" accept="image/*">
           </div>
           <div class="ss-group">
             <label>Cover photo</label>
-            {% if profile.cover_image %}<img class="ss-cover" src="{{ profile.cover_image.url }}" alt="">
+            {% if profile.cover_image %}<img class="ss-cover" src="{{ profile.cover_image|thumb:720 }}" alt="">
               <label class="ss-check"><input type="checkbox" name="remove_cover" value="1"> Cover hata dein</label>{% endif %}
             <input type="file" name="cover_image" accept="image/*">
           </div>

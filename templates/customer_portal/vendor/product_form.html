@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load img_tools %}
 {% load static %}
 
 {% block title %}{{ page_title }} - {{ company_name }}{% endblock %}
@@ -145,7 +146,7 @@
 
         <div class="pf-group">
           <label for="image">Product Image {% if not product %}<span class="pf-req">*</span>{% endif %}</label>
-          {% if product and product.image %}<div><img class="pf-current" src="{{ product.image.url }}" alt=""></div>{% endif %}
+          {% if product and product.image %}<div><img class="pf-current" src="{{ product.image|thumb:480 }}" alt=""></div>{% endif %}
           <input type="file" name="image" id="image" accept="image/*" {% if not product %}required{% endif %}>
           <div class="pf-help">JPG/PNG/WEBP, 5 MB tak.{% if product %} Nayi image dene par product dobara review hoga.{% endif %}</div>
         </div>

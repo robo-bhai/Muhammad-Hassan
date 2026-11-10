@@ -5,6 +5,7 @@ from django.shortcuts import redirect
 from django.views.static import serve
 from app.pwa_portals import pwa_manifest
 from app.pwa_icons import pwa_icon, connect_signals
+from app.image_tools import thumb_view
 
 connect_signals()   # logo badalne par PWA icon cache saaf
 
@@ -16,6 +17,9 @@ urlpatterns = [
     # Admin Panel
     path('admin/', admin.site.urls),
     
+    # Chhoti (compressed) tasveerein
+    path('img/<int:w>/<path:path>', thumb_view, name='img_thumb'),
+
     # Frontend (All app URLs)
     path('', include('app.urls')),
     

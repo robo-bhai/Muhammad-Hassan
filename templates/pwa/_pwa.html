@@ -1,4 +1,4 @@
-{% load pwa_portal %}
+{% load pwa_portal static %}
 {% pwa_portal_meta %}
 <script>
 /* Service worker + "Update available" bar. */
@@ -101,3 +101,4 @@ if ('serviceWorker' in navigator) {
   });
 })();
 </script>
+<script src="{% static 'js/pwa_speed.js' %}" defer></script>

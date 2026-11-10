@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load img_tools %}
 {% load static %}
 
 {% block title %}{{ product.name }} - {{ company_name }}{% endblock %}
@@ -419,7 +420,7 @@
                     
                     {% if product.image %}
                         <div class="zoom-container" id="zoomContainer">
-                            <img src="{{ product.image.url }}" 
+                            <img src="{{ product.image|thumb:1080 }}" 
                                  alt="{{ product.name }}" 
                                  class="zoom-image"
                                  id="zoomImage">
@@ -599,7 +600,7 @@
                 <div class="product-image">
                     <a href="{% url 'shop_product_detail' p.id %}">
                         {% if p.image %}
-                        <img src="{{ p.image.url }}" alt="{{ p.name }}">
+                        <img src="{{ p.image|thumb:1080 }}" alt="{{ p.name }}">
                         {% else %}
                         <div class="product-placeholder"><i class="bi bi-box"></i></div>
                         {% endif %}
@@ -637,7 +638,7 @@
                 <div class="product-image">
                     <a href="{% url 'shop_product_detail' p.id %}">
                         {% if p.image %}
-                        <img src="{{ p.image.url }}" alt="{{ p.name }}">
+                        <img src="{{ p.image|thumb:1080 }}" alt="{{ p.name }}">
                         {% else %}
                         <div class="product-placeholder"><i class="bi bi-box"></i></div>
                         {% endif %}

@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load img_tools %}
 {% load static %}
 
 {% block title %}Order #{{ order.order_no }} - {{ company_name }}{% endblock %}
@@ -227,7 +228,7 @@
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
                                             {% if item.product.image %}
-                                            <img src="{{ item.product.image.url }}" 
+                                            <img src="{{ item.product.image|thumb:480 }}" 
                                                  style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
                                             {% endif %}
                                             <div>

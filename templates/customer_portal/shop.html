@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load img_tools %}
 {% load static %}
 
 {% block title %}Shop - {{ company_name }}{% endblock %}
@@ -1201,7 +1202,7 @@
         {% if banners %}
             {% for b in banners %}
             {% if b.target %}<a href="{{ b.target }}" class="promo-card promo-img" aria-label="{{ b.title }}">{% else %}<div class="promo-card promo-img">{% endif %}
-                <img src="{{ b.image.url }}" alt="{{ b.title }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+                <img src="{{ b.image|thumb:1080 }}" alt="{{ b.title }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
             {% if b.target %}</a>{% else %}</div>{% endif %}
             {% endfor %}
         {% else %}
@@ -1247,7 +1248,7 @@
                 {% if st.status == 'closed' %}<span class="store-flag flag-closed">Closed</span>
                 {% elif st.delivery_fee == 0 %}<span class="store-flag flag-free"><i class="bi bi-bicycle"></i> Free delivery</span>
                 {% elif st.status == 'busy' %}<span class="store-flag flag-busy">Busy</span>{% endif %}
-                <span class="store-logo">{% if st.logo %}<img src="{{ st.logo.url }}" alt="{{ st.business_name }}" loading="lazy">{% else %}{{ st.business_name|slice:":1"|upper }}{% endif %}</span>
+                <span class="store-logo">{% if st.logo %}<img src="{{ st.logo|thumb:160 }}" alt="{{ st.business_name }}" loading="lazy">{% else %}{{ st.business_name|slice:":1"|upper }}{% endif %}</span>
             </div>
             <div class="store-body">
                 <div class="store-name">{{ st.business_name }}</div>
@@ -1269,7 +1270,7 @@
         {% for product in page_obj %}{% if product.has_discount %}
         <a href="{% url 'shop_product_detail' product.pk %}" class="deal-card">
             <div class="deal-img">
-                {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy">{% else %}<i class="bi bi-bag"></i>{% endif %}
+                {% if product.image %}<img src="{{ product.image|thumb:480 }}" alt="{{ product.name }}" loading="lazy">{% else %}<i class="bi bi-bag"></i>{% endif %}
                 <span class="deal-off">{{ product.discount_percentage|floatformat:0 }}% OFF</span>
             </div>
             <div class="deal-name">{{ product.name }}</div>
@@ -1381,7 +1382,7 @@
             <div class="product-image">
                 <div class="product-image-static">
                     {% if product.image %}
-                    <img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy"
+                    <img src="{{ product.image|thumb:480 }}" alt="{{ product.name }}" loading="lazy"
                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                     <div class="product-placeholder" style="display:none;"><i class="bi bi-box"></i></div>
                     {% else %}
@@ -1567,7 +1568,7 @@
             <a href="{% url 'shop_product_detail' product.id %}" class="recently-viewed-card">
                 <div class="recently-viewed-image">
                     {% if product.image %}
-                    <img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy"
+                    <img src="{{ product.image|thumb:480 }}" alt="{{ product.name }}" loading="lazy"
                          onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
                     <i class="bi bi-box" style="display:none;"></i>
                     {% else %}

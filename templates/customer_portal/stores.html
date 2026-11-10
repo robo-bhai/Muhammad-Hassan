@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load img_tools %}
 {% load static %}
 
 {% block title %}Stores - {{ company_name }}{% endblock %}
@@ -168,10 +169,10 @@
         {% for b in banners %}
           {% if b.target %}
           <a class="bn-slide" href="{{ b.target }}"{% if b.target|slice:":8" == "https://" %} target="_blank" rel="noopener noreferrer"{% endif %}>
-            <img src="{{ b.image.url }}" alt="{{ b.title }}"{% if not forloop.first %} loading="lazy"{% endif %}>
+            <img src="{{ b.image|thumb:1080 }}" alt="{{ b.title }}"{% if not forloop.first %} loading="lazy"{% endif %}>
           </a>
           {% else %}
-          <div class="bn-slide"><img src="{{ b.image.url }}" alt="{{ b.title }}"{% if not forloop.first %} loading="lazy"{% endif %}></div>
+          <div class="bn-slide"><img src="{{ b.image|thumb:1080 }}" alt="{{ b.title }}"{% if not forloop.first %} loading="lazy"{% endif %}></div>
           {% endif %}
         {% endfor %}
       </div>

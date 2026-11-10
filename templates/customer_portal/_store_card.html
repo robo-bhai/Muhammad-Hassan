@@ -1,7 +1,8 @@
+{% load img_tools %}
       <div class="sd-p {% if p.stock_int <= 0 %}oos{% endif %}{% if p.cart_qty %} has{% endif %}" id="{{ idp|default:'p' }}{{ p.id }}"
            data-id="{{ p.id }}" data-price="{{ p.final_price|stringformat:'.3f' }}" data-stock="{{ p.stock_int }}">
         <a class="sd-pimg" href="{% url 'shop_product_detail' p.pk %}">
-          {% if p.image %}<img src="{{ p.image.url }}" alt="{{ p.name }}" loading="lazy">{% else %}<div class="ph"></div>{% endif %}
+          {% if p.image %}<img src="{{ p.image|thumb:480 }}" alt="{{ p.name }}" loading="lazy">{% else %}<div class="ph"></div>{% endif %}
           {% if p.has_discount and p.stock_int > 0 %}<span class="sd-off">-{{ p.discount_percentage|floatformat:0 }}%</span>{% endif %}
           {% if p.stock_int <= 0 %}<span class="sd-oos-tag">Out of stock</span>{% endif %}
         </a>
