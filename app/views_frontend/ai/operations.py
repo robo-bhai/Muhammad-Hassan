@@ -145,7 +145,7 @@ def operations_dashboard(request):
     try:
         engine = AIOperationsEngine()
         health_score = engine.calculate_health_score()
-    except:
+    except Exception:
         health_score = 0
     
     context = {
@@ -463,7 +463,7 @@ def task_create(request):
     if plan_id:
         try:
             pre_plan = BusinessOperationPlan.objects.get(pk=plan_id)
-        except:
+        except Exception:
             pass
     
     if request.method == 'POST':

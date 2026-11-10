@@ -51,7 +51,8 @@ def table_counts(vendor_tables, cursor):
     out = {}
     for t in COUNT_TABLES:
         if t in vendor_tables:
-            cursor.execute('SELECT COUNT(*) FROM "%s"' % t)
+            from django.db import connection
+            cursor.execute('SELECT COUNT(*) FROM %s' % connection.ops.quote_name(t))
             out[t] = cursor.fetchone()[0]
     return out
 

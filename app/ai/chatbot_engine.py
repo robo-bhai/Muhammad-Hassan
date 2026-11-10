@@ -1094,7 +1094,7 @@ Rs. {total_pay:,.2f} to {v_count} vendors
     def get_cash_answer(self, question):
         try:
             balance = self.CashBalance.get_balance()
-        except:
+        except Exception:
             balance = Decimal('0')
         
         return f"""💵 **Cash Balance:**
@@ -1502,7 +1502,7 @@ Outstanding: Rs. {given_total:,.2f}
         
         try:
             cash = self.CashBalance.get_balance()
-        except:
+        except Exception:
             cash = Decimal('0')
         
         pending_tasks = self.OperationTask.objects.filter(status='pending').count()

@@ -9,7 +9,7 @@ after too many failures. Errors here are logged and never break the login.
 import logging
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.signals import user_logged_in, user_login_failed
+from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.dispatch import receiver
 
 from app.utils.security import get_client_ip, track_login_attempt
@@ -48,3 +48,16 @@ def record_successful_login(sender, request, user, **kwargs):
         )
     except Exception:
         logger.exception("Could not record successful login.")
+    from app.security.session_manager import register_session
+    register_session(request, user, get_client_ip(request), request.META.get("HTTP_USER_AGENT", ""))
+
+
+@receiver(user_logged_out)
+def record_logout(sender, request, user, **kwargs):
+    if request is None:
+        return
+    try:
+        from app.security.session_manager import close_session
+        close_session(request.session.session_key)
+    except Exception:
+        logger.exception("Could not close session record.")

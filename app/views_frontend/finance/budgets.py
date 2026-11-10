@@ -616,12 +616,14 @@ def budget_report(request):
         cat['utilization'] = (cat['used'] / cat['allocated'] * 100) if cat['allocated'] > 0 else 0
     
     # Monthly trend
-    monthly_data = budgets.extra(
-        select={'month': "strftime('%%Y-%%m', period_start)"}
-    ).values('month').annotate(
-        allocated=Sum('allocated_amount'),
-        used=Sum('used_amount')
-    ).order_by('month')
+    from django.db.models.functions import TruncMonth   # works on SQLite, MySQL, PostgreSQL
+    monthly_data = [
+        {**row, 'month': row['month'].strftime('%Y-%m') if row['month'] else ''}
+        for row in budgets.annotate(month=TruncMonth('period_start')).values('month').annotate(
+            allocated=Sum('allocated_amount'),
+            used=Sum('used_amount')
+        ).order_by('month')
+    ]
     
     for month in monthly_data:
         month['utilization'] = (month['used'] / month['allocated'] * 100) if month['allocated'] > 0 else 0

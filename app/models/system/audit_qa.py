@@ -78,7 +78,7 @@ class AuditPlan(models.Model):
                 try:
                     last_num = int(last.plan_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -281,7 +281,7 @@ class AuditReport(models.Model):
                 try:
                     last_num = int(last.report_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -390,7 +390,7 @@ class InternalControl(models.Model):
                 try:
                     last_num = int(last.control_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'

@@ -117,7 +117,7 @@ def generate_share_certificate_pdf(share):
             if os.path.exists(logo_path):
                 img = RLImage(logo_path, width=1.5*inch, height=0.8*inch)
                 story.append(img)
-        except:
+        except Exception:
             pass
     
     # Company Name
@@ -260,7 +260,7 @@ def generate_share_certificate_pdf(share):
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ]))
         story.append(qr_table)
-    except:
+    except Exception:
         pass
     
     # ============================================

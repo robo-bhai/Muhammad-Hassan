@@ -430,7 +430,7 @@ class AICashEngine:
                 else:
                     predictability_score = 10
                     predictability_status = 'Unknown'
-            except:
+            except Exception:
                 predictability_score = 10
                 predictability_status = 'Unknown'
         else:
@@ -677,11 +677,8 @@ class AICashEngine:
         # Check 3: Unusual hours (late night)
         # ==========================================
         weird_hours = self.CashTransaction.objects.filter(
-            date__date__gte=last_30
-        ).extra(
-            where=[
-                "CAST(strftime('%H', date) AS INTEGER) >= 0 AND CAST(strftime('%H', date) AS INTEGER) < 5"
-            ]
+            date__date__gte=last_30,
+            date__hour__lt=5          # 12 AM - 5 AM, DB-neutral (was SQLite strftime)
         )[:5]
         
         if weird_hours.count() > 2:

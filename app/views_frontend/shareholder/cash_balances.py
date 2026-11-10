@@ -736,7 +736,7 @@ def shareholder_transactions_export(request, pk):
             try:
                 if len(str(cell.value)) > max_length:
                     max_length = len(str(cell.value))
-            except:
+            except Exception:
                 pass
         adjusted_width = min(max_length + 2, 40)
         ws.column_dimensions[col_letter].width = adjusted_width

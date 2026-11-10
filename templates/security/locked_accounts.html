@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Locked accounts{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h4 mb-3">Locked accounts</h1>
+  {% if messages %}{% for m in messages %}<div class="alert alert-info py-2">{{ m }}</div>{% endfor %}{% endif %}
+  <p class="text-muted">An account locks after {{ threshold }} failed logins within {{ window }} minutes (any IP). It unlocks by itself, or you can unlock it now.</p>
+  {% if accounts %}
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Username</th><th>Failed logins</th><th>Unlocks in</th><th></th></tr></thead>
+    <tbody>
+    {% for name, minutes, count in accounts %}
+      <tr><td>{{ name }}</td><td>{{ count }}</td><td>{{ minutes }} min</td>
+      <td><form method="POST">{% csrf_token %}<input type="hidden" name="username" value="{{ name }}">
+        <button class="btn btn-sm btn-outline-primary">Unlock</button></form></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="alert alert-success">No account is locked right now.</div>{% endif %}
+</div>
+{% endblock %}

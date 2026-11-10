@@ -333,3 +333,73 @@ def change_password_security(request):
         'company_name': CompanyInfo.objects.first().name if CompanyInfo.objects.exists() else 'ERP System',
     }
     return render(request, 'security/change_password.html', context)
+
+@login_required
+def locked_accounts_view(request):
+    """Accounts locked by too many failed logins; admin can unlock one."""
+    if not can_use_security(request.user):
+        messages.error(request, 'Access denied!')
+        return redirect('dashboard')
+
+    from app.security import account_lock
+    policy = SecuritySettings.get_settings()
+
+    if request.method == 'POST':
+        username = (request.POST.get('username') or '').strip()
+        if username:
+            account_lock.unlock_account(username, request.user)
+            messages.success(request, f"Account '{username}' unlocked.")
+        return redirect('locked_accounts')
+
+    return render(request, 'security/locked_accounts.html', {
+        'accounts': account_lock.list_locked_accounts(),
+        'threshold': account_lock.lock_threshold(policy.max_login_attempts),
+        'window': policy.lockout_time,
+    })
+
+
+@login_required
+def active_sessions_view(request):
+    """Where is this account signed in? Sign out one device, or all others.
+
+    Everyone sees and manages their own sessions. A security administrator can add
+    ?all=1 to see every user's sessions and sign any of them out.
+    """
+    from app.security import session_manager
+    from app.security.new_device import device_signature
+
+    is_admin = can_use_security(request.user)
+    show_all = is_admin and request.GET.get('all') == '1'
+    current_key = request.session.session_key
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'revoke_others':
+            n = session_manager.revoke_all_except(request.user, current_key)
+            messages.success(request, f'Signed out of {n} other device(s).')
+        elif action == 'revoke':
+            row = SessionLog.objects.filter(pk=request.POST.get('id'), is_active=True).first()
+            if row is None:
+                messages.error(request, 'Session not found.')
+            elif row.user_id != request.user.id and not is_admin:
+                messages.error(request, 'Access denied!')
+            elif row.session_key == current_key:
+                messages.info(request, 'This is your current session. Use Logout to leave it.')
+            else:
+                session_manager.revoke(row)
+                messages.success(request, f"Signed {row.user.get_username()} out of that device.")
+        return redirect(request.get_full_path())
+
+    rows = session_manager.active_sessions(None if show_all else request.user)
+    sessions = []
+    for r in rows:
+        browser, _, os_name = device_signature(r.user_agent).partition('|')
+        sessions.append({
+            'id': r.pk, 'user': r.user.get_username(), 'ip': r.ip_address,
+            'device': f"{browser} on {os_name}" if browser else 'Unknown device',
+            'login_time': r.login_time, 'last_activity': r.last_activity,
+            'current': r.session_key == current_key,
+        })
+    return render(request, 'security/active_sessions.html', {
+        'sessions': sessions, 'show_all': show_all, 'is_admin': is_admin,
+    })

@@ -123,7 +123,7 @@ class CustomAdminSite(admin.AdminSite):
             try:
                 data = json.loads(request.body)
                 backup_path = data.get('path', '').strip()
-            except:
+            except Exception:
                 backup_path = request.POST.get('path', '').strip()
             
             if backup_path:
@@ -617,7 +617,7 @@ class CustomAdminSite(admin.AdminSite):
                 total = sum(cpu_values)
                 if total > 0:
                     cpu_percent = round(100 - (idle / total * 100), 1)
-        except:
+        except Exception:
             pass
         
         ram_total_gb = 0
@@ -639,7 +639,7 @@ class CustomAdminSite(admin.AdminSite):
             ram_used_gb = round(used_kb / (1024**2), 2)
             if total_kb > 0:
                 ram_percent = round((used_kb / total_kb) * 100, 1)
-        except:
+        except Exception:
             pass
         
         disk_total_gb = 0
@@ -654,7 +654,7 @@ class CustomAdminSite(admin.AdminSite):
             disk_used_gb = round(used_bytes / (1024**3), 1)
             if total_bytes > 0:
                 disk_percent = round((used_bytes / total_bytes) * 100, 1)
-        except:
+        except Exception:
             pass
         
         db_size_mb = 0
@@ -663,7 +663,7 @@ class CustomAdminSite(admin.AdminSite):
                 db_path = settings.DATABASES['default']['NAME']
                 if os.path.exists(db_path):
                     db_size_mb = round(os.path.getsize(db_path) / (1024**2), 2)
-        except:
+        except Exception:
             pass
         
         model_counts = {
@@ -695,7 +695,7 @@ class CustomAdminSite(admin.AdminSite):
             backup_files = self.get_backup_files(request)
             if backup_files:
                 last_backup = backup_files[0]
-        except:
+        except Exception:
             pass
         
         license_valid = License.objects.filter(

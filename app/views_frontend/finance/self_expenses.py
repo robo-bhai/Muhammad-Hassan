@@ -41,7 +41,7 @@ def self_expense_report(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     
@@ -309,7 +309,7 @@ def self_expense_report_pdf(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     
@@ -541,7 +541,7 @@ def self_expense_export(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     

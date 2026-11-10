@@ -22,6 +22,9 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 from openpyxl.utils import get_column_letter
 
+import logging as _logging
+logger = _logging.getLogger(__name__)
+
 
 @login_required
 def loan_pay(request, pk):
@@ -262,7 +265,7 @@ def loan_return_create(request):
                     if cleaned == '':
                         return Decimal(default)
                     return Decimal(cleaned)
-                except:
+                except Exception:
                     return Decimal(default)
             
             # ✅ Get loan agreement from hidden field
@@ -338,7 +341,7 @@ def loan_return_create(request):
             
         except Exception as e:
             messages.error(request, f'❌ Error: {str(e)}')
-            print(f"LOAN RETURN ERROR: {e}")
+            logger.error(f"LOAN RETURN ERROR: {e}", exc_info=True)
             import traceback
             traceback.print_exc()
             return redirect('loan_return_create')
@@ -519,7 +522,7 @@ def loan_create(request):
                     if cleaned == '':
                         return Decimal(default)
                     return Decimal(cleaned)
-                except:
+                except Exception:
                     return Decimal(default)
             
             # Validation
@@ -600,7 +603,7 @@ def loan_create(request):
             return redirect('loan_create')
         except Exception as e:
             messages.error(request, f'❌ Error: {str(e)}')
-            print(f"LOAN CREATE ERROR: {e}")
+            logger.error(f"LOAN CREATE ERROR: {e}", exc_info=True)
             import traceback
             traceback.print_exc()
             return redirect('loan_create')
@@ -987,7 +990,7 @@ def loan_export_report(request):
                         length = len(str(cell.value))
                         if length > max_length:
                             max_length = length
-                except:
+                except Exception:
                     pass
             adjusted_width = min(max_length + 2, 40)
             ws.column_dimensions[col_letter].width = adjusted_width
@@ -1269,7 +1272,7 @@ def loan_given_create(request):
                     if cleaned == '':
                         return Decimal(default)
                     return Decimal(cleaned)
-                except:
+                except Exception:
                     return Decimal(default)
             
             # Validation

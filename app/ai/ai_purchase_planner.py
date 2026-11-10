@@ -509,7 +509,7 @@ class AIPurchasePlanner:
                         reasons.append("⚠️ High daily variation")
                 else:
                     score += 15
-            except:
+            except Exception:
                 score += 15
         else:
             score += 15

@@ -458,7 +458,7 @@ def trial_balance(request):
     
     try:
         as_at_date_obj = datetime.strptime(as_at_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         as_at_date_obj = date.today()
     
     # Get all accounts with balances
@@ -510,7 +510,7 @@ def balance_sheet(request):
     
     try:
         as_at_date_obj = datetime.strptime(as_at_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         as_at_date_obj = date.today()
     
     # Get account types
@@ -1279,7 +1279,7 @@ def export_accounts_report(request):
                         length = len(str(cell.value))
                         if length > max_length:
                             max_length = length
-                except:
+                except Exception:
                     pass
             
             # Set width (max 50 characters)

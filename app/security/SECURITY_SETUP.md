@@ -10,6 +10,7 @@ MIDDLEWARE = [
     ...
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "app.middleware.middleware.SecurityMiddleware",               # IP block + session timeout (pehle se)
+    "app.middleware.account_lockout.AccountLockoutMiddleware",    # NEW: account lockout
     "app.middleware.security_2fa.TwoFactorMiddleware",            # pehle se (ab authenticator bhi)
     "app.middleware.password_expiry.PasswordExpiryMiddleware",    # NEW
     "app.middleware.audit_log.AuditLogMiddleware",                # NEW
@@ -75,3 +76,31 @@ Tests: `python manage.py test app.tests_suite.tests_security_totp`
 
 Email ke liye settings.py mein EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL zaroori hain.
 Test: `python manage.py test app.tests_suite.tests_security_alerts`
+
+## 6. Account lockout (username)
+IP block sirf ek IP rokta hai. Agar hacker kai IP se ek hi account par guess kare, to account khud lock ho jata hai.
+* Lock: `max(max_login_attempts x 2, 6)` galat logins, `lockout_time` minutes ke andar, **kisi bhi IP se**. Sahi login ya admin unlock count zero kar deta hai.
+* Lock mein sahi password bhi qubool nahi (HTTP 429). Message mojood aur na-mojood username ke liye ek jaisa hai (usernames ka pata nahi chalta).
+* Owner ko email (ek lock par ek), aur Security -> Alerts mein entry (IPs, browser/tool ke saath).
+* Unlock: `/security/locked-accounts/`. History delete nahi hoti.
+* IP whitelist wali IP (office) kabhi lock nahi hoti, taake hacker owner ko bahar na nikal sake.
+* settings.py MIDDLEWARE mein `"app.middleware.account_lockout.AccountLockoutMiddleware"` AuthenticationMiddleware ke baad, TwoFactorMiddleware se pehle daalein.
+* Test: `python manage.py test app.tests_suite.tests_account_lock`
+
+## 7. Naye device se login ka alert
+Kisi user ka account pehli dafa naye browser/OS se khule to user ko email jati hai ("Was this you?") jis mein device, IP aur waqt hota hai. Security -> Alerts mein low-severity entry bhi banti hai.
+* Device = browser + OS (jaise Chrome|Windows). Browser update par alert nahi aata.
+* Account ka sab se pehla login kabhi flag nahi hota. Email na ho to sirf alert entry banti hai.
+* Owner ko har user ke har naye device ki email nahi jati (shor se bachne ke liye); sirf asli khatron ki jati hai.
+* Band karne ke liye settings.py mein `SECURITY_NEW_DEVICE_ALERTS = False`. Koi middleware nahi chahiye - login signal se khud chalta hai.
+* Test: `python manage.py test app.tests_suite.tests_new_device`
+
+## 8. Active sessions (kahan kahan login hai)
+Page: `/security/sessions/` (har logged-in user ke liye). Har login ab SessionLog mein likha jata hai (pehle koi row banti hi nahi thi, is liye "active sessions" hamesha 0 dikhte the).
+* User apni sab devices dekhta hai (browser, OS, IP, kab login, aakhri activity), aur ek ko ya "baqi sab devices" ko sign-out kar sakta hai. Current device ko yahan se sign-out nahi kar sakta (Logout button use kare).
+* Sign-out server par session delete karta hai, to doosri device agle click par login page par chali jati hai.
+* Security admin `?all=1` se sab users ke sessions dekh kar kisi ko bhi nikal sakta hai.
+* Session keys kabhi page ya URL mein nahi aati; sirf row id. Doosre ka session koi chhoo nahi sakta.
+* Zaroori: `SESSION_ENGINE` database/cache/file ho (Django default theek hai). `signed_cookies` engine mein remote sign-out mumkin nahi.
+* Sign-out ke POST ka record audit log mein khud aata hai.
+* Test: `python manage.py test app.tests_suite.tests_active_sessions`

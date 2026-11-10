@@ -302,7 +302,7 @@ def generate_invoice_pdf(sale_obj):
         except ImportError:
             # Simple conversion if num2words not installed
             return f"{amount:,.2f}"
-        except:
+        except Exception:
             return f"{amount:,.2f}"
     
     amount_in_words = number_to_words(total_amount)

@@ -47,7 +47,7 @@ class ExpenseCategory(models.Model):
                 try:
                     last_num = int(last_cat.code.split('-')[1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -166,7 +166,7 @@ class Budget(models.Model):
                 try:
                     last_num = int(last_budget.budget_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -542,7 +542,7 @@ class Expense(models.Model):
                 try:
                     last_num = int(last_exp.expense_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -712,7 +712,7 @@ class ExpenseClaim(models.Model):
                 try:
                     last_num = int(last_claim.claim_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'

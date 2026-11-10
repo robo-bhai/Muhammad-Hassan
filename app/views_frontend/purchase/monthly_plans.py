@@ -48,7 +48,7 @@ def monthly_purchase_planner(request):
     
     try:
         selected_month = datetime.strptime(month_str + '-01', '%Y-%m-%d').date()
-    except:
+    except Exception:
         selected_month = date.today().replace(day=1)
         month_str = selected_month.strftime('%Y-%m')
     
@@ -79,7 +79,7 @@ def monthly_purchase_planner(request):
             if cleaned == '':
                 return Decimal(default)
             return Decimal(cleaned)
-        except:
+        except Exception:
             return Decimal(default)
     
     def safe_int(value, default=0):
@@ -88,7 +88,7 @@ def monthly_purchase_planner(request):
             if not value or str(value).strip() == '':
                 return default
             return int(float(str(value).replace(',', '').replace(' ', '').strip()))
-        except:
+        except Exception:
             return default
     
     def safe_float(value, default=0.0):
@@ -97,7 +97,7 @@ def monthly_purchase_planner(request):
             if not value or str(value).strip() == '':
                 return default
             return float(value)
-        except:
+        except Exception:
             return default
     
     # ========================================== #
@@ -682,7 +682,7 @@ def monthly_plan_complete(request, pk):
                     if cleaned == '':
                         return Decimal(default)
                     return Decimal(cleaned)
-                except:
+                except Exception:
                     return Decimal(default)
             
             def safe_int(value, default=0):
@@ -690,7 +690,7 @@ def monthly_plan_complete(request, pk):
                     if not value or str(value).strip() == '':
                         return default
                     return int(float(str(value).replace(',', '').replace(' ', '').strip()))
-                except:
+                except Exception:
                     return default
             
             # Get actual data with safe conversion
@@ -917,7 +917,7 @@ def monthly_plan_edit(request, pk):
                     if cleaned == '':
                         return Decimal(default)
                     return Decimal(cleaned)
-                except:
+                except Exception:
                     return Decimal(default)
             
             def safe_int(value, default=0):
@@ -925,7 +925,7 @@ def monthly_plan_edit(request, pk):
                     if not value or str(value).strip() == '':
                         return default
                     return int(float(str(value).replace(',', '').replace(' ', '').strip()))
-                except:
+                except Exception:
                     return default
             
             # Get form data
@@ -1094,7 +1094,7 @@ def monthly_plan_history(request):
         try:
             month_date = datetime.strptime(selected_month + '-01', '%Y-%m-%d').date()
             plans = plans.filter(month=month_date)
-        except:
+        except Exception:
             pass
     
     selected_status = request.GET.get('status', '')

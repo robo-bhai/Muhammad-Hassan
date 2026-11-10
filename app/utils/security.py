@@ -242,6 +242,11 @@ def track_login_attempt(username, ip_address, user_agent, is_success, failure_re
     username = (username or "")[:150]
     user = User.objects.filter(**{User.USERNAME_FIELD: username}).first()
 
+    previous_agents = None
+    if is_success and user is not None:
+        from app.security.new_device import prior_user_agents
+        previous_agents = prior_user_agents(user)      # read BEFORE this login is recorded
+
     LoginAttempt.objects.create(
         user=user,
         username=username,
@@ -251,8 +256,14 @@ def track_login_attempt(username, ip_address, user_agent, is_success, failure_re
         failure_reason=failure_reason,
     )
 
+    if previous_agents is not None:
+        from app.security.new_device import notify_if_new_device
+        notify_if_new_device(user, ip_address, user_agent, previous_agents)
+
     if not is_success:
         check_brute_force(username, ip_address)
+        from app.security.account_lock import alert_if_just_locked
+        alert_if_just_locked(username, ip_address)
 
 
 def _block_is_in_force(entry):

@@ -338,14 +338,14 @@ class AIBoardRoom:
             invested_in_loans_given = LoanGiven.objects.filter(
                 status='active'
             ).aggregate(total=Sum('principal_amount'))['total'] or Decimal('0')
-        except:
+        except Exception:
             invested_in_loans_given = Decimal('0')
         
         try:
             invested_in_shareholder_loans = ShareholderLoan.objects.filter(
                 status__in=['active', 'partial_paid']
             ).aggregate(total=Sum('principal'))['total'] or Decimal('0')
-        except:
+        except Exception:
             invested_in_shareholder_loans = Decimal('0')
         
         total_invested = invested_in_loans_given + invested_in_shareholder_loans
@@ -359,14 +359,14 @@ class AIBoardRoom:
             for loan in LoanGiven.objects.filter(status='active'):
                 if loan.interest_rate > 0:
                     expected_profit_from_loans += loan.principal_amount * (loan.interest_rate / 100)
-        except:
+        except Exception:
             pass
         
         try:
             for loan in ShareholderLoan.objects.filter(status__in=['active', 'partial_paid']):
                 if loan.interest_rate > 0:
                     expected_profit_from_loans += loan.outstanding * (loan.interest_rate / 100)
-        except:
+        except Exception:
             pass
         
         potential_profit_from_idle = idle_cash * Decimal('0.25')
@@ -584,7 +584,7 @@ class AIBoardRoom:
             pending_orders = SaleOrder.objects.filter(
                 status__in=['pending', 'confirmed', 'processing']
             ).count()
-        except:
+        except Exception:
             pass
         
         health_score = 70
@@ -921,7 +921,7 @@ class AIBoardRoom:
             total_shares = Share.objects.aggregate(
                 total=Sum('quantity')
             )['total'] or 0
-        except:
+        except Exception:
             pass
         
         for sh in Shareholder.objects.filter(status='active'):
@@ -981,14 +981,14 @@ class AIBoardRoom:
         try:
             performance_issues = AIPerformanceIssue.objects.filter(is_resolved=False).count()
             critical_performance = AIPerformanceIssue.objects.filter(is_resolved=False, priority__gte=8).count()
-        except:
+        except Exception:
             performance_issues = 0
             critical_performance = 0
         
         try:
             security_alerts = AISecurityLog.objects.filter(is_resolved=False).count()
             critical_security = AISecurityLog.objects.filter(is_resolved=False, severity='critical').count()
-        except:
+        except Exception:
             security_alerts = 0
             critical_security = 0
         
@@ -997,7 +997,7 @@ class AIBoardRoom:
             system_health_score = latest_health.health_score if latest_health else 100
             memory_usage = float(latest_health.memory_usage) if latest_health else 0
             disk_usage = float(latest_health.disk_usage) if latest_health else 0
-        except:
+        except Exception:
             system_health_score = 100
             memory_usage = 0
             disk_usage = 0
@@ -1271,7 +1271,7 @@ class AIBoardRoom:
                         meeting=meeting,
                     )
                     alerts_created += 1
-                except:
+                except Exception:
                     pass
         
         return alerts_created

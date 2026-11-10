@@ -45,7 +45,7 @@ def shareholder_cash_report(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     
@@ -197,7 +197,7 @@ def shareholder_cash_report_detail(request, pk):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=90)
         to_date_obj = date.today()
     
@@ -261,7 +261,7 @@ def shareholder_cash_report_export(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     
@@ -365,7 +365,7 @@ def shareholder_cash_report_export(request):
                 try:
                     if cell.value and len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except:
+                except Exception:
                     pass
             adjusted_width = min(max_length + 2, 40)
             ws_sheet.column_dimensions[col_letter].width = adjusted_width
@@ -398,7 +398,7 @@ def shareholder_cash_report_pdf(request, pk):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=90)
         to_date_obj = date.today()
     
@@ -587,7 +587,7 @@ def shareholder_cash_report_all_pdf(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=30)
         to_date_obj = date.today()
     

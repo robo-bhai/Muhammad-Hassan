@@ -430,7 +430,7 @@ class Account(models.Model):
                 try:
                     last_num = int(last_account.code.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -585,7 +585,7 @@ class JournalEntry(models.Model):
                 try:
                     last_num = int(last_entry.entry_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -788,7 +788,7 @@ class LoanReturn(models.Model):
                 try:
                     last_num = int(last.return_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -911,7 +911,7 @@ class Loan(models.Model):
                 try:
                     last_num = int(last.loan_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'
@@ -1031,7 +1031,7 @@ class LoanGiven(models.Model):
                 try:
                     last_num = int(last.loan_no.split('-')[-1])
                     new_num = str(last_num + 1).zfill(4)
-                except:
+                except Exception:
                     new_num = '0001'
             else:
                 new_num = '0001'

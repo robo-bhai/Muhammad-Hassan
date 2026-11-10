@@ -4,6 +4,9 @@ from io import BytesIO
 import base64
 from PIL import Image, ImageDraw, ImageFont
 
+import logging as _logging
+logger = _logging.getLogger(__name__)
+
 def generate_barcode_image(barcode_number, product_name="", price=""):
     """
     Generate barcode image and return as base64 string
@@ -33,7 +36,7 @@ def generate_barcode_image(barcode_number, product_name="", price=""):
         return f"data:image/png;base64,{image_base64}"
             
     except Exception as e:
-        print(f"Barcode error: {e}")
+        logger.error(f"Barcode error: {e}", exc_info=True)
         return ""
 
 def generate_barcode_label(barcode_number, product_name, price):
@@ -71,7 +74,7 @@ def generate_barcode_label(barcode_number, product_name, price):
         try:
             font = ImageFont.truetype("arial.ttf", 14)
             font_small = ImageFont.truetype("arial.ttf", 12)
-        except:
+        except Exception:
             font = ImageFont.load_default()
             font_small = font
         
@@ -89,7 +92,7 @@ def generate_barcode_label(barcode_number, product_name, price):
         image_base64 = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
         return f"data:image/png;base64,{image_base64}"
     except Exception as e:
-        print(f"Label error: {e}")
+        logger.error(f"Label error: {e}", exc_info=True)
         return ""
 
 def generate_multiple_labels(products_data):
@@ -129,5 +132,5 @@ def generate_multiple_labels(products_data):
         buffer.seek(0)
         return buffer
     except Exception as e:
-        print(f"Multiple labels error: {e}")
+        logger.error(f"Multiple labels error: {e}", exc_info=True)
         return BytesIO()

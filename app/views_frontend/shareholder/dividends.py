@@ -389,7 +389,7 @@ def dividend_preview_api(request):
     """AJAX API: Preview dividend calculation"""
     try:
         amount_per_share = Decimal(request.GET.get('amount', 0))
-    except:
+    except Exception:
         amount_per_share = Decimal('0')
     
     total_shares = Share.objects.aggregate(total=Sum('quantity'))['total'] or 0
@@ -968,7 +968,7 @@ def balance_dividend_create(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today().replace(day=1)
         to_date_obj = date.today()
     
@@ -1408,7 +1408,7 @@ def balance_dividend_report(request):
     try:
         from_date_obj = datetime.strptime(from_date, '%Y-%m-%d').date()
         to_date_obj = datetime.strptime(to_date, '%Y-%m-%d').date()
-    except:
+    except Exception:
         from_date_obj = date.today() - timedelta(days=90)
         to_date_obj = date.today()
     
