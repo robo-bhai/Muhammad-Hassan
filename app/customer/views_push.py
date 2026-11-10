@@ -10,7 +10,6 @@ from ..models import PushSubscription
 SERVICE_WORKER_JS = r"""
 importScripts('/serviceworker.js');   // offline page + static cache bhi /shop/ par chalay
 // Shop push notifications + root service worker ki offline/static caching.
-self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
 
 self.addEventListener('push', function (event) {

@@ -393,6 +393,7 @@ body.dark-theme .pos{--pos-bg:linear-gradient(180deg,#0f1320 0%,#131829 100%);--
     <select id="wh" class="form-select form-select-sm" title="Store">{% for w in warehouses %}<option value="{{ w.pk }}">{{ w.name }}</option>{% endfor %}</select>
     <button class="btn btn-sm btn-outline-secondary" id="custBtn"><i class="bi bi-person"></i> <span id="custName">Walk-in Customer</span></button>
     <span class="badge bg-success-subtle text-success-emphasis border" id="shiftBadge" style="display:none"></span>
+    <button class="btn btn-sm btn-secondary" id="offBadge" style="display:none" title="Offline bills"></button>
     <button class="btn btn-sm btn-outline-secondary" id="mvBtn" style="display:none"><i class="bi bi-cash-stack"></i> Cash in/out</button>
     <a class="btn btn-sm btn-outline-danger" id="closeShiftBtn" href="{% url 'shift_close' %}" style="display:none"><i class="bi bi-box-arrow-right"></i> Close shift</a>
     <button class="btn btn-sm btn-outline-secondary" id="heldBtn"><i class="bi bi-pause-circle"></i> Held <span class="badge bg-warning text-dark" id="heldCount">0</span><span class="kbd">F9</span></button>
@@ -548,6 +549,12 @@ body.dark-theme .pos{--pos-bg:linear-gradient(180deg,#0f1320 0%,#131829 100%);--
   <div class="d-flex justify-content-between align-items-center mb-2"><h5 class="mb-0">Held bills</h5><button class="btn-close" data-close></button></div>
   <div id="heldList"></div>
 </div></div>
+<div class="ov" id="offOv"><div class="box">
+  <div class="d-flex justify-content-between align-items-center mb-2"><h5 class="mb-0">Offline bills</h5><button class="btn-close" data-close></button></div>
+  <div class="small text-muted mb-2">Bills made without internet are kept on this device and sent automatically when the internet is back.</div>
+  <div id="offList"></div>
+  <button class="btn btn-primary w-100 mt-2" id="offSync"><i class="bi bi-arrow-repeat"></i> Send now</button>
+</div></div>
 <!-- ========================================= -->
 <!-- OCR MODAL: SCAN PRODUCT NAME WITH CAMERA   -->
 <!-- ========================================= -->
@@ -692,6 +699,147 @@ function anyOpen(){ return document.querySelector('.ov.show'); }
 function focusSearch(){ var s=$('search'); s.focus(); s.select(); }
 function selectAll(el){ setTimeout(function(){ try{ el.select(); }catch(e){} }, 0); }
 
+/* ---------- OFFLINE POS: bills are saved on this device and sent when the internet is back ---------- */
+var CASHIER = '{{ request.user.get_username|escapejs }}';
+var CAT_URL = '{% url "pos_catalog" %}', CHECKOUT_URL = '{% url "pos_checkout" %}';
+var OFF = {db:null, ok:!!window.indexedDB, q:0, rej:0, cat:null, syncing:false, items:[]};
+var pendingBill = null;                 /* same bill retried = same id, so it can never be saved twice */
+function idb(){ return new Promise(function(res, rej){
+  if(OFF.db) return res(OFF.db);
+  if(!OFF.ok) return rej(new Error('no indexedDB'));
+  var r = indexedDB.open('pos-offline', 1);
+  r.onupgradeneeded = function(){ var d = r.result; d.createObjectStore('queue', {keyPath:'uuid'}); d.createObjectStore('catalog', {keyPath:'wh'}); };
+  r.onsuccess = function(){ OFF.db = r.result; res(OFF.db); };
+  r.onerror = function(){ rej(r.error); }; }); }
+function idbDo(store, mode, fn){ return idb().then(function(db){ return new Promise(function(res, rej){
+  var tx = db.transaction(store, mode), rq = fn(tx.objectStore(store));
+  tx.oncomplete = function(){ res(rq && rq.result); }; tx.onerror = tx.onabort = function(){ rej(tx.error); }; }); }); }
+function newId(){ try{ if(window.crypto && crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+  return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
+function tfetch(url, opts, ms){          /* fetch with a timeout (a bad connection must not hang the counter) */
+  opts = opts || {}; opts.credentials = 'same-origin';
+  if(window.AbortController){ var c = new AbortController(), t = setTimeout(function(){ c.abort(); }, ms || 8000); opts.signal = c.signal;
+    return fetch(url, opts).then(function(r){ clearTimeout(t); return r; }, function(e){ clearTimeout(t); throw e; }); }
+  return fetch(url, opts); }
+function fmtDate(d){ function p(n){ return (n < 10 ? '0' : '') + n; } var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' + p(h) + ':' + p(d.getMinutes()) + ' ' + ap; }
+
+/* queue */
+function qRefresh(){ if(!OFF.ok){ offBadge(); return Promise.resolve(); }
+  return idbDo('queue', 'readonly', function(s){ return s.getAll(); }).then(function(items){
+    items.sort(function(a, b){ return a.at < b.at ? -1 : 1; });
+    OFF.items = items; OFF.q = items.filter(function(i){ return i.status !== 'rejected'; }).length;
+    OFF.rej = items.length - OFF.q; offBadge(); if($('offOv').classList.contains('show')) renderQueue(); }).catch(function(){ offBadge(); }); }
+function offBadge(){
+  var b = $('offBadge'), online = navigator.onLine, h = '';
+  if(online && !OFF.q && !OFF.rej){ b.style.display = 'none'; return; }
+  b.style.display = ''; b.className = 'btn btn-sm ' + (OFF.rej ? 'btn-danger' : (online ? 'btn-warning' : 'btn-secondary'));
+  if(!online) h += '<i class="bi bi-wifi-off"></i> Offline';
+  if(OFF.q) h += (h ? ' · ' : '') + OFF.q + ' bill' + (OFF.q > 1 ? 's' : '') + ' waiting to sync';
+  if(OFF.rej) h += (h ? ' · ' : '') + OFF.rej + ' need attention';
+  b.innerHTML = h; }
+function renderQueue(){
+  var h = OFF.items.map(function(it){
+    var r = it.receipt || {}, bad = it.status === 'rejected';
+    return '<div class="border-bottom py-2"><div class="d-flex justify-content-between"><div><b>' + esc(r.bill_no || it.uuid.slice(0, 8)) + '</b> <span class="small text-muted">' + esc(r.date || '') + '</span>' +
+      '<div class="small">' + (r.items ? r.items.length : 0) + ' items · Rs ' + money(r.total) + '</div></div>' +
+      '<div class="text-end small ' + (bad ? 'text-danger' : 'text-warning-emphasis') + '">' + (bad ? 'Not saved' : 'Waiting to sync') + '</div></div>' +
+      (bad ? '<div class="small text-danger mt-1">' + esc(it.err || '') + '</div>' : '') +
+      '<div class="d-flex gap-1 mt-1">' + (bad ? '<button class="btn btn-sm btn-primary" data-retry="' + esc(it.uuid) + '">Try again</button>' : '') +
+      '<button class="btn btn-sm btn-outline-secondary" data-print="' + esc(it.uuid) + '"><i class="bi bi-printer"></i></button>' +
+      (bad ? '<button class="btn btn-sm btn-outline-danger" data-drop="' + esc(it.uuid) + '">Discard</button>' : '') + '</div></div>';
+  }).join('');
+  $('offList').innerHTML = h || '<div class="text-muted">No offline bills.</div>'; }
+$('offBadge').addEventListener('click', function(){ renderQueue(); show('offOv'); });
+$('offSync').addEventListener('click', function(){ if(!navigator.onLine){ toast('Still offline', true); return; } syncQueue(true); });
+$('offList').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b) return;
+  var id = b.dataset.retry || b.dataset.drop || b.dataset.print, it = OFF.items.filter(function(i){ return i.uuid === id; })[0]; if(!it) return;
+  if(b.dataset.print){ if(it.receipt) printReceipt(it.receipt); return; }
+  if(b.dataset.retry){ it.status = 'pending'; it.err = ''; it.tries = 0; idbDo('queue', 'readwrite', function(s){ return s.put(it); }).then(function(){ return qRefresh(); }).then(function(){ syncQueue(true); }); return; }
+  if(b.dataset.drop){ if(!confirm('Discard this bill? It was NOT saved on the server, so the sale and the stock will not be recorded.')) return;
+    idbDo('queue', 'readwrite', function(s){ return s.delete(id); }).then(qRefresh); } });
+
+/* item catalog kept on the device */
+function catLoad(wh){ return idbDo('catalog', 'readonly', function(s){ return s.get(String(wh)); }).then(function(r){ OFF.cat = r || null; return OFF.cat; }).catch(function(){ OFF.cat = null; return null; }); }
+function catRefresh(){
+  if(!OFF.ok || !navigator.onLine) return; var wh = $('wh').value; if(!wh) return;
+  tfetch(CAT_URL + '?warehouse=' + encodeURIComponent(wh), {}, 30000).then(function(r){ return r.json(); }).then(function(d){
+    if(!d || !d.results) return;
+    var c = {wh: String(wh), rows: d.results, is_manager: !!d.is_manager, max_disc_pct: d.max_disc_pct, ts: Date.now()};
+    if(String($('wh').value) === String(wh)) OFF.cat = c;
+    return idbDo('catalog', 'readwrite', function(s){ return s.put(c); }); }).catch(function(){}); }
+function localRows(q, barcode){
+  var c = OFF.cat; if(!c) return null;
+  if(barcode){ var b = String(barcode).toLowerCase();
+    return c.rows.filter(function(p){ return p.barcode === barcode || String(p.serial || '').toLowerCase() === b; }).slice(0, 1); }
+  var ql = (q || '').toLowerCase();
+  return c.rows.filter(function(p){
+    if(S.cat && String(p.category) !== String(S.cat)) return false;
+    if(ql) return p.name.toLowerCase().indexOf(ql) > -1 || String(p.barcode || '').toLowerCase().indexOf(ql) > -1 || String(p.serial || '').toLowerCase().indexOf(ql) > -1;
+    return p.stock > 0; }).slice(0, 40); }
+function takeStock(items){        /* keep the device copy of the stock right after an offline sale */
+  if(!OFF.cat) return; items.forEach(function(l){ var p = OFF.cat.rows.filter(function(r){ return r.id === l.id; })[0]; if(p) p.stock = r3(p.stock - l.qty); });
+  idbDo('catalog', 'readwrite', function(s){ return s.put(OFF.cat); }).catch(function(){}); }
+
+/* can this bill be made without the internet? ('' = yes) */
+function offlineProblem(p){
+  if(!OFF.ok) return 'This browser cannot keep bills offline.';
+  if(p.customer !== WALKIN) return 'Without internet only walk-in customer bills are possible.';
+  if(p.is_installment) return 'Installment bills need the internet.';
+  if(REQ_SHIFT && !SHIFT) return 'No open shift on this device. Open a shift while online first.';
+  var c = OFF.cat;
+  for(var i = 0; i < S.cart.length; i++){ var l = S.cart[i]; var row = c ? c.rows.filter(function(r){ return r.id === l.id; })[0] : null;
+    if(row && l.qty > row.stock + 1e-9) return l.name + ': only ' + fq(row.stock) + ' in stock.';
+    if(c && !c.is_manager && row && row.min_price && l.price < row.min_price - 1e-9) return l.name + ': the price is below the cost price. Ask a manager (needs internet).'; }
+  if(c && !c.is_manager && subtotal() > 0 && discount() * 100 / subtotal() > (c.max_disc_pct || 0) + 1e-9) return 'Discount is more than ' + (c.max_disc_pct || 0) + '%. Ask a manager (needs internet).';
+  return ''; }
+function queueSale(payload, a){
+  var sub = subtotal(), disc = discount(), tot = total(), id = payload.client_uuid;
+  var r = {success: true, offline: true, bill_no: 'OFFLINE-' + id.replace(/-/g, '').slice(0, 6).toUpperCase(), date: fmtDate(new Date(payload.offline_at)),
+    cashier: CASHIER, customer: S.customer.name, is_walkin: true,
+    items: S.cart.map(function(l){ return {name: l.name, qty: l.qty, price: l.price, total: Math.round(l.qty * l.price * 100) / 100}; }),
+    subtotal: sub, discount: disc, total: tot, paid: a.paid, balance: Math.max(0, tot - a.paid), change: a.change,
+    payments: payload.payments, installment: null};
+  var cart = S.cart.slice();
+  return idbDo('queue', 'readwrite', function(s){ return s.put({uuid: id, at: payload.offline_at, payload: payload, status: 'pending', err: '', tries: 0, receipt: r}); }).then(function(){
+    takeStock(cart); pendingBill = null; lastSale = r; busy = false; $('doPay').disabled = false; hide('payOv'); beep(true);
+    $('dBill').textContent = r.bill_no; $('dChange').textContent = money(a.change);
+    $('dInfo').textContent = 'Total Rs ' + money(r.total) + ' · SAVED ON THIS DEVICE - it will be sent when the internet is back';
+    show('doneOv'); reset(); load(''); qRefresh(); if($('autoPrint').checked) printReceipt(r); });
+}
+function syncQueue(manual){
+  if(OFF.syncing || !navigator.onLine || !OFF.ok) return Promise.resolve();
+  OFF.syncing = true; var saved = 0, stop = false;
+  return idbDo('queue', 'readonly', function(s){ return s.getAll(); }).then(function(items){
+    items.sort(function(a, b){ return a.at < b.at ? -1 : 1; });
+    var chain = Promise.resolve();
+    items.filter(function(i){ return i.status !== 'rejected'; }).forEach(function(it){
+      chain = chain.then(function(){
+        if(stop) return;
+        var body = Object.assign({}, it.payload, {client_uuid: it.uuid, offline_at: it.at, offline: true});
+        return tfetch(CHECKOUT_URL, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF}, body: JSON.stringify(body)}, 25000)
+          .then(function(r){ return r.json().then(function(d){ return {r: r, d: d}; }); })
+          .then(function(x){
+            if(x.d && x.d.success){ saved++; return idbDo('queue', 'readwrite', function(s){ return s.delete(it.uuid); }); }
+            var st = x.r.status;
+            if(st === 409){ stop = true; return; }
+            it.tries = (it.tries || 0) + 1;
+            if(st >= 500 && it.tries < 3){ stop = true; return idbDo('queue', 'readwrite', function(s){ return s.put(it); }); }
+            it.status = 'rejected'; it.err = (x.d && x.d.message) || 'The server did not accept this bill.';
+            return idbDo('queue', 'readwrite', function(s){ return s.put(it); }); })
+          .catch(function(){ stop = true; });   /* no connection / session expired: keep it and try later */
+      }); });
+    return chain; })
+   .then(function(){ OFF.syncing = false; return qRefresh(); })
+   .then(function(){ if(saved){ toast(saved + ' offline bill' + (saved > 1 ? 's' : '') + ' saved'); loadShift(); catRefresh(); }
+     else if(manual && OFF.q){ toast('Could not send yet. Check the internet or log in again.', true); } })
+   .catch(function(){ OFF.syncing = false; }); }
+window.addEventListener('online', function(){ offBadge(); toast('Back online'); syncQueue(); catRefresh(); });
+window.addEventListener('offline', function(){ offBadge(); toast('You are offline. Bills will be kept on this device.', true); });
+setInterval(function(){ if(!navigator.onLine) return; if(OFF.q) syncQueue(); }, 45000);
+setInterval(function(){ catRefresh(); }, 10 * 60 * 1000);
+
 /* ---------- totals ---------- */
 function subtotal(){ return S.cart.reduce(function(a,l){ return a + l.qty*l.price; }, 0); }
 function discount(){ var d = num($('disc').value), sub = subtotal();
@@ -807,17 +955,29 @@ function editTopQty(){ var i = $('cart').querySelector('input[data-a="qty"]'); i
 
 /* ---------- search / scan ---------- */
 function stkClass(p){ return p.stock <= 0 ? 'zero' : (p.stock <= 5 ? 'low' : ''); }
+function renderTiles(rows){
+  var t = $('tiles'); t.__rows = rows || [];
+  t.innerHTML = t.__rows.length ? t.__rows.map(function(p,i){
+    return '<button class="tile'+(p.stock<=0?' out':'')+'" data-i="'+i+'"><span class="n">'+esc(p.name)+'</span>'+
+      '<span class="m"><span class="p">'+(p.price? 'Rs '+money(p.price) : 'No price')+'</span><span class="stk '+stkClass(p)+'">'+fq(p.stock)+' '+esc(p.unit)+'</span></span>'+'</button>';
+  }).join('') : '<div class="text-muted p-3">No items found.</div>';
+}
 function load(q){
   var wh = $('wh').value, seq = ++reqSeq;
-  fetch('{% url "pos_products" %}?warehouse='+encodeURIComponent(wh)+'&q='+encodeURIComponent(q||'')+'&category='+encodeURIComponent(S.cat))
+  var offline = function(){
+    var ready = (OFF.cat && String(OFF.cat.wh) === String(wh)) ? Promise.resolve() : catLoad(wh);
+    ready.then(function(){
+      if(seq !== reqSeq) return;
+      var rows = localRows(q);
+      if(rows === null){ toast('No internet and no saved item list yet. Open the POS once while online.', true); return; }
+      renderTiles(rows); });
+  };
+  if(!navigator.onLine){ offline(); return; }
+  tfetch('{% url "pos_products" %}?warehouse='+encodeURIComponent(wh)+'&q='+encodeURIComponent(q||'')+'&category='+encodeURIComponent(S.cat))
    .then(function(r){ return r.json(); }).then(function(d){
      if(seq !== reqSeq) return;
-     var t = $('tiles'); t.__rows = d.results || [];
-     t.innerHTML = t.__rows.length ? t.__rows.map(function(p,i){
-       return '<button class="tile'+(p.stock<=0?' out':'')+'" data-i="'+i+'"><span class="n">'+esc(p.name)+'</span>'+
-         '<span class="m"><span class="p">'+(p.price? 'Rs '+money(p.price) : 'No price')+'</span><span class="stk '+stkClass(p)+'">'+fq(p.stock)+' '+esc(p.unit)+'</span></span>'+'</button>';
-     }).join('') : '<div class="text-muted p-3">No items found.</div>';
-   }).catch(function(){ toast('Could not load items', true); });
+     renderTiles(d.results || []);
+   }).catch(offline);
 }
 $('tiles').addEventListener('click', function(e){ var b = e.target.closest('.tile'); if(b){ pick(this.__rows[+b.dataset.i]); } if(!$('qtyOv').classList.contains('show')) focusSearch(); });
 $('search').addEventListener('input', function(){ clearTimeout(searchTimer); var v=this.value.trim(); var m = v.match(/^\d*\.?\d+\s*[*x]\s*(.*)$/i); if(m) v = m[1].trim();
@@ -828,14 +988,22 @@ $('search').addEventListener('keydown', function(e){
   var qty = null, m = v.match(/^(\d*\.?\d+)\s*[*x]\s*(.+)$/i);       /* "0.5*milk" = quantity 0.5 of milk */
   if(m){ qty = num(m[1]); v = m[2].trim(); if(qty <= 0){ toast('Enter a quantity greater than zero', true); return; } }
   var self = this;
-  fetch('{% url "pos_products" %}?warehouse='+encodeURIComponent($('wh').value)+'&barcode='+encodeURIComponent(v))
-   .then(function(r){ return r.json(); }).then(function(d){
-     if(d.results && d.results.length){ pick(d.results[0], qty); self.value=''; load(''); return; }
-     var rows = $('tiles').__rows || [];
-     if(rows.length === 1){ pick(rows[0], qty); self.value=''; load(''); }
-     else if(rows.length > 1){ toast('Several items found. Choose one from the list.'); }
-     else toast('"'+v+'" was not found', true);
-   }).catch(function(){ toast('Search failed', true); });
+  var found = function(rows){
+    if(rows.length){ pick(rows[0], qty); self.value=''; load(''); return; }
+    var tr = $('tiles').__rows || [];
+    if(tr.length === 1){ pick(tr[0], qty); self.value=''; load(''); }
+    else if(tr.length > 1){ toast('Several items found. Choose one from the list.'); }
+    else toast('"'+v+'" was not found', true);
+  };
+  var local = function(){
+    var wh = $('wh').value;
+    var ready = (OFF.cat && String(OFF.cat.wh) === String(wh)) ? Promise.resolve() : catLoad(wh);
+    ready.then(function(){ var rows = localRows('', v); if(rows === null) toast('Search failed', true); else found(rows); });
+  };
+  if(!navigator.onLine){ local(); return; }
+  tfetch('{% url "pos_products" %}?warehouse='+encodeURIComponent($('wh').value)+'&barcode='+encodeURIComponent(v))
+   .then(function(r){ return r.json(); }).then(function(d){ found(d.results || []); })
+   .catch(local);
 });
 $('chips').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if(!b) return;
   [].forEach.call(this.children, function(c){ c.classList.remove('on'); }); b.classList.add('on'); S.cat = b.dataset.c; load($('search').value.trim()); });
@@ -848,7 +1016,7 @@ $('custQ').addEventListener('input', function(){ clearTimeout(custT); var v=this
   if(!v){ $('custRes').innerHTML=''; return; }
   fetch('{% url "pos_customers" %}?q='+encodeURIComponent(v)).then(function(r){ return r.json(); }).then(function(d){
     $('custRes').innerHTML = (d.results||[]).map(function(c){ return '<button data-id="'+c.id+'" data-n="'+esc(c.name)+'">'+esc(c.name)+' <small class="text-muted">'+esc(c.code)+' '+esc(c.phone)+'</small></button>'; }).join('') || '<div class="text-muted p-2">No customer found</div>';
-  }); }, 200); });
+  }).catch(function(){ $('custRes').innerHTML = '<div class="text-muted p-2">Offline: only the Walk-in customer is available</div>'; }); }, 200); });
 $('custRes').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; S.customer = {id:+b.dataset.id, name:b.dataset.n}; hide('custOv'); render(); focusSearch(); });
 $('walkBtn').addEventListener('click', function(){ S.customer = {id:WALKIN, name:'Walk-in Customer'}; hide('custOv'); render(); focusSearch(); });
 
@@ -1006,21 +1174,32 @@ function complete(){
   var a = applied(), pays = [], t = total();
   ins().forEach(function(i){ var v = num(i.value), m = i.dataset.m; if(m==='cash') v = a.cash; if(v>0){
     var ref = document.querySelector('.pm-ref[data-m='+m+']'); pays.push({method:m, amount:Math.round(v*100)/100, reference: ref?ref.value:''}); } });
-  busy = true; $('doPay').disabled = true;
-  fetch('{% url "pos_checkout" %}', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-    body: JSON.stringify({warehouse:$('wh').value, customer:S.customer.id, discount:Math.round(discount()*100)/100,
+  var payload = {warehouse:$('wh').value, customer:S.customer.id, discount:Math.round(discount()*100)/100,
       items:S.cart.map(function(l){ return {product_id:l.id, qty:r3(l.qty), price:l.price}; }), payments:pays,
-      is_installment:$('instOn').checked, plan_id:INST ? INST.plan : null})})
+      is_installment:$('instOn').checked, plan_id:INST ? INST.plan : null};
+  var key = JSON.stringify(payload);
+  if(!pendingBill || pendingBill.key !== key) pendingBill = {key:key, uuid:newId(), at:new Date().toISOString()};
+  payload.client_uuid = pendingBill.uuid; payload.offline_at = pendingBill.at;
+  busy = true; $('doPay').disabled = true;
+  var noNet = function(){                       /* no internet / timeout: keep the bill on this device if the rules allow */
+    var why = offlineProblem(payload);
+    if(why){ busy = false; $('doPay').disabled = false; $('pErr').textContent = 'No internet. ' + why; $('pErr').classList.remove('d-none'); beep(false); return; }
+    queueSale(payload, a).catch(function(){ busy = false; $('doPay').disabled = false;
+      $('pErr').textContent = 'No internet and the bill could not be saved on this device.'; $('pErr').classList.remove('d-none'); beep(false); });
+  };
+  if(!navigator.onLine){ noNet(); return; }
+  tfetch(CHECKOUT_URL, {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body: JSON.stringify(payload)}, 20000)
    .then(function(r){ return r.json().then(function(d){ d.__ok = r.ok; return d; }); })
    .then(function(d){
      busy = false; $('doPay').disabled = false;
      if(!d.success){ $('pErr').textContent = d.message || 'The sale was not saved.'; $('pErr').classList.remove('d-none'); beep(false); return; }
+     pendingBill = null;
      lastSale = d; lastSale.change = a.change; hide('payOv'); beep(true);
      $('dBill').textContent = d.bill_no; $('dChange').textContent = money(a.change);
      $('dInfo').textContent = 'Total Rs ' + money(d.total) + (d.installment ? ' · EMI Rs ' + money(d.installment.emi) + ' x ' + d.installment.months : (d.balance > 0 ? ' · Credit Rs ' + money(d.balance) : ''));
-     show('doneOv'); reset(); loadShift();
+     show('doneOv'); reset(); loadShift(); if(OFF.q) syncQueue();
      if($('autoPrint').checked) printReceipt(lastSale);
-   }).catch(function(){ busy = false; $('doPay').disabled = false; $('pErr').textContent = 'Network problem: the sale may not be saved. Check the sales list before trying again.'; $('pErr').classList.remove('d-none'); });
+   }, noNet);
 }
 $('doPay').addEventListener('click', complete);
 $('payOv').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); complete(); } });
@@ -1075,13 +1254,17 @@ $('mvAmt').addEventListener('input', function(){ var v = clean(this.value, 2); i
 var REQ_SHIFT = {{ require_shift|yesno:"true,false" }}, SHIFT = null;
 function applyShift(d){
   SHIFT = d && d.open ? d : null;
+  lsSet('pos_shift_cache', SHIFT);
   var on = !!SHIFT;
   $('shiftBadge').style.display = on ? '' : 'none'; $('mvBtn').style.display = on ? '' : 'none'; $('closeShiftBtn').style.display = on ? '' : 'none';
   if(on){ $('shiftBadge').textContent = 'Shift #'+d.id+' · '+d.opened_at+' · Drawer Rs '+money(d.cash_in_drawer);
     $('wh').value = String(d.warehouse); $('wh').disabled = true; hide('shiftOv'); lsSet('pos_wh', String(d.warehouse)); load(''); }
   else { $('wh').disabled = false; if(REQ_SHIFT) show('shiftOv'); }
 }
-function loadShift(){ fetch('{% url "shift_status" %}').then(function(r){ return r.json(); }).then(applyShift).catch(function(){ if(REQ_SHIFT) show('shiftOv'); }); }
+function loadShift(){
+  var cached = function(){ var c = lsGet('pos_shift_cache', null); if(c && c.open) applyShift(c); else if(REQ_SHIFT) show('shiftOv'); };   /* offline: use the last known open shift */
+  if(!navigator.onLine){ cached(); return; }
+  tfetch('{% url "shift_status" %}').then(function(r){ return r.json(); }).then(applyShift).catch(cached); }
 $('shGo').addEventListener('click', function(){
   var b = this; b.disabled = true; $('shErr').classList.add('d-none');
   fetch('{% url "shift_open" %}', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
@@ -2167,6 +2350,9 @@ var saved = lsGet('pos_cart', null), wh = lsGet('pos_wh', null);
 if(wh && $('wh').querySelector('option[value="'+wh+'"]')) $('wh').value = wh;
 if(saved && saved.cart && saved.cart.length){ S.cart = saved.cart; S.customer = saved.customer || S.customer; $('disc').value = saved.disc || 0; $('discType').value = saved.dt || 'amt'; }
 render(); load(''); loadShift(); focusSearch();
+/* offline POS start-up */
+qRefresh().then(function(){ return catLoad($('wh').value); }).then(function(){ catRefresh(); syncQueue(); });
+$('wh').addEventListener('change', function(){ OFF.cat = null; catLoad(this.value).then(catRefresh); });
 })();
 </script>
 {% endblock %}

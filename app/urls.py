@@ -1285,6 +1285,7 @@ urlpatterns = [
      path('sales/pos/products/', pos_views.pos_products, name='pos_products'),
      path('sales/pos/customers/', pos_views.pos_customers, name='pos_customers'),
      path('sales/pos/checkout/', pos_views.pos_checkout, name='pos_checkout'),
+     path('sales/pos/catalog/', pos_views.pos_catalog, name='pos_catalog'),
      path('sales/shift/status/', shift_views.shift_status, name='shift_status'),
      path('sales/shift/open/', shift_views.shift_open, name='shift_open'),
      path('sales/shift/movement/', shift_views.shift_movement, name='shift_movement'),

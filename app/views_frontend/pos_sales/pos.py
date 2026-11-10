@@ -19,6 +19,7 @@ down payment (it must be at least the plan's down payment); the rest becomes EMI
 """
 from ...security.permissions import perm_required
 import json
+import re
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
@@ -27,7 +28,9 @@ from django.db import transaction
 from django.db.models import F, Q
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
@@ -37,7 +40,7 @@ from ...models import (CashBalance, Category, CompanyInfo, Customer, EmiPayment,
                       StockBatch, Warehouse)
 
 from .shift import open_shift_for
-from .shop_tools import audit, is_manager, setting_number
+from .shop_tools import AuditTrail, audit, bill_payload, is_manager, setting_number
 
 REQUIRE_SHIFT = True        # True = bills can be made only while a shift is open
 WALKIN_CODE = 'WALKIN'
@@ -129,6 +132,33 @@ def pos_products(request):
 
 @login_required
 @perm_required('use_pos')
+def pos_catalog(request):
+    """Full item list of one store for the OFFLINE POS (kept on the device; refreshed while online).
+
+    For cashiers (not managers) every row also has `min_price` (cost of the first batch) so the offline screen
+    can apply the same "no sale below cost" rule as the server. Managers get no cost column.
+    """
+    wh = request.GET.get('warehouse', '')
+    if not wh.isdigit():
+        return JsonResponse({'results': []})
+    products = list(Product.objects.filter(is_active=True).select_related('unit').order_by('name')[:5000])
+    rows = _product_rows(products, int(wh))
+    manager = is_manager(request.user)
+    if BLOCK_BELOW_COST and not manager:
+        cost = {}
+        for b in StockBatch.objects.filter(warehouse_id=int(wh), remaining_qty__gt=0).order_by('id'):
+            cost.setdefault(b.product_id, float(b.price))
+        for r in rows:
+            r['min_price'] = cost.get(r['id'], 0.0)
+    return JsonResponse({
+        'results': rows, 'is_manager': manager,
+        'max_disc_pct': setting_number('pos_max_discount_pct', DEFAULT_MAX_DISCOUNT_PCT),
+        'generated': timezone.now().isoformat(),
+    })
+
+
+@login_required
+@perm_required('use_pos')
 def pos_customers(request):
     q = (request.GET.get('q') or '').strip()
     if not q:
@@ -148,6 +178,60 @@ def pos_checkout(request):
     except ValueError:
         return JsonResponse({'success': False, 'message': 'Invalid request.'}, status=400)
 
+    # ---- Offline POS: every bill carries a unique id, so a bill that is sent twice is saved only once ----
+    client_uuid = str(data.get('client_uuid') or '')[:64]
+    if client_uuid and not re.fullmatch(r'[A-Za-z0-9_-]{8,64}', client_uuid):
+        return JsonResponse({'success': False, 'message': 'Invalid bill id.'}, status=400)
+    lock_key = None
+    if client_uuid:
+        done = _already_saved(client_uuid)
+        if done:
+            payload = bill_payload(done)
+            payload.update({'success': True, 'duplicate': True})
+            return JsonResponse(payload)
+        lock_key = 'posco:' + client_uuid
+        if not cache.add(lock_key, 1, 60):       # same bill is being saved right now
+            return JsonResponse({'success': False, 'message': 'This bill is being saved. Try again in a moment.',
+                                 'retry': True}, status=409)
+    try:
+        return _checkout(request, data, client_uuid)
+    finally:
+        if lock_key:
+            cache.delete(lock_key)
+
+
+def _already_saved(client_uuid):
+    """The Sale that was created for this offline bill id, or None."""
+    if AuditTrail is None:
+        return None
+    try:
+        a = AuditTrail.objects.filter(model_name='Sale', action='created',
+                                      changes__client_uuid=client_uuid).order_by('id').first()
+    except Exception:
+        return None
+    return Sale.objects.filter(pk=a.record_id).first() if a and a.record_id else None
+
+
+def _sale_time(data):
+    """Real time of an offline bill (same month only, so locked months are never touched)."""
+    raw = data.get('offline_at')
+    if not raw:
+        return None
+    try:
+        dt = parse_datetime(str(raw))
+        if dt is None:
+            return None
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt)
+        now = timezone.now()
+        if dt > now or (dt.year, dt.month) != (now.year, now.month):
+            return None
+        return dt
+    except Exception:
+        return None
+
+
+def _checkout(request, data, client_uuid=''):
     try:
         wh = Warehouse.objects.filter(pk=data.get('warehouse')).first()
         if not wh:
@@ -227,9 +311,21 @@ def pos_checkout(request):
                 raise ValueError(f'Down payment must be at least Rs. {need:,.2f} for this plan.')
 
         with transaction.atomic():
+            extra = {}
+            when = _sale_time(data) if client_uuid else None
+            if when:
+                extra['sale_date'] = when
             sale = Sale.objects.create(customer=customer, warehouse=wh, paid=paid, discount_value=discount,
                                        created_by=request.user, is_installment=bool(plan),
-                                       installment_plan=plan, down_payment_received=paid if plan else 0)
+                                       installment_plan=plan, down_payment_received=paid if plan else 0, **extra)
+            if client_uuid and AuditTrail is not None:      # inside the transaction: bill and its id are saved together
+                AuditTrail.objects.create(
+                    user=request.user, model_name='Sale', record_id=sale.pk, action='created',
+                    changes={'client_uuid': client_uuid, 'offline': bool(data.get('offline')),
+                             'offline_at': str(data.get('offline_at') or ''), 'bill_no': sale.bill_no,
+                             'customer': customer.name, 'total': str(total), 'paid': str(paid)},
+                    ip_address=request.META.get('REMOTE_ADDR') or None,
+                    user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:300])
             for product, qty, price in lines:
                 SaleItem.objects.create(sale=sale, product=product, qty=qty, price=price)
             for method, amt, ref in pays:
@@ -266,10 +362,11 @@ def pos_checkout(request):
     except Exception as e:                                   # sale was not saved (transaction rolled back)
         return JsonResponse({'success': False, 'message': f'The sale was not saved: {e}'}, status=500)
 
-    audit(request, 'Sale', sale.pk, 'created', {'bill_no': sale.bill_no, 'customer': customer.name,
-          'total': str(total), 'paid': str(paid), 'discount': str(discount), 'lines': len(lines),
-          'payments': {m: str(a) for m, a, _ in pays},
-          'installment': emi_info['plan'] if emi_info else None})
+    if not client_uuid:
+        audit(request, 'Sale', sale.pk, 'created', {'bill_no': sale.bill_no, 'customer': customer.name,
+              'total': str(total), 'paid': str(paid), 'discount': str(discount), 'lines': len(lines),
+              'payments': {m: str(a) for m, a, _ in pays},
+              'installment': emi_info['plan'] if emi_info else None})
     items = [{'name': i.product.name, 'qty': i.qty, 'price': float(i.price), 'total': float(i.total_amt)}
              for i in sale.saleitem_set.select_related('product')]
     return JsonResponse({
