@@ -56,6 +56,7 @@ if ('serviceWorker' in navigator) {
 <script>
 /* Install button (Android/Chrome/Edge) + iPhone hint. */
 (function () {
+  var CFG = {% pwa_install_cfg %};   // Settings > App Install
   var deferred = null, KEY = 'pwa_install_dismissed';
   function standalone() {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -78,7 +79,8 @@ if ('serviceWorker' in navigator) {
     if (onclick) document.getElementById('pwa-yes').onclick = function () { onclick(); b.remove(); };
   }
   function dismissed() {
-    try { var t = +localStorage.getItem(KEY); return t && Date.now() - t < 7 * 864e5; } catch (e) { return false; }
+    if (!CFG.on) return true;   // setting OFF: bar kabhi nahi
+    try { var t = +localStorage.getItem(KEY); return t && t > CFG.since && Date.now() - t < 7 * 864e5; } catch (e) { return false; }
   }
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault(); deferred = e;

@@ -36,3 +36,19 @@ def pwa_portal_meta(context):
         '    <link rel="icon" type="image/png" sizes="192x192" href="{icon}">\n'
         '    {ios}',
         k=key, theme=cfg['theme'], name=name, icon=icon_url(key, '192'), ios=mark_safe(_ios_links(key)))
+
+
+@register.simple_tag
+def pwa_install_cfg():
+    """JSON for the install bar: {"on": true/false, "since": ms}. 'since' = when the setting was last saved,
+    so turning it ON again shows the bar even if the X was pressed earlier."""
+    on, since = True, 0
+    try:
+        from app.models import SystemSetting
+        row = SystemSetting.objects.filter(setting_key='pwa_install_prompt').only('setting_value', 'updated_at').first()
+        if row:
+            on = (row.setting_value or '').lower() in ('true', '1', 'yes', 'on')
+            since = int(row.updated_at.timestamp() * 1000) if row.updated_at else 0
+    except Exception:
+        pass
+    return mark_safe('{"on": %s, "since": %d}' % ('true' if on else 'false', since))

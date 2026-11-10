@@ -118,6 +118,18 @@ TABS = [
              'prefix': 'Rs.', 'group': 'Pickup & Free Delivery', 'help': 'Delivery is free on orders above this amount.'},
         ],
     },
+    # ------------------------------------------------------------------ App Install (PWA)
+    {
+        'key': 'pwa', 'label': 'App Install', 'icon': 'bi-phone',
+        'desc': 'Show or hide the "Install app" bar (PWA) on this site',
+        'access': 'admin', 'store': 'system',
+        'fields': [
+            {'name': 'pwa_install_prompt', 'label': 'Show Install App bar', 'type': 'bool', 'default': True,
+             'group': 'Install Bar',
+             'help': 'ON = the "Install app" bar shows on phones/computers that can install it. '
+                     'OFF = it is hidden. Turning it ON again brings the bar back even if someone pressed the X before.'},
+        ],
+    },
     # ------------------------------------------------------------------ Pricing
     {
         'key': 'pricing', 'label': 'Pricing', 'icon': 'bi-tags',
