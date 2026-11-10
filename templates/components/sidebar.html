@@ -1151,6 +1151,9 @@
         {% if SHOW_BACKUP_MODULE %}
         <li><a href="{% url 'database_backup' %}" class="sub-link"><span>💾</span> Database Backup</a></li>
         {% endif %}
+        {% if request.user.is_superuser %}
+        <li><a href="{% url 'storage_overview' %}" class="sub-link {% if '/settings/storage/' in request.path %}active{% endif %}"><span>🗄️</span> Storage</a></li>
+        {% endif %}
         
         {% if request.user.is_superuser or request.user.is_staff %}
         <li><a href="{% url 'admin:index' %}" target="_blank" class="sub-link"><span>🔒</span> Admin Panel <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:0.6rem;opacity:0.5;"></i></a></li>

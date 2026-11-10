@@ -28,6 +28,7 @@ from app.security import views_totp
 from app.backoffice import views_bi  
 from app.backoffice import views_testing  
 from app.backoffice import views_document
+from app.views_frontend.system import storage_admin
 from app import views_frontend
 from django.urls import path
 from . import views
@@ -402,6 +403,9 @@ urlpatterns = [
     # DATABASE BACKUP (Cloud Setup)
     # ============================================
     path('database-backup/', views_frontend.database_backup_view, name='database_backup'),
+    # Storage (server / uploads / database ka hisaab) - superuser
+    path('settings/storage/', storage_admin.storage_overview, name='storage_overview'),
+    path('settings/storage/clean/', storage_admin.storage_clean, name='storage_clean'),
     
     # ============================================
     # COMPLETE REPORTS SYSTEM (34 REPORTS)

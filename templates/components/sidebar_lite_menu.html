@@ -37,6 +37,9 @@
 {% if SHOW_BACKUP_MODULE %}
 <li><a href="{% url 'database_backup' %}" class="{% if un == 'database_backup' %}active{% endif %}"><span class="menu-icon">💾</span>بیک اپ · Backup</a></li>
 {% endif %}
+{% if request.user.is_superuser %}
+<li><a href="{% url 'storage_overview' %}" class="{% if un == 'storage_overview' %}active{% endif %}"><span class="menu-icon">🗄️</span>اسٹوریج · Storage</a></li>
+{% endif %}
 <li><a href="{% url 'user_list' %}" class="{% if un == 'user_list' %}active{% endif %}"><span class="menu-icon">🧑‍💼</span>اسٹاف · Staff</a></li>
 <li><a href="{% url 'profile' %}" class="{% if un == 'profile' %}active{% endif %}"><span class="menu-icon">👤</span>پروفائل · Profile</a></li>
 {% if LANG_CODE == 'ur' %}
