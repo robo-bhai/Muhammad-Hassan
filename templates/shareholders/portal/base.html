@@ -339,7 +339,7 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
                 <a href="{% url 'shareholder_portal_dashboard' %}" class="brand">
-                    <i class="bi bi-building"></i> {{ company_name|default:'ERP' }}
+                    {% if company_logo %}<img src="{{ company_logo }}" alt="" style="height:30px;width:30px;object-fit:contain;background:#fff;border-radius:8px;padding:2px;vertical-align:middle;margin-right:6px">{% else %}<i class="bi bi-building"></i>{% endif %} {{ company_name|default:'ERP' }}
                 </a>
                 <span class="user-info d-none d-sm-inline">
                     <i class="bi bi-person-circle"></i>

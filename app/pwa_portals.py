@@ -36,6 +36,12 @@ PORTALS = {
 }
 
 
+# (css width, css height, device pixel ratio) - iPhone / iPad portrait splash screens
+SPLASH = [(440, 956, 3), (402, 874, 3), (430, 932, 3), (393, 852, 3), (428, 926, 3), (390, 844, 3),
+          (375, 812, 3), (414, 896, 3), (414, 896, 2), (414, 736, 3), (375, 667, 2),
+          (834, 1194, 2), (1024, 1366, 2), (810, 1080, 2), (768, 1024, 2)]
+
+
 def portal_for_path(path):
     for key, cfg in PORTALS.items():
         if cfg['prefixes'] and path.startswith(cfg['prefixes']):
@@ -59,7 +65,8 @@ def pwa_manifest(request, portal):
     if not cfg:
         from django.http import Http404
         raise Http404
-    icon = lambda n: '/static/pwa/icons/%s-%s.png' % (portal, n)
+    from app.pwa_icons import icon_url   # logo ho to dynamic, warna static
+    icon = lambda n: icon_url(portal, n)
     data = {
         'id': cfg['start'],
         'name': '%s %s' % (_company_name(), cfg['suffix']),
