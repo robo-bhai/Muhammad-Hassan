@@ -113,8 +113,9 @@ if BREVO_API_KEY and BREVO_SENDER_EMAIL:
     EMAIL_BACKEND = 'app.utils.brevo_backend.BrevoAPIEmailBackend'
     DEFAULT_FROM_EMAIL = BREVO_SENDER_EMAIL      # sirf email (display name backend lagata hai)
 else:
-    EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'info@uqn88.store')
+    # GitHub Secrets na hon to workflow khali string bhejta hai: is liye `or` (get ka default khali par kaam nahi karta)
+    EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', '').strip() or 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', '').strip() or 'info@uqn88.store'
 
 # WhatsApp Business Cloud API (password reset code WhatsApp par bhejne ke liye). Detail: app/utils/whatsapp_otp.py
 WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '').strip()
