@@ -355,11 +355,13 @@ def shareholder_portal_profile(request):
         
         if new_password:
             if new_password == confirm_password:
-                if len(new_password) >= 6:
+                from app.utils.password_policy import first_error as _pw_error
+                pw_error = _pw_error(new_password, (shareholder.name, getattr(shareholder, 'phone', ''), getattr(shareholder, 'email', '')))
+                if not pw_error:
                     shareholder.set_password(new_password)
                     messages.success(request, 'Password updated successfully!')
                 else:
-                    messages.error(request, 'Password must be at least 6 characters!')
+                    messages.error(request, pw_error)
             else:
                 messages.error(request, 'Passwords do not match!')
         

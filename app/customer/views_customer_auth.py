@@ -334,8 +334,10 @@ def customer_register(request):
                 messages.error(request, '❌ Enter the full address')
                 return redirect('customer_register')
             
-            if not password or len(password) < 6:
-                messages.error(request, '❌ Password kam az kam 6 characters')
+            from ..utils.password_policy import first_error as _pw_error
+            pw_error = _pw_error(password, (full_name, phone, email))
+            if pw_error:
+                messages.error(request, f'❌ {pw_error}')
                 return redirect('customer_register')
             
             if password != confirm_password:

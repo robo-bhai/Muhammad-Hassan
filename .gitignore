@@ -1,0 +1,13 @@
+# Secrets - kabhi GitHub/zip mein na jayein
+license_private.key
+.env
+.env.*
+*.pem
+
+# Local data
+db.sqlite3
+*.sqlite3
+media/
+staticfiles/
+__pycache__/
+*.pyc

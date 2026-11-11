@@ -281,6 +281,7 @@
                            placeholder="Enter your password"
                            required
                            autocomplete="current-password">
+                    <div style="text-align:right;margin-top:6px"><a href="{% url 'forgot_password' %}" style="font-size:13.5px;color:#2563eb;text-decoration:none">Password bhool gaye?</a></div>
                 </div>
                 
                 <!-- Submit -->
@@ -349,4 +350,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<script src="{% static 'js/password_ui.js' %}" defer></script>
 {% endblock %}

@@ -44,6 +44,7 @@ from ..decorators import vendor_login_required
 from ..shop_flags import flag_required, shop_flag
 from ..vendor_commission import commission_percent, reprice_open_batches, vendor_earnings, vendor_share
 from ..models import (
+    Cuisine,
     Brand, Category, CompanyInfo, DeliveryArea, DeliveryInfo, Inventory, OrderReview, Product, RiderProfile, SaleOrder,
     StockBatch, StoreCategory, Unit, Vendor, VendorProfile, Warehouse,
 )
@@ -323,8 +324,10 @@ def vendor_register(request):
             return fail('❌ City likhein')
         if len(address) < 10:
             return fail('❌ Poora address likhein')
-        if len(password) < 6:
-            return fail('❌ Password kam az kam 6 characters')
+        from ..utils.password_policy import first_error as _pw_error
+        pw_error = _pw_error(password, (business_name, phone, email))
+        if pw_error:
+            return fail(f'❌ {pw_error}')
         if password != confirm:
             return fail('❌ Passwords match nahi karte')
 
@@ -826,6 +829,27 @@ def vendor_store_settings(request):
 
         min_order = _parse_money(post.get('min_order_amount'), 'Minimum order', errors)
         fee = _parse_money(post.get('delivery_fee'), 'Delivery fee', errors)
+        fee_per_km = _parse_money(post.get('fee_per_km'), 'Fee per km', errors)
+        free_radius = _parse_money(post.get('free_radius_km'), 'Free radius (km)', errors)
+        max_km_raw = (post.get('max_delivery_km') or '').strip()
+        max_km = _parse_money(max_km_raw, 'Max delivery distance (km)', errors) if max_km_raw else None
+        if max_km is not None and max_km <= 0:
+            max_km = None
+        if free_radius > 999 or (max_km is not None and max_km > 999):
+            errors.append('Km ki had 999 se zyada nahi ho sakti')
+        free_radius = free_radius.quantize(Decimal('0.1'))
+        max_km = max_km.quantize(Decimal('0.1')) if max_km is not None else None
+
+        # Cuisines (zyada se zyada 3, sirf active)
+        cuisine_ids = []
+        for x in post.getlist('cuisines'):
+            try:
+                cuisine_ids.append(int(x))
+            except (TypeError, ValueError):
+                pass
+        cuisines = list(Cuisine.objects.filter(pk__in=cuisine_ids, is_active=True))
+        if len(cuisines) > 3:
+            errors.append('Zyada se zyada 3 cuisines chun sakte hain')
 
         try:
             t_min = int(post.get('delivery_time_min') or 30)
@@ -857,6 +881,7 @@ def vendor_store_settings(request):
             profile.store_category = store_category
             profile.opens_at, profile.closes_at = opens_at, closes_at
             profile.min_order_amount, profile.delivery_fee = min_order, fee
+            profile.fee_per_km, profile.free_radius_km, profile.max_delivery_km = fee_per_km, free_radius, max_km
             profile.delivery_time_min, profile.delivery_time_max = t_min, t_max
             profile.delivery_areas = ', '.join(area_list)
             if logo:
@@ -868,6 +893,7 @@ def vendor_store_settings(request):
             if post.get('remove_cover') and not cover:
                 profile.cover_image = None
             profile.save()
+            profile.cuisines.set(cuisines)
             messages.success(request, '✅ Store settings save ho gayin.')
             return redirect('vendor_store_settings')
 
@@ -875,6 +901,10 @@ def vendor_store_settings(request):
         'page_title': 'Store Settings',
         'profile': profile,
         'store_categories': StoreCategory.objects.filter(is_active=True),
+        'cuisines': Cuisine.objects.filter(is_active=True),
+        'my_cuisine_ids': set(profile.cuisines.values_list('id', flat=True)),
+        'distance_fee_on': shop_flag('shop_distance_fee_enabled'),
+        'cuisines_on': shop_flag('shop_cuisines_enabled'),
         'company_name': _company_name(),
         **_area_context(profile),
     })

@@ -29,6 +29,8 @@ FLAGS = {
     'customer_can_dispute_orders':   (True,  'Reporting a problem with an order is currently disabled. Please contact the store.'),
     'shop_stores_enabled':           (True,  'The stores page is currently unavailable.'),
     'shop_banners_enabled':          (True,  ''),
+    'shop_distance_fee_enabled':     (False, ''),
+    'shop_cuisines_enabled':         (True,  ''),
     'shop_push_enabled':             (True,  'Push notifications are currently unavailable.'),
     'shop_favorites_enabled':        (True,  'Favourites are currently unavailable.'),
     'shop_coupons_enabled':          (True,  'Coupons are currently unavailable.'),

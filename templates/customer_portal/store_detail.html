@@ -142,7 +142,9 @@
       <div class="sd-stat"><div class="k">Rating</div><div class="v">{% if reviews.summary.avg %}<a href="#reviews" style="color:inherit;"><i class="bi bi-star-fill" style="color:#f59e0b;"></i> {{ reviews.summary.avg }} <small>({{ reviews.summary.count }})</small></a>{% else %}New{% endif %}</div></div>
       <div class="sd-stat"><div class="k">Delivery time</div><div class="v"><i class="bi bi-clock"></i>{{ store.delivery_time_min }}-{{ store.delivery_time_max }} min</div></div>
       <div class="sd-stat"><div class="k">Delivery fee</div>
-        <div class="v {% if store.delivery_fee <= 0 %}free{% endif %}"><i class="bi bi-bicycle"></i>{% if store.delivery_fee > 0 %}{{ currency }} {{ store.delivery_fee|floatformat:0 }}{% else %}Free{% endif %}</div></div>
+        <div class="v {% if fee_now <= 0 %}free{% endif %}"><i class="bi bi-bicycle"></i>{% if fee_now > 0 %}{{ currency }} {{ fee_now|floatformat:0 }}{% else %}Free{% endif %}{% if fee_distance_km is not None %} <small>&middot; {{ fee_distance_km }} km</small>{% endif %}</div>
+        {% if fee_too_far %}<div style="color:#b91c1c;font-size:12.5px;font-weight:700;margin-top:2px">{{ fee_range_message }}</div>{% endif %}</div>
+      {% if store_cuisines %}<div class="sd-stat"><div class="k">Cuisines</div><div class="v">{% for c in store_cuisines %}{{ c.icon }} {{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div></div>{% endif %}
       <div class="sd-stat"><div class="k">Minimum order</div><div class="v"><i class="bi bi-basket"></i>{% if store.min_order_amount > 0 %}{{ currency }} {{ store.min_order_amount|floatformat:0 }}{% else %}None{% endif %}</div></div>
       {% if store.opens_at and store.closes_at %}
       <div class="sd-stat"><div class="k">Opening hours</div><div class="v"><i class="bi bi-calendar-check"></i>{{ store.opens_at|time:"H:i" }} - {{ store.closes_at|time:"H:i" }}</div></div>

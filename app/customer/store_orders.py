@@ -120,13 +120,25 @@ def cart_store_rules(cart, subtotal):
         'is_open': True,
         'closed_message': '',
         'time_text': '',
+        'distance_km': None,
+        'area_extra': ZERO,
+        'out_of_range': False,
+        'range_message': '',
+        'fee_dynamic': False,
     }
     if prof is None:
         return rules
 
     min_order = Decimal(prof.min_order_amount or 0)
+    from . import delivery_pricing
+    q = delivery_pricing.quote(prof)
     rules.update({
-        'delivery_fee': Decimal(prof.delivery_fee or 0),
+        'delivery_fee': q['fee'],
+        'distance_km': q['distance_km'],
+        'area_extra': q['area_extra'],
+        'out_of_range': q['out_of_range'],
+        'range_message': q['message'],
+        'fee_dynamic': q['dynamic'],
         'min_order': min_order,
         'min_ok': subtotal >= min_order,
         'short_by': max(min_order - subtotal, ZERO),
@@ -145,7 +157,8 @@ def vendor_delivery_info(rules):
         'charges': fee,
         'type': 'standard',
         'time_estimate': rules['time_text'],
-        'message': f"🚚 {rules['name']} delivery",
+        'message': (f"🚚 {rules['name']} delivery" +
+                    (f" · {rules['distance_km']} km" if rules.get('distance_km') is not None else '')),
         'is_free': fee <= 0,
     }
 
@@ -230,6 +243,8 @@ def validate_cart_for_order(cart, subtotal, scheduled_for=None):
         if err:
             return err
     if rules['is_vendor_store']:
+        if rules.get('out_of_range'):
+            return rules['range_message']
         if scheduled_for is None and not rules['is_open']:
             return rules['closed_message']
         if not rules['min_ok']:

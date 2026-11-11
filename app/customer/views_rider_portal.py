@@ -32,6 +32,7 @@ from ..models import (
     CompanyInfo, DeliveryInfo, OrderTracking, RiderProfile, RiderSettlement, SaleOrder, VendorProfile,
 )
 from . import store_orders
+from ..utils.password_policy import first_error
 from . import dispatch
 from .views_reviews import rider_rating
 from .views_customer_auth import get_client_ip, is_valid_phone, normalize_phone, safe_login
@@ -257,8 +258,8 @@ def rider_register(request):
             error = '❌ Naam aur phone likhein.'
         elif not is_valid_phone(phone_raw):
             error = '❌ Phone number sahi nahi.'
-        elif len(password) < 6:
-            error = '❌ Password kam az kam 6 harf ka ho.'
+        elif first_error(password, (name, phone_raw)):
+            error = '❌ ' + first_error(password, (name, phone_raw))
         elif password != confirm:
             error = '❌ Dono password aik jaise likhein.'
 
@@ -527,8 +528,10 @@ def rider_manage(request):
             password = request.POST.get('password', '')
             vehicle = request.POST.get('vehicle', '').strip()[:50]
             fee = _money(request.POST.get('fee', '50'))
-            if not name or not phone_raw or len(password) < 6 or fee is None:
-                messages.error(request, '❌ Naam, phone, fee aur kam az kam 6 harf ka password likhein.')
+            if not name or not phone_raw or fee is None:
+                messages.error(request, '❌ Naam, phone, fee aur password likhein.')
+            elif first_error(password, (name, phone_raw)):
+                messages.error(request, '❌ ' + first_error(password, (name, phone_raw)))
             elif not is_valid_phone(phone_raw):
                 messages.error(request, '❌ Phone number sahi nahi.')
             else:
@@ -552,8 +555,8 @@ def rider_manage(request):
         elif action == 'password':
             r = get_object_or_404(RiderProfile, pk=request.POST.get('rider_id') or 0)
             pw = request.POST.get('password', '')
-            if len(pw) < 6:
-                messages.error(request, '❌ Password kam az kam 6 harf ka ho.')
+            if first_error(pw, (r.name, r.phone)):
+                messages.error(request, '❌ ' + first_error(pw, (r.name, r.phone)))
             else:
                 r.user.set_password(pw)
                 r.user.save()

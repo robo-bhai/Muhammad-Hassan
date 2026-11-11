@@ -226,7 +226,8 @@ class CustomerOTP(models.Model):
         cls.objects.filter(phone=phone, purpose=purpose, is_used=False).delete()
         
         # Generate 6-digit
-        otp_code = str(random.randint(100000, 999999))
+        import secrets
+        otp_code = str(secrets.randbelow(900000) + 100000)   # cryptographically secure
         otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
         
         otp = cls.objects.create(

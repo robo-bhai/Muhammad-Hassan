@@ -25,6 +25,23 @@ class StoreCategory(models.Model):
         return f"{self.icon} {self.name}".strip()
 
 
+class Cuisine(models.Model):
+    """Khane ki qism (Pizza, Burger, Biryani, BBQ...) - Talabat ke cuisine filter jaisi.
+    StoreCategory se alag: StoreCategory store ki type (Restaurant/Grocery), Cuisine us store ka khana."""
+    name = models.CharField(max_length=60, unique=True)
+    icon = models.CharField(max_length=8, blank=True, default='🍽️', help_text="Ek emoji, jaise 🍕 🍔 🍛")
+    sort_order = models.PositiveSmallIntegerField(default=0, help_text="Chhota number pehle nazar aata hai")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Cuisine'
+        verbose_name_plural = '3.1b Cuisines'
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f"{self.icon} {self.name}".strip()
+
+
 class DeliveryArea(models.Model):
     """Admin ki banayi hui areas ki master list (shehar -> area).
     Vendor aur customer isi list se chunte hain, is liye spelling ka masla nahi aata.
@@ -34,6 +51,9 @@ class DeliveryArea(models.Model):
     name = models.CharField(max_length=100, help_text="Area, mohalla ya gaon ka naam")
     sort_order = models.PositiveSmallIntegerField(default=0, help_text="Chhota number pehle nazar aata hai")
     is_active = models.BooleanField(default=True)
+    extra_fee = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0,
+        help_text="Is area mein deliver karne par store ki fee ke upar extra (door ke areas ke liye). 0 = koi extra nahi.")
 
     class Meta:
         verbose_name = 'Delivery Area'
@@ -85,6 +105,9 @@ class VendorProfile(models.Model):
     )
     last_login_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    cuisines = models.ManyToManyField(
+        'Cuisine', blank=True, related_name='stores',
+        help_text="Is store ka khana (zyada se zyada 3). Customer stores page par cuisine se filter karta hai.")
     store_category = models.ForeignKey(
         'StoreCategory', null=True, blank=True, on_delete=models.SET_NULL,
         related_name='stores', verbose_name="Store category",
@@ -108,6 +131,15 @@ class VendorProfile(models.Model):
     closes_at = models.TimeField(null=True, blank=True)
     min_order_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     delivery_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    fee_per_km = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0, verbose_name="Fee per km",
+        help_text="Free distance ke baad har extra km par itni fee. 0 = distance fee band (sirf upar wali fixed fee).")
+    free_radius_km = models.DecimalField(
+        max_digits=5, decimal_places=1, default=0, verbose_name="Free radius (km)",
+        help_text="Itne km tak sirf base delivery fee lagti hai.")
+    max_delivery_km = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True, verbose_name="Max delivery distance (km)",
+        help_text="Is se door customer ko deliver nahi hota. Khali = koi had nahi.")
     delivery_time_min = models.PositiveSmallIntegerField(default=30, help_text="Minutes")
     delivery_time_max = models.PositiveSmallIntegerField(default=45, help_text="Minutes")
     lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)

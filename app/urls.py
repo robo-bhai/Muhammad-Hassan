@@ -5,6 +5,7 @@ from . import views_frontend
 from .customer import views_customer_portal
 from app.customer import views_customer_auth
 from app.customer import views_vendor_portal
+from app.customer import views_password_reset
 from app.customer import views_product_options
 from app.customer import views_vendor_menu
 from app.customer import views_favorites
@@ -1195,6 +1196,8 @@ urlpatterns = [
 
      
      path('shop/login/', views_customer_auth.customer_login, name='customer_login'),
+     path('shop/forgot-password/', views_password_reset.forgot_password, name='forgot_password'),
+     path('shop/reset-password/', views_password_reset.reset_password, name='reset_password'),
      
      path('shop/logout/', views_customer_auth.customer_logout, name='customer_logout'),
      path('shop/account/', views_customer_auth.my_account, name='my_account'),

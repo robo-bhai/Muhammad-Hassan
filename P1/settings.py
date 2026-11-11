@@ -174,6 +174,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'app.middleware.request_context.CurrentRequestMiddleware',   # drop pin / area for distance-based delivery fee
     'app.module_access.ModuleAccessMiddleware',   # blocks URLs of OFF modules / roles without access
     'axes.middleware.AxesMiddleware',
     'app.middleware.SecurityMiddleware',
@@ -295,10 +296,25 @@ CACHES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 10}},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
+# Customer / vendor / rider / shareholder portal passwords: minimum length (rules: app/utils/password_policy.py)
+PORTAL_PASSWORD_MIN_LENGTH = 8
+
+# Password hashing: Argon2 (modern, memory-hard) agar `pip install argon2-cffi` ho, warna PBKDF2.
+# Purane hashes chalte rehte hain aur user ke agle login par khud naye hash mein badal jate hain.
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+]
+try:
+    import argon2  # noqa: F401
+    PASSWORD_HASHERS.insert(0, 'django.contrib.auth.hashers.Argon2PasswordHasher')
+except ImportError:
+    pass
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Karachi'

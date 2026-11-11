@@ -16,11 +16,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from ..shop_flags import flag_required, shop_flag
 
-from ..models import Category, CompanyInfo, Product, ShopBanner, StoreCategory, VendorProfile
+from ..models import Category, CompanyInfo, Cuisine, Product, ShopBanner, StoreCategory, VendorProfile
 from .views_customer_portal import get_cart_count_value, get_delivery_area, get_product_final_price
 from .views_reviews import store_rating_map, store_reviews
 from .views_favorites import current_customer, favorite_store_ids
 from . import coupons as coupon_logic
+from . import delivery_pricing
 
 STATUS_ORDER = {'open': 0, 'busy': 1, 'closed': 2}
 
@@ -105,7 +106,23 @@ def store_list(request):
     live = _live_products()
     stores = VendorProfile.objects.filter(
         is_approved=True, vendor__in=live.values('vendor')
-    ).select_related('vendor', 'store_category')
+    ).select_related('vendor', 'store_category').prefetch_related('cuisines')
+    base_stores = stores
+
+    # Cuisines (Pizza, Burger, Biryani...) - admin switch ke peeche
+    cuisines_on = shop_flag('shop_cuisines_enabled')
+    try:
+        cuisine_id = int(request.GET.get('cuisine', '')) if cuisines_on else None
+    except (TypeError, ValueError):
+        cuisine_id = None
+    cuisines = []
+    if cuisines_on:
+        cuisines = list(Cuisine.objects.filter(is_active=True, stores__in=base_stores.values('pk'))
+                        .annotate(store_count=Count('stores', distinct=True)))
+        if cuisine_id and cuisine_id not in {c.id for c in cuisines}:
+            cuisine_id = None
+        if cuisine_id:
+            stores = stores.filter(cuisines__id=cuisine_id)
 
     # Store types (Restaurants, Grocery...) - har type mein kitne stores hain
     type_counts = dict(
@@ -162,13 +179,20 @@ def store_list(request):
     for vid, cname in live.exclude(category__isnull=True).values_list('vendor', 'category__name').distinct():
         tags.setdefault(vid, []).append(cname)
 
-    stores = list(stores.order_by('business_name')[:200])
+    stores = list(stores.distinct().order_by('business_name')[:200])
     ratings = store_rating_map()
+    dist_on = shop_flag('shop_distance_fee_enabled')
+    area_pre = delivery_pricing._area_extra(request) if dist_on else None
     for st in stores:
+        q = delivery_pricing.quote(st, request, area_pre)
+        st.fee_now = q['fee']
+        st.distance_km = q['distance_km']
+        st.too_far = q['out_of_range']
+        st.cuisine_list = [c for c in st.cuisines.all() if c.is_active][:3]
         st.status = st.status_label
         st.product_count = counts.get(st.vendor_id, 0)
         st.tags = sorted(tags.get(st.vendor_id, []))[:3]
-        st.is_free_delivery = (st.delivery_fee or 0) == 0
+        st.is_free_delivery = (st.fee_now or 0) == 0
         _r = ratings.get(st.vendor_id)
         st.rating_avg = _r['avg'] if _r else None
         st.rating_count = _r['count'] if _r else 0
@@ -176,6 +200,8 @@ def store_list(request):
         st.offer = coupon_map.get(st.vendor_id)
         st.matched_items = matches.get(st.vendor_id, [])
         st.is_fav = st.pk in fav_ids
+    if free_only:
+        stores = [s for s in stores if s.is_free_delivery]
     if rating_min:
         stores = [s for s in stores if (s.rating_avg or 0) >= 4]
     if open_only:
@@ -195,7 +221,7 @@ def store_list(request):
         'recommended': lambda s: (STATUS_ORDER[s.status], s.business_name.lower()),
         'rating': lambda s: (STATUS_ORDER[s.status], -(s.rating_avg or 0), -s.rating_count, s.business_name.lower()),
         'fastest': lambda s: (STATUS_ORDER[s.status], s.delivery_time_min, s.delivery_time_max),
-        'fee': lambda s: (STATUS_ORDER[s.status], s.delivery_fee or 0),
+        'fee': lambda s: (STATUS_ORDER[s.status], s.fee_now or 0),
         'min_order': lambda s: (STATUS_ORDER[s.status], s.min_order_amount or 0),
     }
     stores.sort(key=lambda s: (0 if s.in_area else 1,) + tuple(sort_keys[sort](s)))   # area wale pehle, khule pehle, band aakhir mein
@@ -204,7 +230,7 @@ def store_list(request):
     for b in banners:
         b.target = b.get_link()
     # Banner sirf pehle page par (koi search/filter na ho) - warna results ke beech mein jagah gher leta hai
-    show_banners = not (search or category_id or store_type_id or open_only or free_only or deals_only or rating_min or fav_only)
+    show_banners = not (search or category_id or store_type_id or cuisine_id or open_only or free_only or deals_only or rating_min or fav_only)
 
     return render(request, 'customer_portal/stores.html', {
         'banners': banners if (show_banners and shop_flag('shop_banners_enabled')) else [],
@@ -225,6 +251,8 @@ def store_list(request):
         'selected_category': category_id,
         'store_types': store_types,
         'selected_type': store_type_id,
+        'cuisines': cuisines,
+        'selected_cuisine': cuisine_id,
         'categories': Category.objects.filter(products__in=live).distinct().order_by('name'),
         'currency': CURRENCY,
         'cart_count': get_cart_count_value(request),
@@ -305,7 +333,16 @@ def store_detail(request, pk):
     is_fav = favorites_on and store.pk in favorite_store_ids(request)
     store_offer = coupon_logic.store_offers().get(store.vendor_id)
 
+    fee_q = delivery_pricing.quote(store, request)
+    store_cuisines = ([c for c in store.cuisines.all() if c.is_active][:3]
+                      if shop_flag('shop_cuisines_enabled') else [])
+
     return render(request, 'customer_portal/store_detail.html', {
+        'fee_now': fee_q['fee'],
+        'fee_distance_km': fee_q['distance_km'],
+        'fee_too_far': fee_q['out_of_range'],
+        'fee_range_message': fee_q['message'],
+        'store_cuisines': store_cuisines,
         'reviews': store_reviews(store.vendor),
         'store': store,
         'status': store.status_label,
