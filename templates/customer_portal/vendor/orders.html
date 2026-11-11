@@ -72,11 +72,11 @@
     </div>
 
     {% if not profile.is_approved %}
-        <div class="vo-alert warning">Account approve hone ke baad hi aap orders handle kar sakenge.</div>
+        <div class="vo-alert warning">You can handle orders only after your account is approved.</div>
     {% endif %}
 
     <div id="voNewBanner" onclick="location.href='{% url 'vendor_orders' %}?tab=new'">
-        🔔 Naya order aaya hai! Dekhne ke liye yahan tap karein
+        🔔 New order received! Tap here to view
     </div>
 
     {% if profile.is_approved %}

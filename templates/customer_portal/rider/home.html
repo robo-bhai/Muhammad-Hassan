@@ -31,7 +31,7 @@
     {% for it in r.items %}<div class="row"><span>{{ it.qty|floatformat:"-2" }} × {{ it.product.name }}</span></div>{% endfor %}
 
     {% if r.is_cod %}<div class="cod">💵 Cash on Delivery — customer se Rs. {{ r.total|floatformat:0 }} lein</div>
-    {% else %}<div class="paid">✅ Payment ho chuki — cash nahi lena</div>{% endif %}
+    {% else %}<div class="paid">✅ Already paid — do not collect cash</div>{% endif %}
 
     <div class="acts">
       {% if r.di.status == 'assigned' %}
@@ -64,7 +64,7 @@
       <form method="post" action="{% url 'rider_decline_order' o.order.id %}" class="acts" style="margin-top:6px">{% csrf_token %}<button class="btn" style="background:#6b7280">Reject</button></form>
     </div>
     {% empty %}
-      <div class="card empty">Abhi koi naya order nahi. Naya aate hi awaaz aayegi 🔔</div>
+      <div class="card empty">No new orders right now. You will hear a sound when one arrives 🔔</div>
     {% endfor %}
   {% endif %}
 </div>

@@ -193,7 +193,7 @@
                         <span class="cp-right">Rs. {{ total_amount|floatformat:0 }} <i class="bi bi-arrow-right-circle-fill"></i></span>
                     </a>
                     {% else %}
-                    <div class="alert alert-secondary text-center mb-2"><i class="bi bi-pause-circle"></i> Ordering abhi band hai, thori der baad try karein.</div>
+                    <div class="alert alert-secondary text-center mb-2"><i class="bi bi-pause-circle"></i> Ordering is closed right now. Please try again later.</div>
                     {% endif %}
                     {% endif %}
                     
@@ -218,7 +218,7 @@
     <div class="empty-cart text-center py-5">
         <div class="empty-cart-icon"><i class="bi bi-cart-x"></i></div>
         <h3 class="mt-3 fw-bold">Aap ki cart khali hai</h3>
-        <p class="text-muted mb-4">Pasandida products add karein aur Cash on Delivery se order karein.</p>
+        <p class="text-muted mb-4">Add your favourite products and order with Cash on Delivery.</p>
         <a href="{% url 'shop_home' %}" class="btn-checkout-pro d-inline-flex" style="width:auto; padding:14px 28px;">
             <span class="cp-left"><i class="bi bi-shop cp-icon"></i><span class="cp-text"><strong>Shopping shuru karein</strong></span></span>
             <i class="bi bi-arrow-right-circle-fill"></i>
@@ -375,7 +375,7 @@
     <div class="cp-box">
         <div class="cp-ico"><i class="bi bi-trash3-fill"></i></div>
         <h5>Item hata dein?</h5>
-        <p id="cpItemName">Yeh product aap ki cart se hata diya jayega.</p>
+        <p id="cpItemName">This product will be removed from your cart.</p>
         <div class="cp-actions">
             <button type="button" class="cp-no" id="cpNo">Nahi</button>
             <button type="button" class="cp-yes" id="cpYes">Haan, hata dein</button>

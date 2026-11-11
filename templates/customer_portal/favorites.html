@@ -37,7 +37,7 @@
     <div class="fv-grid">
       {% for s in stores %}
       <div class="fv-card" data-fav-card>
-        <button type="button" class="fav-btn fv-heart on" aria-label="Favourite se hatayein"
+        <button type="button" class="fav-btn fv-heart on" aria-label="Remove from favourites"
                 onclick="toggleFav(this, '{% url 'favorite_store_toggle' s.pk %}', true)"><i class="bi bi-heart-fill"></i></button>
         <a class="fv-link" href="{% url 'store_detail' s.pk %}">
           <div class="fv-img" {% if s.cover_image %}style="background-image:url('{{ s.cover_image.url }}')"{% endif %}>{% if not s.cover_image %}{{ s.business_name|slice:":1"|upper }}{% endif %}</div>
@@ -54,14 +54,14 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="fv-empty">Abhi koi pasandida store nahi.<br>Stores page par ❤ dabayein. <a href="{% url 'store_list' %}">Stores dekhein</a></div>
+    <div class="fv-empty">Abhi koi pasandida store nahi.<br>Tap ❤ on the stores page. <a href="{% url 'store_list' %}">Stores dekhein</a></div>
     {% endif %}
   {% else %}
     {% if items %}
     <div class="fv-grid">
       {% for p in items %}
       <div class="fv-card" data-fav-card>
-        <button type="button" class="fav-btn fv-heart on" aria-label="Wishlist se hatayein"
+        <button type="button" class="fav-btn fv-heart on" aria-label="Remove from wishlist"
                 onclick="toggleFav(this, '{% url 'wishlist_toggle' p.pk %}', true)"><i class="bi bi-heart-fill"></i></button>
         <a class="fv-link" href="{% url 'shop_product_detail' p.pk %}">
           <div class="fv-img">{% if p.image %}<img src="{{ p.image|thumb:480 }}" alt="{{ p.name }}" loading="lazy">{% else %}{{ p.name|slice:":1"|upper }}{% endif %}</div>
@@ -76,7 +76,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="fv-empty">Wishlist khali hai.<br>Kisi item par ❤ dabayein. <a href="{% url 'shop_home' %}">Shop dekhein</a></div>
+    <div class="fv-empty">Wishlist khali hai.<br>Tap ❤ on any item. <a href="{% url 'shop_home' %}">Shop dekhein</a></div>
     {% endif %}
   {% endif %}
 </div>

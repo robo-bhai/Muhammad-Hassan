@@ -1629,14 +1629,14 @@
     <div class="area-sheet">
         {% csrf_token %}
         <h3 id="areaTitle">Deliver to</h3>
-        <p>Apna shehar chunein ya area likhein (jaise "Gulberg, Lahore").</p>
+        <p>Choose your city or type an area (e.g. "Gulberg, Lahore").</p>
         {% if delivery_cities %}
         <div class="area-chips" id="areaChips">
             {% for c in delivery_cities %}<button type="button" class="area-chip{% if c == delivery_area %} on{% endif %}" data-area="{{ c }}">{{ c }}</button>{% endfor %}
         </div>
         {% endif %}
         {% if delivery_area_groups %}
-        <select class="area-input" id="areaSelect" aria-label="Area chunein">
+        <select class="area-input" id="areaSelect" aria-label="Choose area">
             <option value="">-- Apna area chunein --</option>
             {% for city, areas in delivery_area_groups %}
             <optgroup label="{{ city }}">

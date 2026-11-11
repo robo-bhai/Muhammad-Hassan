@@ -29,24 +29,24 @@
     {% for m in messages %}<div class="vm-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
 
     <div class="vm-card">
-        <div class="vm-head"><h3>Menu sections ki tarteeb</h3><p>Store page par sections isi tarteeb se dikhenge.</p></div>
+        <div class="vm-head"><h3>Menu sections ki tarteeb</h3><p>Sections will appear on the store page in this order.</p></div>
         <div class="vm-body">
             {% for c in categories %}
             <div class="vm-row">
                 <span class="vm-name">{{ c.name }}</span>
                 <form method="post">{% csrf_token %}<input type="hidden" name="action" value="up"><input type="hidden" name="category_id" value="{{ c.id }}">
-                    <button class="vm-btn" type="submit" {% if forloop.first %}disabled{% endif %} aria-label="Upar">↑</button></form>
+                    <button class="vm-btn" type="submit" {% if forloop.first %}disabled{% endif %} aria-label="Up">↑</button></form>
                 <form method="post">{% csrf_token %}<input type="hidden" name="action" value="down"><input type="hidden" name="category_id" value="{{ c.id }}">
-                    <button class="vm-btn" type="submit" {% if forloop.last %}disabled{% endif %} aria-label="Neeche">↓</button></form>
+                    <button class="vm-btn" type="submit" {% if forloop.last %}disabled{% endif %} aria-label="Down">↓</button></form>
             </div>
             {% empty %}
-            <div class="vm-empty">Abhi koi product nahi, is liye koi section nahi.</div>
+            <div class="vm-empty">No products yet, so there are no sections.</div>
             {% endfor %}
         </div>
     </div>
 
     <div class="vm-card">
-        <div class="vm-head"><h3>⭐ Popular items ({{ popular_count }}/{{ max_popular }})</h3><p>Ye items store page ke sab se upar "Popular" mein dikhte hain.</p></div>
+        <div class="vm-head"><h3>⭐ Popular items ({{ popular_count }}/{{ max_popular }})</h3><p>These items appear at the top of your store page under "Popular".</p></div>
         <div class="vm-body">
             {% for p in products %}
             <div class="vm-row">

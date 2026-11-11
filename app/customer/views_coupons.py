@@ -56,5 +56,5 @@ def remove_coupon(request):
     request.session.modified = True
     if _is_ajax(request):
         return JsonResponse({'success': True})
-    messages.info(request, 'Coupon hata diya gaya.')
+    messages.info(request, 'Coupon removed.')
     return _back(request)

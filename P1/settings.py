@@ -192,6 +192,7 @@ MIDDLEWARE = [
     'axes.middleware.AxesMiddleware',
     'app.middleware.SecurityMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'app.middleware.message_i18n.MessageTranslationMiddleware',   # flash messages -> visitor's language
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'app.middleware.frame_embed.AllowAppFraming',
     'app.middleware.license_gate.LicenseMiddleware',

@@ -334,7 +334,7 @@ def vendor_register(request):
         phone = normalize_phone(phone)
 
         if Vendor.objects.filter(contact_number=phone).exists():
-            messages.error(request, '⚠️ Ye phone pehle se registered hai')
+            messages.error(request, '⚠️ This phone is already registered')
             return redirect('vendor_login')
         if User.objects.filter(email__iexact=email).exists():
             return fail('⚠️ Ye email pehle se registered hai')
@@ -373,11 +373,11 @@ def vendor_register(request):
             return fail('❌ Registration mein masla aaya, dobara koshish karein')
 
         if approved:
-            messages.success(request, '🎉 Account ban gaya! Ab aap products list kar sakte hain.')
+            messages.success(request, '🎉 Account created! You can now list products.')
         else:
             messages.success(
                 request,
-                '🎉 Account ban gaya! Admin approval ke baad aap products list kar sakenge.'
+                '🎉 Account created! You can list products after admin approval.'
             )
         return redirect('vendor_dashboard')
 
@@ -404,7 +404,7 @@ def vendor_login(request):
         next_url = _safe_next(request, request.POST.get('next') or request.GET.get('next'))
 
         if not phone_raw or not password:
-            messages.error(request, '❌ Phone aur password dono likhein')
+            messages.error(request, '❌ Enter both phone and password')
             return redirect('vendor_login')
 
         phone = normalize_phone(phone_raw)
@@ -412,7 +412,7 @@ def vendor_login(request):
         key = _login_key(phone, ip)
 
         if cache.get(key, 0) >= LOGIN_MAX_ATTEMPTS:
-            messages.error(request, '🔒 Bohat zyada koshishen. 10 minute baad dobara try karein.')
+            messages.error(request, '🔒 Too many attempts. Please try again after 10 minutes.')
             return redirect('vendor_login')
 
         profile = (
@@ -425,7 +425,7 @@ def vendor_login(request):
 
         if not user:
             cache.set(key, cache.get(key, 0) + 1, LOGIN_LOCK_SECONDS)
-            messages.error(request, '❌ Phone ya password ghalat hai')
+            messages.error(request, '❌ Phone or password is incorrect')
             return redirect('vendor_login')
 
         cache.delete(key)
@@ -446,7 +446,7 @@ def vendor_login(request):
 def vendor_logout(request):
     request.session.flush()
     logout(request)
-    messages.success(request, '👋 Logout ho gaye.')
+    messages.success(request, '👋 You have been logged out.')
     return redirect('shop_home')
 
 
@@ -557,12 +557,12 @@ def vendor_product_add(request):
     """
     profile = request.user.vendor_profile
     if not profile.is_approved:
-        messages.warning(request, '⏳ Aap ka account abhi approve nahi hua.')
+        messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
 
     warehouse = _stock_warehouse()
     if not warehouse:
-        messages.error(request, '❌ Shop mein warehouse set nahi hai, admin se rabta karein.')
+        messages.error(request, '❌ No warehouse is set for the shop. Please contact the admin.')
         return redirect('vendor_dashboard')
 
     if request.method == 'POST':
@@ -591,21 +591,21 @@ def vendor_product_add(request):
             failed.append({'id': rid, 'v': _row_values(request.POST, prefix), 'errors': errors})
 
         if not saved and not failed:
-            messages.error(request, '❌ Kam az kam ek product ki details likhein')
+            messages.error(request, '❌ Enter details for at least one product')
             return render(request, 'customer_portal/vendor/product_bulk_form.html',
                           _bulk_context(request, [{'id': '1', 'v': _blank_values(), 'errors': []}]))
 
         if saved:
             what = 'Product' if saved == 1 else f'{saved} products'
             if _auto_approve_products():
-                messages.success(request, f'✅ {what} shop par list ho gaye!')
+                messages.success(request, f'✅ {what} listed in the shop!')
             else:
-                messages.success(request, f'✅ {what} jama ho gaye. Admin approval ke baad shop par nazar aayenge.')
+                messages.success(request, f'✅ {what} submitted. They will appear in the shop after admin approval.')
 
         if failed:
             messages.error(
                 request,
-                f'❌ {len(failed)} product save nahi hue. Neeche ghalti theek karein aur dobara submit karein '
+                f'❌ {len(failed)} products were not saved. Fix the errors below and submit again '
                 f'(image dobara select karni hogi).'
             )
             return render(request, 'customer_portal/vendor/product_bulk_form.html',
@@ -624,7 +624,7 @@ def vendor_product_edit(request, pk):
     product = get_object_or_404(Product, pk=pk, vendor=profile.vendor)
 
     if not profile.is_approved:
-        messages.warning(request, '⏳ Aap ka account abhi approve nahi hua.')
+        messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
 
     warehouse = _stock_warehouse()
@@ -688,13 +688,13 @@ def vendor_product_edit(request, pk):
                           _form_context(request, product=product, data=request.POST))
         except Exception:
             logger.exception("Vendor product edit error")
-            messages.error(request, '❌ Update nahi ho saka, dobara koshish karein')
+            messages.error(request, '❌ Could not update. Please try again')
             return redirect('vendor_product_edit', pk=pk)
 
         if resubmitted:
-            messages.success(request, '✅ Update ho gaya. Tabdeeli dobara admin review ke liye gayi hai.')
+            messages.success(request, '✅ Updated. The change has been sent for admin review again.')
         else:
-            messages.success(request, '✅ Product update ho gaya.')
+            messages.success(request, '✅ Product updated.')
         return redirect('vendor_dashboard')
 
     return render(request, 'customer_portal/vendor/product_form.html',
@@ -724,7 +724,7 @@ def vendor_create_master(request, kind):
     label = MASTER_LABELS[kind]
 
     if not request.user.vendor_profile.is_approved:
-        return JsonResponse({'success': False, 'message': 'Aap ka account abhi approve nahi hua.'}, status=403)
+        return JsonResponse({'success': False, 'message': 'Your account has not been approved yet.'}, status=403)
 
     try:
         payload = json.loads(request.body or '{}')
@@ -768,13 +768,13 @@ def vendor_product_toggle(request, pk):
     product = get_object_or_404(Product, pk=pk, vendor=profile.vendor)
 
     if product.approval_status != 'approved':
-        messages.error(request, '❌ Sirf approved product show/hide ho sakta hai')
+        messages.error(request, '❌ Only an approved product can be shown or hidden')
         return redirect('vendor_dashboard')
 
     Product.objects.filter(pk=product.pk).update(is_active=not product.is_active)
     messages.success(
         request,
-        '👁️ Product ab shop par nazar aayega' if not product.is_active
+        '👁️ The product is now visible in the shop' if not product.is_active
         else '🙈 Product shop se chhupa diya'
     )
     return redirect('vendor_dashboard')
@@ -894,7 +894,7 @@ def vendor_store_settings(request):
                 profile.cover_image = None
             profile.save()
             profile.cuisines.set(cuisines)
-            messages.success(request, '✅ Store settings save ho gayin.')
+            messages.success(request, '✅ Store settings saved.')
             return redirect('vendor_store_settings')
 
     return render(request, 'customer_portal/vendor/store_settings.html', {
@@ -1004,7 +1004,7 @@ def vendor_order_action(request, pk, action):
     back = f"{reverse('vendor_orders')}?tab={tab if tab in ORDER_TABS else 'new'}"
 
     if not request.user.vendor_profile.is_approved:
-        messages.error(request, '❌ Account approve hone ke baad hi orders handle ho sakte hain.')
+        messages.error(request, '❌ You can handle orders only after your account is approved.')
         return redirect(back)
 
     try:

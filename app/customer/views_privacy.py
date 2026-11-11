@@ -89,14 +89,14 @@ def delete_my_account(request):
 
     if request.method == 'POST' and not blockers:
         if request.POST.get('confirm') != 'DELETE':
-            messages.error(request, 'Confirm karne ke liye DELETE likhein.')
+            messages.error(request, 'Type DELETE to confirm.')
         elif not authenticate(request, username=request.user.get_username(), password=request.POST.get('password', '')):
-            messages.error(request, 'Password sahi nahi.')
+            messages.error(request, 'Incorrect password.')
         else:
             _anonymize(request, profile, customer)
             request.session.flush()
             logout(request)
-            messages.success(request, 'Aap ka account aur personal data delete kar diya gaya hai.')
+            messages.success(request, 'Your account and personal data have been deleted.')
             return redirect('shop_home')
 
     return render(request, 'customer_portal/account/delete_account.html', {'blockers': blockers})

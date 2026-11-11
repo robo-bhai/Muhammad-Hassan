@@ -46,13 +46,13 @@
     <div class="po-card">
         <div class="po-head">
             <h3>Options: {{ product.name }}</h3>
-            <p>Size, flavour ya extras jodein. Customer product kholte hi chunega.</p>
+            <p>Add size, flavour or extras. The customer chooses when opening the product.</p>
         </div>
         <div class="po-body">
             {% for g in groups %}
             {% include 'customer_portal/vendor/_option_group.html' %}
             {% empty %}
-            <div class="po-empty">Is product par abhi koi option group nahi.</div>
+            <div class="po-empty">This product has no option groups yet.</div>
             {% endfor %}
         </div>
     </div>

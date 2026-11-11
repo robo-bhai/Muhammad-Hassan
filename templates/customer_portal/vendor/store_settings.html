@@ -68,11 +68,11 @@
 
         {% if cuisines and cuisines_on %}
         <div class="ss-group">
-          <label>Cuisines (zyada se zyada 3)</label>
+          <label>Cuisines (maximum 3)</label>
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px">
             {% for c in cuisines %}<label style="font-weight:500"><input type="checkbox" name="cuisines" value="{{ c.id }}" {% if c.id in my_cuisine_ids %}checked{% endif %}> {{ c.icon }} {{ c.name }}</label>{% endfor %}
           </div>
-          <div class="ss-help">Jaise Pizza, Burger, Biryani. Customer stores page par cuisine se filter karta hai.</div>
+          <div class="ss-help">e.g. Pizza, Burger, Biryani. Customers filter stores by cuisine.</div>
         </div>
         {% elif cuisines %}
         {% for c in cuisines %}{% if c.id in my_cuisine_ids %}<input type="hidden" name="cuisines" value="{{ c.id }}">{% endif %}{% endfor %}
@@ -104,8 +104,8 @@
           <div class="ss-group"><label>Fee per km (Rs.)</label><input type="number" name="fee_per_km" min="0" step="0.01" value="{{ profile.fee_per_km|stringformat:'s' }}"></div>
           <div class="ss-group"><label>Free radius (km)</label><input type="number" name="free_radius_km" min="0" step="0.1" value="{{ profile.free_radius_km|stringformat:'s' }}"></div>
         </div>
-        <div class="ss-group"><label>Max delivery distance (km)</label><input type="number" name="max_delivery_km" min="0" step="0.1" value="{{ profile.max_delivery_km|default_if_none:''|stringformat:'s' }}" placeholder="Khali = koi had nahi">
-          <div class="ss-help">Fee = upar wali delivery fee + (free radius ke baad har km par per-km fee). Doori customer ke map pin se store ki location tak nikalti hai, is liye store ki location set honi chahiye{% if not profile.lat %} <b>(abhi set nahi)</b>{% endif %}. Per-km 0 ho to sirf fixed fee lagti hai.</div></div>
+        <div class="ss-group"><label>Max delivery distance (km)</label><input type="number" name="max_delivery_km" min="0" step="0.1" value="{{ profile.max_delivery_km|default_if_none:''|stringformat:'s' }}" placeholder="Empty = no limit">
+          <div class="ss-help">Fee = upar wali delivery fee + (free radius ke baad har km par per-km fee). Doori customer ke map pin se store ki location tak nikalti hai, is liye store ki location set honi chahiye{% if not profile.lat %} <b>(abhi set nahi)</b>{% endif %}. If per-km is 0, only the fixed fee applies.</div></div>
         {% else %}
         <input type="hidden" name="fee_per_km" value="{{ profile.fee_per_km|stringformat:'s' }}">
         <input type="hidden" name="free_radius_km" value="{{ profile.free_radius_km|stringformat:'s' }}">
@@ -157,12 +157,12 @@
             <input type="file" name="cover_image" accept="image/*">
           </div>
         </div>
-        <div class="ss-help">JPG/PNG/WEBP, 5 MB tak.</div>
+        <div class="ss-help">JPG/PNG/WEBP, up to 5 MB.</div>
 
         <button type="submit" class="ss-btn">Save Store Settings</button>
       </form>
       <div class="ss-links">
-        {% if profile.is_approved %}<a href="{% url 'store_detail' profile.pk %}"><i class="bi bi-eye"></i> Customer ko meri store kaisi dikhti ha</a>{% endif %}
+        {% if profile.is_approved %}<a href="{% url 'store_detail' profile.pk %}"><i class="bi bi-eye"></i> How customers see my store</a>{% endif %}
         <a href="{% url 'vendor_dashboard' %}"><i class="bi bi-arrow-left"></i> Back to dashboard</a>
       </div>
     </div>

@@ -115,7 +115,7 @@
         <div class="pf-group">
           <label for="price">Selling Price (Rs.) <span class="pf-req">*</span></label>
           <input type="number" name="price" id="price" min="0.01" step="0.01" required value="{{ v.price|stringformat:'s' }}">
-          <div class="pf-help">Customer shop par isi rate par kharidega. Cost price likhne ki zaroorat nahi.</div>
+          <div class="pf-help">Customers buy at this price in the shop. You do not need to enter a cost price.</div>
         </div>
 
         <div class="pf-row">
@@ -127,7 +127,7 @@
             <label for="stock">{% if product %}Add Stock (Quantity){% else %}Stock Quantity <span class="pf-req">*</span>{% endif %}</label>
             <input type="number" name="stock" id="stock" min="0" step="any" {% if not product %}required{% endif %} value="{{ v.stock|stringformat:'s' }}">
             <div class="pf-help">
-              {% if product %}Maujooda stock: <b>{{ current_stock|floatformat:"-2" }}</b>. Naya maal bhejna ho to yahan quantity likhein.
+              {% if product %}Maujooda stock: <b>{{ current_stock|floatformat:"-2" }}</b>. To send new stock, enter the quantity here.
               {% else %}Kitni quantity aap supply kar sakte hain.{% endif %}
             </div>
           </div>
@@ -148,7 +148,7 @@
           <label for="image">Product Image {% if not product %}<span class="pf-req">*</span>{% endif %}</label>
           {% if product and product.image %}<div><img class="pf-current" src="{{ product.image|thumb:480 }}" alt=""></div>{% endif %}
           <input type="file" name="image" id="image" accept="image/*" {% if not product %}required{% endif %}>
-          <div class="pf-help">JPG/PNG/WEBP, 5 MB tak.{% if product %} Nayi image dene par product dobara review hoga.{% endif %}</div>
+          <div class="pf-help">JPG/PNG/WEBP, up to 5 MB.{% if product %} The product will be reviewed again if you upload a new image.{% endif %}</div>
         </div>
 
         <button type="submit" class="pf-btn" id="saveBtn">{% if product %}Save Changes{% else %}Submit Product{% endif %}</button>

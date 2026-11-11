@@ -77,7 +77,7 @@ def loyalty_redeem(request):
     """Loyalty points ko wallet credit mein badlo ('all' = sab points)."""
     customer = current_customer(request)
     if not customer:
-        messages.error(request, '❌ Sirf customer account se points badal sakte hain.')
+        messages.error(request, '❌ Only a customer account can convert points.')
         return redirect('wallet_page')
     raw = (request.POST.get('points') or '').strip().lower()
     points = offers.points_balance(customer) if raw in ('all', '') else raw
@@ -114,16 +114,16 @@ def pro_buy_wallet(request):
     customer = current_customer(request)
     cfg = offers.pro_settings()
     if not customer:
-        messages.error(request, '❌ Sirf customer account se Pro le sakte hain.')
+        messages.error(request, '❌ Only a customer account can get Pro.')
         return redirect('pro_page')
     price = cfg['price']
     if price <= 0:
-        messages.info(request, 'Pro ki price set nahi, request bhejein.')
+        messages.info(request, 'Pro price is not set. Please send a request.')
         return redirect('pro_page')
     with transaction.atomic():
         Customer.objects.select_for_update().filter(pk=customer.pk).first()
         if offers.wallet_balance(customer) < price:
-            messages.error(request, f'❌ Wallet mein Rs. {price:,.0f} nahi hain.')
+            messages.error(request, f'❌ Your wallet does not have Rs. {price:,.0f}.')
             return redirect('pro_page')
         member = (ProMembership.objects.select_for_update()
                   .filter(customer=customer, status='pending').order_by('-requested_at').first())
@@ -134,7 +134,7 @@ def pro_buy_wallet(request):
         member.activate(cfg['days'])
         WalletTransaction.objects.create(customer=customer, amount=-price, kind='pro',
                                          note=f"Pro {cfg['days']} din")
-    messages.success(request, f"⭐ Pro active ho gaya ({cfg['days']} din).")
+    messages.success(request, f"⭐ Pro is now active ({cfg['days']} days).")
     return redirect('pro_page')
 
 
@@ -144,10 +144,10 @@ def pro_buy_wallet(request):
 def pro_request(request):
     customer = current_customer(request)
     if not customer:
-        messages.error(request, '❌ Sirf customer account se Pro le sakte hain.')
+        messages.error(request, '❌ Only a customer account can get Pro.')
         return redirect('pro_page')
     if ProMembership.objects.filter(customer=customer, status='pending').exists():
-        messages.info(request, 'Aap ki Pro request pehle se maujood hai. Payment ke baad shop activate kar dega.')
+        messages.info(request, 'You already have a Pro request. The shop will activate it after payment.')
         return redirect('pro_page')
     cfg = offers.pro_settings()
     ProMembership.objects.create(customer=customer, status='pending', amount=cfg['price'])
@@ -160,5 +160,5 @@ def pro_request(request):
                               notification_type='info', category='sales', link='/admin/app/promembership/')
     except Exception:
         logger.exception('Pro request notification failed')
-    messages.success(request, '⭐ Request mil gayi. Payment dene par shop aap ka Pro activate kar dega.')
+    messages.success(request, '⭐ Request received. The shop will activate Pro once you pay.')
     return redirect('pro_page')

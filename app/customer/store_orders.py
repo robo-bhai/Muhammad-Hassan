@@ -457,7 +457,7 @@ def apply_vendor_action(order, action, *, user, prep_minutes=None, reason_code='
     Nakaam hone par OrderActionError.
     """
     if action not in ACTIONS:
-        raise OrderActionError('Ghalat action.')
+        raise OrderActionError('Invalid action.')
     allowed_from, new_status = ACTIONS[action]
     if order.status not in allowed_from:
         raise OrderActionError(

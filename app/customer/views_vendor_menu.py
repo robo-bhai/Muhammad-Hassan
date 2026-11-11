@@ -32,7 +32,7 @@ def vendor_categories(profile):
 def vendor_menu(request):
     profile = request.user.vendor_profile
     if not profile.is_approved:
-        messages.warning(request, '⏳ Aap ka account abhi approve nahi hua.')
+        messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
 
     if request.method == 'POST':
@@ -40,7 +40,7 @@ def vendor_menu(request):
             _handle(request, profile)
         except Exception:
             logger.exception('Vendor menu error')
-            messages.error(request, '❌ Kuch masla aa gaya, dobara koshish karein')
+            messages.error(request, '❌ Something went wrong. Please try again')
         return redirect('vendor_menu')
 
     cats = vendor_categories(profile)
@@ -83,7 +83,7 @@ def _handle(request, profile):
         product = get_object_or_404(Product, pk=post.get('product_id'), vendor=profile.vendor)
         if not product.is_popular:
             if Product.objects.filter(vendor=profile.vendor, is_popular=True).count() >= MAX_POPULAR:
-                messages.error(request, f'❌ Ziyada se ziyada {MAX_POPULAR} Popular items rakh sakte hain')
+                messages.error(request, f'❌ You can keep at most {MAX_POPULAR} popular items')
                 return
         product.is_popular = not product.is_popular
         product.save(update_fields=['is_popular'])

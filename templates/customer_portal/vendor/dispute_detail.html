@@ -42,18 +42,18 @@
   <div class="vdd-card">
     <h5>Aap ka jawab</h5>
     {% if responded %}
-      <div class="vdd-note info">Aap ka jawab admin tak pahunch gaya hai.</div>
+      <div class="vdd-note info">Your reply has reached the admin.</div>
       <p>{{ my_response|linebreaksbr }}</p>
       {% if my_photo %}<img class="vdd-photo" src="{{ my_photo.url }}" alt="Aap ki photo">{% endif %}
     {% elif d.is_open %}
       <form method="post" enctype="multipart/form-data">{% csrf_token %}
-        <textarea name="response" rows="4" maxlength="1000" required placeholder="Is masle par aap ka kya kehna hai? (jaise: order poora pack hua tha)"></textarea>
+        <textarea name="response" rows="4" maxlength="1000" required placeholder="What do you say about this issue? (e.g. the order was fully packed)"></textarea>
         <input type="file" name="photo" accept="image/*">
         <button class="vdd-send">Jawab bhejein</button>
       </form>
-      <div class="vdd-meta mt-2">Jawab sirf ek dafa diya ja sakta hai.</div>
+      <div class="vdd-meta mt-2">You can reply only once.</div>
     {% else %}
-      <p class="text-muted mb-0">Dispute band ho chuka hai, aap ne jawab nahi diya.</p>
+      <p class="text-muted mb-0">The dispute is closed; you did not reply.</p>
     {% endif %}
   </div>
 </div>

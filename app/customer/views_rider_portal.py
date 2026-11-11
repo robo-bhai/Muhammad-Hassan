@@ -59,15 +59,15 @@ def rider_login_required(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
-            messages.warning(request, '🔒 Pehle rider login karein')
+            messages.warning(request, '🔒 Please log in as a rider first')
             return redirect('rider_login')
         profile = getattr(request.user, 'rider_profile', None)
         if profile is None:
-            messages.error(request, '❌ Ye page sirf riders ke liye hai')
+            messages.error(request, '❌ This page is for riders only')
             return redirect('shop_home')
         if not profile.is_active:
             logout(request)
-            messages.error(request, '❌ Aap ka rider account band hai. Admin se rabta karein.')
+            messages.error(request, '❌ Your rider account is disabled. Please contact the admin.')
             return redirect('rider_login')
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -204,13 +204,13 @@ def rider_login(request):
         phone_raw = request.POST.get('phone', '').strip()[:20]
         password = request.POST.get('password', '')
         if not phone_raw or not password:
-            messages.error(request, '❌ Phone aur password dono likhein')
+            messages.error(request, '❌ Enter both phone and password')
             return redirect('rider_login')
 
         phone = normalize_phone(phone_raw)
         key = f"rider_login:{phone}:{get_client_ip(request) or ''}"
         if cache.get(key, 0) >= LOGIN_MAX_ATTEMPTS:
-            messages.error(request, '🔒 Bohat zyada koshishen. 10 minute baad dobara try karein.')
+            messages.error(request, '🔒 Too many attempts. Please try again after 10 minutes.')
             return redirect('rider_login')
 
         rider = RiderProfile.objects.select_related('user').filter(phone=phone, is_active=True).first()
@@ -218,11 +218,11 @@ def rider_login(request):
         if not rider:
             waiting = RiderProfile.objects.select_related('user').filter(phone=phone, is_active=False).first()
             if waiting and authenticate(request, username=waiting.user.username, password=password):
-                messages.info(request, '⏳ Aap ki registration admin ke approval ka intezar kar rahi hai.')
+                messages.info(request, '⏳ Your registration is waiting for admin approval.')
                 return redirect('rider_login')
         if not user:
             cache.set(key, cache.get(key, 0) + 1, LOGIN_LOCK_SECONDS)
-            messages.error(request, '❌ Phone ya password ghalat hai')
+            messages.error(request, '❌ Phone or password is incorrect')
             return redirect('rider_login')
 
         cache.delete(key)
@@ -257,7 +257,7 @@ def rider_register(request):
         elif not name or not phone_raw:
             error = '❌ Naam aur phone likhein.'
         elif not is_valid_phone(phone_raw):
-            error = '❌ Phone number sahi nahi.'
+            error = '❌ Phone number is not valid.'
         elif first_error(password, (name, phone_raw)):
             error = '❌ ' + first_error(password, (name, phone_raw))
         elif password != confirm:
@@ -272,13 +272,13 @@ def rider_register(request):
                     user = User.objects.create_user(username=username, password=password, first_name=name[:30])
                     RiderProfile.objects.create(user=user, name=name, phone=phone, vehicle=vehicle, is_active=auto)
             except IntegrityError:
-                error = '❌ Is phone ka rider pehle se maujood hai.'
+                error = '❌ A rider with this phone already exists.'
             else:
                 cache.set(key, cache.get(key, 0) + 1, 3600)
                 if auto:
-                    messages.success(request, '✅ Registration ho gayi. Ab login karein.')
+                    messages.success(request, '✅ Registration complete. You can log in now.')
                 else:
-                    messages.success(request, '✅ Registration mil gayi. Admin ke approval ke baad aap login kar sakenge.')
+                    messages.success(request, '✅ Registration received. You can log in after admin approval.')
                 return redirect('rider_login')
         messages.error(request, error)
 
@@ -291,7 +291,7 @@ def rider_logout(request):
         RiderProfile.objects.filter(pk=rp.pk).update(is_online=False)
     request.session.flush()
     logout(request)
-    messages.success(request, '👋 Logout ho gaye.')
+    messages.success(request, '👋 You have been logged out.')
     return redirect('rider_login')
 
 
@@ -359,7 +359,7 @@ def rider_toggle_online(request):
     rider.is_online = not rider.is_online
     rider.last_seen_at = now()
     rider.save(update_fields=['is_online', 'last_seen_at'])
-    messages.success(request, '🟢 Aap online hain. Naye orders ke offers dikhenge.' if rider.is_online
+    messages.success(request, '🟢 You are online. New order offers will appear.' if rider.is_online
                      else '⚫ Aap offline hain. Naye offers nahi aayenge.')
     return redirect('rider_home')
 
@@ -382,10 +382,10 @@ def rider_accept_order(request, pk):
     """Offer accept: jo pehle accept kare usay order milta hai."""
     rider = request.user.rider_profile
     if not rider.is_online:
-        messages.error(request, '❌ Pehle online hon.')
+        messages.error(request, '❌ Please go online first.')
         return redirect('rider_home')
     if DeliveryInfo.objects.filter(rider=rider, status__in=ACTIVE_STATUSES).count() >= MAX_ACTIVE_ORDERS:
-        messages.error(request, f'❌ Aap ke paas pehle se {MAX_ACTIVE_ORDERS} orders hain. Pehle unhein poora karein.')
+        messages.error(request, f'❌ You already have {MAX_ACTIVE_ORDERS} orders. Please complete them first.')
         return redirect('rider_home')
 
     try:
@@ -403,7 +403,7 @@ def rider_accept_order(request, pk):
         messages.error(request, f'❌ {exc}')
         return redirect('rider_home')
 
-    messages.success(request, f'✅ Order #{order.order_no} aap ka ho gaya. Ab {store_orders.store_name(order.vendor_id)} se maal uthayein.')
+    messages.success(request, f'✅ Order #{order.order_no} is yours. Now pick up the items from {store_orders.store_name(order.vendor_id)}.')
     return redirect('rider_home')
 
 
@@ -413,7 +413,7 @@ def rider_order_action(request, pk, action):
     """action: pickup | deliver"""
     rider = request.user.rider_profile
     if action not in ('pickup', 'deliver'):
-        messages.error(request, '❌ Ghalat action.')
+        messages.error(request, '❌ Invalid action.')
         return redirect('rider_home')
 
     try:
@@ -434,7 +434,7 @@ def rider_order_action(request, pk, action):
                 store_orders._notify(cust, f'🛵 Order #{order.order_no} raaste mein hai',
                                      f'Rider {rider.name} ({rider.phone}) aap ka order le kar nikal chuka hai.',
                                      f'/shop/order/{order.id}/', 'info')
-                messages.success(request, f'📦 Order #{order.order_no}: maal le liya. Ab customer ke paas jayein.')
+                messages.success(request, f'📦 Order #{order.order_no}: items picked up. Now go to the customer.')
             else:
                 if di.status not in ('picked_up', 'in_transit') or order.status != 'ready':
                     raise store_orders.OrderActionError('Pehle "Maal le liya" dabayein.')
@@ -490,7 +490,7 @@ def vendor_assign_rider(request, pk):
         messages.error(request, f'❌ {exc}')
         return redirect(f"{reverse('vendor_orders')}?tab=active")
 
-    messages.success(request, f'🏍️ Order #{order.order_no}: rider {rider.name} ko de diya.')
+    messages.success(request, f'🏍️ Order #{order.order_no}: assigned to rider {rider.name}.')
     return redirect(f"{reverse('vendor_orders')}?tab=active")
 
 
@@ -504,7 +504,7 @@ def _admin_only(view):
         if not request.user.is_authenticated:
             return redirect(f"{settings.LOGIN_URL}?next={request.get_full_path()}")
         if not request.user.is_superuser:
-            messages.error(request, '❌ Sirf admin riders manage kar sakta hai.')
+            messages.error(request, '❌ Only the admin can manage riders.')
             return redirect('shop_home')
         return view(request, *args, **kwargs)
     return wrapper
@@ -529,11 +529,11 @@ def rider_manage(request):
             vehicle = request.POST.get('vehicle', '').strip()[:50]
             fee = _money(request.POST.get('fee', '50'))
             if not name or not phone_raw or fee is None:
-                messages.error(request, '❌ Naam, phone, fee aur password likhein.')
+                messages.error(request, '❌ Enter name, phone, fee and password.')
             elif first_error(password, (name, phone_raw)):
                 messages.error(request, '❌ ' + first_error(password, (name, phone_raw)))
             elif not is_valid_phone(phone_raw):
-                messages.error(request, '❌ Phone number sahi nahi.')
+                messages.error(request, '❌ Phone number is not valid.')
             else:
                 phone = normalize_phone(phone_raw)
                 username = 'rider_' + phone.replace('+', '')
@@ -542,9 +542,9 @@ def rider_manage(request):
                         user = User.objects.create_user(username=username, password=password, first_name=name[:30])
                         RiderProfile.objects.create(user=user, name=name, phone=phone, vehicle=vehicle,
                                                     per_delivery_fee=fee)
-                    messages.success(request, f'✅ Rider {name} bana diya. Login: {phone}')
+                    messages.success(request, f'✅ Rider {name} created. Login: {phone}')
                 except IntegrityError:
-                    messages.error(request, '❌ Is phone ka rider pehle se maujood hai.')
+                    messages.error(request, '❌ A rider with this phone already exists.')
         elif action == 'toggle':
             r = get_object_or_404(RiderProfile, pk=request.POST.get('rider_id') or 0)
             r.is_active = not r.is_active
@@ -560,7 +560,7 @@ def rider_manage(request):
             else:
                 r.user.set_password(pw)
                 r.user.save()
-                messages.success(request, f'🔑 {r.name} ka password badal diya.')
+                messages.success(request, f'🔑 Password changed for {r.name}.')
         return redirect('rider_manage')
 
     riders = list(RiderProfile.objects.all())
@@ -594,19 +594,19 @@ def rider_detail(request, pk):
         if action == 'fee':
             fee = _money(request.POST.get('fee'))
             if fee is None:
-                messages.error(request, '❌ Fee sahi nahi.')
+                messages.error(request, '❌ Fee is not valid.')
             else:
                 rider.per_delivery_fee = fee
                 rider.save(update_fields=['per_delivery_fee'])
-                messages.success(request, f'✅ Fee Rs. {fee:,.0f} per delivery kar di (naye orders par lagu).')
+                messages.success(request, f'✅ Fee set to Rs. {fee:,.0f} per delivery (applies to new orders).')
         elif action in ('cash_in', 'payout'):
             amount = _money(request.POST.get('amount'))
             bal = rider_balances(rider)
             limit = bal['cash_in_hand'] if action == 'cash_in' else bal['due']
             if not amount or amount <= 0:
-                messages.error(request, '❌ Raqam sahi likhein.')
+                messages.error(request, '❌ Enter a valid amount.')
             elif amount > limit:
-                messages.error(request, f'❌ Raqam zyada hai. Zyada se zyada Rs. {limit:,.0f}.')
+                messages.error(request, f'❌ Amount is too high. Maximum is Rs. {limit:,.0f}.')
             else:
                 RiderSettlement.objects.create(rider=rider, kind=action, amount=amount,
                                                note=request.POST.get('note', '').strip()[:200],

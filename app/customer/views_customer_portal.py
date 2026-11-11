@@ -1606,7 +1606,7 @@ def place_order(request):
             _chosen, _extras, opt_error = resolve_selection(
                 products[item['product_id']], item.get('option_ids') or [])
             if opt_error:
-                messages.error(request, f'{item["name"]}: {opt_error}. Cart se hata kar dobara chunein.')
+                messages.error(request, f'{item["name"]}: {opt_error}. Remove it from the cart and choose again.')
                 return redirect('cart_view')
         
         # 🔒 Stock lock: inventory rows lock + pending orders ginkar check (overselling se bachao)

@@ -15,7 +15,7 @@
 
   {% if pending_resets %}
   <div class="alert alert-warning mt-3 mb-0">
-    <div class="fw-bold mb-1">🔑 Password reset requests (rider ko phone par code bata dein)</div>
+    <div class="fw-bold mb-1">🔑 Password reset requests (tell the rider the code by phone)</div>
     {% for p in pending_resets %}
       <div>{{ p.rider.name }} ({{ p.rider.phone }}) &mdash; code: <b class="fs-5">{{ p.code }}</b>
         <span class="text-muted small">(valid {{ p.expires_at|time:"H:i" }} tak)</span></div>
@@ -31,10 +31,10 @@
           <form method="post">{% csrf_token %}
             <input type="hidden" name="action" value="add">
             <div class="mb-2"><input class="form-control" name="name" placeholder="Naam" required></div>
-            <div class="mb-2"><input class="form-control" name="phone" placeholder="Phone (03XX XXXXXXX) — yehi login hai" required></div>
+            <div class="mb-2"><input class="form-control" name="phone" placeholder="Phone (03XX XXXXXXX) — this is the login" required></div>
             <div class="mb-2"><input class="form-control" name="vehicle" placeholder="Gaari / bike (optional)"></div>
             <div class="mb-2"><input class="form-control" name="fee" value="50" placeholder="Har delivery par kamai (Rs.)" required></div>
-            <div class="mb-3"><input class="form-control" type="password" name="password" placeholder="Password (kam az kam 6 harf)" minlength="6" required></div>
+            <div class="mb-3"><input class="form-control" type="password" name="password" placeholder="Password (at least 6 characters)" minlength="6" required></div>
             <button class="btn btn-primary w-100" type="submit">Rider banayein</button>
           </form>
           <div class="small text-muted mt-3">Rider is link se login karega:<br><b>/shop/rider/login/</b></div>
@@ -55,7 +55,7 @@
             {% for r in riders %}
               <tr>
                 <td>
-                  {% if not r.is_active and not r.last_login_at %}<span class="badge bg-warning text-dark">⏳ Naya — approval baqi</span>
+                  {% if not r.is_active and not r.last_login_at %}<span class="badge bg-warning text-dark">⏳ New — approval pending</span>
                   {% elif not r.is_active %}<span class="badge bg-secondary">Band</span>
                   {% elif r.live %}<span class="badge bg-success">🟢 Online</span>
                   {% else %}<span class="badge bg-light text-dark border">⚫ Offline</span>{% endif %}

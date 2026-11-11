@@ -121,7 +121,7 @@
 <div class="sd-wrap">
 
   <div class="sd-hero" {% if store.cover_image %}style="background-image:url('{{ store.cover_image.url }}')"{% endif %}>
-    <a class="sd-back" href="{% url 'store_list' %}" aria-label="Sab stores"><i class="bi bi-arrow-left"></i></a>
+    <a class="sd-back" href="{% url 'store_list' %}" aria-label="All stores"><i class="bi bi-arrow-left"></i></a>
     {% if status == 'closed' %}<div class="sd-closed-veil">CLOSED</div>{% endif %}
   </div>
 
