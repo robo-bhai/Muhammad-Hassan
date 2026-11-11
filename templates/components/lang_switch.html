@@ -1,0 +1,5 @@
+{# Language switch (English / اردو / العربية). Works without JS. Usage: {% include 'components/lang_switch.html' %} #}
+<span class="erp-lang-switch" data-no-i18n style="display:inline-flex;gap:4px;align-items:center;direction:ltr;">
+{% for l in LANGUAGES %}<a href="{% url 'set_language' l.code %}?next={{ request.get_full_path|urlencode }}"
+   style="padding:2px 9px;border-radius:12px;font-size:.78rem;text-decoration:none;border:1px solid currentColor;{% if l.code == LANG_CODE %}background:rgba(255,255,255,.25);font-weight:700;{% else %}opacity:.75;{% endif %}{% if l.code != 'en' %}font-family:'Jameel Noori Nastaleeq','Noto Naskh Arabic',serif;{% endif %}color:inherit;">{{ l.native }}</a>{% endfor %}
+</span>

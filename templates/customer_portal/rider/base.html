@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ LANG_CODE|default:'en' }}" dir="{{ LANG_DIR|default:'ltr' }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -52,6 +52,7 @@
 <div class="top">
   <div class="top-row">
     <div style="display:flex;align-items:center;gap:10px">{% if company_logo %}<img src="{{ company_logo }}" alt="" style="height:38px;width:38px;object-fit:contain;background:#fff;border-radius:10px;padding:3px">{% endif %}<div><div class="hi">Salam 👋</div><div class="nm">{{ rider.name }}</div></div></div>
+    {% include 'components/lang_switch.html' %}
     <form method="post" action="{% url 'rider_toggle_online' %}">{% csrf_token %}
       <button class="sw {% if rider.is_online %}on{% endif %}">{% if rider.is_online %}🟢 Online{% else %}⚫ Offline{% endif %}</button>
     </form>
@@ -103,5 +104,6 @@
   poll(); setInterval(poll,12000);
 })();
 </script>
+{% include 'components/i18n.html' %}
 </body>
 </html>
