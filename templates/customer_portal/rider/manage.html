@@ -13,6 +13,16 @@
       <div class="text-muted small">Riders ko dene wali kamai</div><div class="h4 mb-0 text-primary">Rs. {{ total_due|floatformat:0 }}</div></div></div></div>
   </div>
 
+  {% if pending_resets %}
+  <div class="alert alert-warning mt-3 mb-0">
+    <div class="fw-bold mb-1">🔑 Password reset requests (rider ko phone par code bata dein)</div>
+    {% for p in pending_resets %}
+      <div>{{ p.rider.name }} ({{ p.rider.phone }}) &mdash; code: <b class="fs-5">{{ p.code }}</b>
+        <span class="text-muted small">(valid {{ p.expires_at|time:"H:i" }} tak)</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <div class="row g-3 mt-0">
     <div class="col-lg-4">
       <div class="card shadow-sm">

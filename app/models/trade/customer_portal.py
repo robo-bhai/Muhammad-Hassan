@@ -24,6 +24,8 @@ class CustomerOTP(models.Model):
         ('register', 'Registration'),
         ('login', 'Login'),
         ('forgot_password', 'Forgot Password'),
+        ('rider_reset', 'Rider Password Reset'),
+        ('admin_reset', 'Admin Password Reset'),
         ('order', 'Order Verification'),
     ]
     
@@ -288,6 +290,8 @@ class CustomerOTP(models.Model):
                 'register': 'Registration',
                 'login': 'Login',
                 'forgot_password': 'Password Reset',
+                'rider_reset': 'Rider Password Reset',
+                'admin_reset': 'Admin Password Reset',
                 'order': 'Order Verification'
             }
             

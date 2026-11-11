@@ -13,6 +13,7 @@ from app.customer import views_vendor_tools
 from app.customer import views_coupons
 from app.customer import views_offers
 from app.customer import views_rider_portal
+from app.customer import views_rider_password_reset
 from app.customer import views_live_tracking
 from app.customer import views_dispatch
 from app.customer import views_reviews
@@ -26,6 +27,7 @@ from app.customer import views_stores
 from app.security import views_admin_otp
 from app.security import views_security
 from app.security import views_totp
+from app.security import views_admin_reset
 from app.backoffice import views_bi  
 from app.backoffice import views_testing  
 from app.backoffice import views_document
@@ -64,6 +66,8 @@ urlpatterns = [
         template_name='auth/login.html',
         redirect_authenticated_user=True
     ), name='login'),
+    path('login/forgot/', views_admin_reset.admin_forgot_password, name='admin_forgot_password'),
+    path('login/reset/', views_admin_reset.admin_reset_password, name='admin_reset_password'),
     path('settings/toggle/<str:setting_key>/', views_frontend.toggle_setting, name='toggle_setting'),
     path('production/stock/consume/<int:pk>/', views_frontend.production_consume_stock, name='production_consume_stock'),
     path('cash/', views_frontend.cash_dashboard, name='cash_dashboard'),
@@ -1175,6 +1179,8 @@ urlpatterns = [
      path('shop/vendor/api/orders-poll/', views_vendor_portal.vendor_orders_poll, name='vendor_orders_poll'),
      # ---- Rider portal (Talabat jaisa rider) ----
      path('shop/rider/login/', views_rider_portal.rider_login, name='rider_login'),
+     path('shop/rider/forgot-password/', views_rider_password_reset.rider_forgot_password, name='rider_forgot_password'),
+     path('shop/rider/reset-password/', views_rider_password_reset.rider_reset_password, name='rider_reset_password'),
      path('shop/rider/logout/', views_rider_portal.rider_logout, name='rider_logout'),
      path('shop/rider/register/', views_rider_portal.rider_register, name='rider_register'),
      path('shop/rider/', views_rider_portal.rider_home, name='rider_home'),

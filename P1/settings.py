@@ -116,6 +116,14 @@ else:
     EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
     DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'info@uqn88.store')
 
+# WhatsApp Business Cloud API (password reset code WhatsApp par bhejne ke liye). Detail: app/utils/whatsapp_otp.py
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID', '').strip()
+WHATSAPP_ACCESS_TOKEN = os.environ.get('WHATSAPP_ACCESS_TOKEN', '').strip()
+WHATSAPP_OTP_TEMPLATE = os.environ.get('WHATSAPP_OTP_TEMPLATE', '').strip()
+WHATSAPP_TEMPLATE_LANG = os.environ.get('WHATSAPP_TEMPLATE_LANG', 'en').strip()
+WHATSAPP_API_VERSION = os.environ.get('WHATSAPP_API_VERSION', 'v21.0').strip()
+WHATSAPP_NOTICE_TEMPLATE = os.environ.get('WHATSAPP_NOTICE_TEMPLATE', '').strip()   # optional: 'password badal gaya' ki ittela
+
 # --- SESSION CONFIGURATION ---
 # Session & CSRF Settings
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
@@ -283,16 +291,30 @@ BACKUP_DIR = str(BASE_DIR / 'dbbackup')
 os.makedirs(BACKUP_DIR, exist_ok=True)
 BACKUP_PROGRESS_FILE = str(BASE_DIR / 'dbbackup' / 'backup_progress.json')
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-        'LOCATION': BASE_DIR / 'django_cache',
-        'TIMEOUT': 300,
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,
+# Cache: REDIS_URL set ho to Redis (sab workers ke darmiyan shared: rate limit / lockout sahi chalte hain).
+# Set na ho to purana FileBasedCache (single-server / development ke liye).
+# Redis ke liye:  pip install redis   aur   .env mein  REDIS_URL=redis://127.0.0.1:6379/1
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'TIMEOUT': 300,
+            'KEY_PREFIX': 'erp',
         }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': BASE_DIR / 'django_cache',
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'MAX_ENTRIES': 1000,
+            }
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
