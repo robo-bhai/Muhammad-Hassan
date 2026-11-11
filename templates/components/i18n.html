@@ -7,14 +7,43 @@
 @font-face { font-family: "Jameel Noori Nastaleeq"; src: url("{% static 'fonts/JameelNooriNastaleeq.woff' %}") format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
 html[dir="rtl"] { --erp-rtl-font: "Noto Naskh Arabic", "Segoe UI", Tahoma, Arial, sans-serif; }
 html[lang="ur"] { --erp-rtl-font: "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif; }
-html[lang="ur"] body { line-height: 2.1; }
-html[lang="ur"] h1, html[lang="ur"] h2, html[lang="ur"] h3, html[lang="ur"] h4, html[lang="ur"] h5, html[lang="ur"] h6,
-html[lang="ur"] .btn, html[lang="ur"] label, html[lang="ur"] th, html[lang="ur"] td, html[lang="ur"] p, html[lang="ur"] a, html[lang="ur"] span, html[lang="ur"] li { font-family: var(--erp-rtl-font); }
-html[lang="ur"] .btn, html[lang="ur"] .badge, html[lang="ur"] .nav-link, html[lang="ur"] .form-control, html[lang="ur"] .form-select { line-height: 1.9; }
-html[lang="ur"] i.bi, html[lang="ur"] i.fa, html[lang="ur"] i.fas, html[lang="ur"] i.far, html[lang="ur"] .bi::before { font-family: "bootstrap-icons" !important; line-height: 1; }
+/* ===== Urdu (Nastaleeq) professional typography ===== */
+html[lang="ur"] body { font-size: 1.08rem; line-height: 2.05; font-synthesis: none; text-rendering: optimizeLegibility; font-feature-settings: "liga" 1, "calt" 1, "kern" 1; letter-spacing: 0; word-spacing: .05em; }
+html[lang="ur"] body, html[lang="ur"] h1, html[lang="ur"] h2, html[lang="ur"] h3, html[lang="ur"] h4, html[lang="ur"] h5, html[lang="ur"] h6,
+html[lang="ur"] p, html[lang="ur"] a, html[lang="ur"] span, html[lang="ur"] li, html[lang="ur"] label, html[lang="ur"] small, html[lang="ur"] div,
+html[lang="ur"] th, html[lang="ur"] td, html[lang="ur"] button, html[lang="ur"] .btn, html[lang="ur"] .badge, html[lang="ur"] .nav-link, html[lang="ur"] .dropdown-item,
+html[lang="ur"] input, html[lang="ur"] select, html[lang="ur"] textarea, html[lang="ur"] .form-control, html[lang="ur"] .form-select { font-family: var(--erp-rtl-font); }
+/* Jameel Noori has one weight only: never fake bold (looks smeared); use size + colour for emphasis instead */
+html[lang="ur"] b, html[lang="ur"] strong, html[lang="ur"] th, html[lang="ur"] h1, html[lang="ur"] h2, html[lang="ur"] h3, html[lang="ur"] h4, html[lang="ur"] h5, html[lang="ur"] h6,
+html[lang="ur"] .fw-bold, html[lang="ur"] .fw-semibold, html[lang="ur"] .btn, html[lang="ur"] .card-title, html[lang="ur"] .navbar-brand { font-weight: 400 !important; }
+html[lang="ur"] h1 { font-size: 2.1rem; line-height: 1.9; } html[lang="ur"] h2 { font-size: 1.75rem; line-height: 1.9; }
+html[lang="ur"] h3 { font-size: 1.5rem; line-height: 1.9; } html[lang="ur"] h4 { font-size: 1.3rem; line-height: 1.9; }
+html[lang="ur"] h5 { font-size: 1.18rem; line-height: 1.9; } html[lang="ur"] h6 { font-size: 1.08rem; line-height: 1.9; }
+html[lang="ur"] small, html[lang="ur"] .small, html[lang="ur"] .text-muted { font-size: .95em; }
+/* Nastaleeq glyphs are tall: give controls room so nothing is clipped */
+html[lang="ur"] .btn { line-height: 1.9; padding-top: .28rem; padding-bottom: .1rem; }
+html[lang="ur"] .btn-sm { line-height: 1.8; padding-top: .2rem; padding-bottom: .05rem; }
+html[lang="ur"] .badge { line-height: 1.9; padding: .2em .65em .05em; }
+html[lang="ur"] .form-control, html[lang="ur"] .form-select { line-height: 1.9; min-height: calc(2.1em + 1.2rem); padding-top: .45rem; padding-bottom: .25rem; }
+html[lang="ur"] .form-label, html[lang="ur"] label { margin-bottom: .2rem; }
+html[lang="ur"] .nav-link, html[lang="ur"] .dropdown-item, html[lang="ur"] .sidebar-menu li a, html[lang="ur"] .sub-link { line-height: 1.95; padding-top: .45rem; padding-bottom: .3rem; }
+html[lang="ur"] table th, html[lang="ur"] table td { line-height: 1.95; vertical-align: middle; }
+html[lang="ur"] th { font-size: 1.02em; white-space: nowrap; }
+html[lang="ur"] .alert, html[lang="ur"] .toast, html[lang="ur"] .modal-title, html[lang="ur"] .card-header { line-height: 1.95; }
+html[lang="ur"] .modal-title { font-size: 1.35rem; }
+/* numbers, codes, money, phone, dates stay Latin / left-to-right inside Urdu sentences */
+html[lang="ur"] .num, html[lang="ur"] .amount, html[lang="ur"] .price, html[lang="ur"] [data-ltr], html[lang="ur"] code,
+html[lang="ur"] input[type="number"], html[lang="ur"] input[type="tel"], html[lang="ur"] input[type="email"], html[lang="ur"] input[type="password"], html[lang="ur"] input[type="url"] { unicode-bidi: plaintext; font-variant-numeric: lining-nums; }
+html[lang="ur"] code, html[lang="ur"] pre, html[lang="ur"] kbd { font-family: Consolas, "Courier New", monospace; direction: ltr; unicode-bidi: embed; }
+/* icons keep their own font */
+html[lang="ur"] .bi, html[lang="ur"] [class^="bi-"], html[lang="ur"] [class*=" bi-"] { font-family: "bootstrap-icons" !important; line-height: 1; vertical-align: -.125em; }
+html[lang="ur"] .fa, html[lang="ur"] .fas, html[lang="ur"] .far, html[lang="ur"] .fab { font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", FontAwesome; }
+/* Urdu shown in print stays crisp */
+@media print { html[lang="ur"] body { font-size: 12pt; line-height: 1.9; } }
 html[dir="rtl"] body, html[dir="rtl"] .btn, html[dir="rtl"] input, html[dir="rtl"] select,
 html[dir="rtl"] textarea, html[dir="rtl"] .form-control, html[dir="rtl"] .form-select { font-family: var(--erp-rtl-font) !important; }
 html[dir="rtl"] body { line-height: 1.7; }
+html[lang="ur"][dir="rtl"] body { line-height: 2.05; }
 /* layout */
 html[dir="rtl"] .sidebar { left: auto; right: 0; border-right: 0; border-left: 1px solid rgba(255,255,255,.08); box-shadow: -4px 0 30px rgba(0,0,0,.35); }
 html[dir="rtl"] .main-wrapper { margin-left: 0; margin-right: var(--sidebar-width); }
