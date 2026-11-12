@@ -106,7 +106,14 @@ jobs:
                 exit 1
               fi
             fi
-            OLDER_RUNS=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=20" --jq "[.workflow_runs[] | select(.id < $CURRENT_RUN_ID and (.status == \"in_progress\" or .status == \"queued\")) | .id]")
+            # Atke hue ("ghost") queued runs: 15 minute se zyada purane queued runs asal mein kabhi shuru nahi hue
+            # (normal Cancel bhi "Failed to cancel" deta hai). Unhein force-cancel karo aur intezar mein mat gino.
+            RUNS_JSON=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=30" 2>/dev/null || echo '{"workflow_runs":[]}')
+            for ID in $(echo "$RUNS_JSON" | jq -r --argjson cur "$CURRENT_RUN_ID" '.workflow_runs[] | select(.id < $cur and .status == "queued" and ((now - (.created_at | fromdateiso8601)) > 900)) | .id'); do
+              echo "Stale queued run $ID (15+ min) -> force-cancel"
+              gh api -X POST "repos/$REPO/actions/runs/$ID/force-cancel" >/dev/null 2>&1 || gh run cancel "$ID" -R "$REPO" || true
+            done
+            OLDER_RUNS=$(echo "$RUNS_JSON" | jq -c --argjson cur "$CURRENT_RUN_ID" '[.workflow_runs[] | select(.id < $cur and (.status == "in_progress" or (.status == "queued" and ((now - (.created_at | fromdateiso8601)) <= 900)))) | .id]')
             TOTAL_PENDING=$(echo "$OLDER_RUNS" | jq 'length')
             if [ "${TOTAL_PENDING:-0}" -gt 0 ]; then
               echo "Older run(s) $OLDER_RUNS still active. Holding (ID: $CURRENT_RUN_ID)..."
