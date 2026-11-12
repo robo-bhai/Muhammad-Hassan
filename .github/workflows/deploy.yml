@@ -93,6 +93,19 @@ jobs:
           REPO="${{ github.repository }}"
           BRANCH="${{ github.ref_name }}"
           while true; do
+            # Agar is se NAYA run bhi aa chuka hai to yeh run kaam ka nahi (abhi tak server/DB ko haath nahi lagaya):
+            # khud ko cancel kar do, warna har beech wala run pip install + restore + server start karke
+            # tab jaakar band hota hai aur chain mein minute-ghante lag jate hain. Sirf push runs cancel hote hain
+            # (backup_now / restore_now / migrate_now wali requests kabhi cancel nahi hoti).
+            if [ "${{ github.event_name }}" = "push" ]; then
+              LATEST_RUN_ID=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=1" --jq '.workflow_runs[0].id' 2>/dev/null || echo "$CURRENT_RUN_ID")
+              if [ -n "$LATEST_RUN_ID" ] && [ "$LATEST_RUN_ID" -gt "$CURRENT_RUN_ID" ]; then
+                echo "Newer run ($LATEST_RUN_ID) already exists -> this run is superseded. Cancelling (nothing started yet)."
+                gh run cancel "$CURRENT_RUN_ID" -R "$REPO" || true
+                sleep 120
+                exit 1
+              fi
+            fi
             OLDER_RUNS=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=20" --jq "[.workflow_runs[] | select(.id < $CURRENT_RUN_ID and (.status == \"in_progress\" or .status == \"queued\")) | .id]")
             TOTAL_PENDING=$(echo "$OLDER_RUNS" | jq 'length')
             if [ "${TOTAL_PENDING:-0}" -gt 0 ]; then
