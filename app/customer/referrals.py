@@ -265,6 +265,26 @@ def _credit(customer, amount, kind, order, note):
     return obj
 
 
+def _grant(referral, order, cfg):
+    """Dono ko wallet credit (referral / refbonus) aur Referral ko 'rewarded' karo.
+    Caller ki transaction aur Referral row lock ke andar chalao. Wallet credit (order, kind) par idempotent hai."""
+    ref_amt = cfg['referrer_reward'].quantize(CENT)
+    new_amt = cfg['referee_reward'].quantize(CENT)
+    _credit(referral.referrer, ref_amt, 'referral', order,
+            f'Referral: dost (customer #{referral.referee_id}) ka pehla order #{order.order_no}')
+    _credit(referral.referee, new_amt, 'refbonus', order,
+            f'Referral welcome bonus: order #{order.order_no}')
+    referral.status = 'rewarded'
+    referral.reject_reason = ''
+    referral.reward_order = order
+    referral.referrer_amount = ref_amt if ref_amt > 0 else ZERO
+    referral.referee_amount = new_amt if new_amt > 0 else ZERO
+    referral.rewarded_at = timezone.now()
+    referral.save(update_fields=['status', 'reject_reason', 'reward_order', 'referrer_amount',
+                                 'referee_amount', 'rewarded_at'])
+    return referral
+
+
 def award_for_order(order):
     """Delivered order par referral reward. Referral wapas (rewarded) ya None.
 
@@ -300,20 +320,100 @@ def award_for_order(order):
                     _reject(referral, reason)
                     logger.info('referral %s rejected: %s', referral.pk, reason)
                 return None
-            ref_amt = cfg['referrer_reward'].quantize(CENT)
-            new_amt = cfg['referee_reward'].quantize(CENT)
-            _credit(referral.referrer, ref_amt, 'referral', order,
-                    f'Referral: dost (customer #{referral.referee_id}) ka pehla order #{order.order_no}')
-            _credit(referral.referee, new_amt, 'refbonus', order,
-                    f'Referral welcome bonus: order #{order.order_no}')
-            referral.status = 'rewarded'
-            referral.reward_order = order
-            referral.referrer_amount = ref_amt if ref_amt > 0 else ZERO
-            referral.referee_amount = new_amt if new_amt > 0 else ZERO
-            referral.rewarded_at = timezone.now()
-            referral.save(update_fields=['status', 'reward_order', 'referrer_amount',
-                                         'referee_amount', 'rewarded_at'])
-            return referral
+            return _grant(referral, order, cfg)
     except Exception:
         logger.exception('referral: award_for_order failed (order %s)', getattr(order, 'pk', None))
         return None
+
+
+# ---------------------------------------------------------------- customer UI (account page ka 'Dost ko bulao' card)
+def whatsapp_url(link, company_name, referee_reward=ZERO, min_order=ZERO):
+    """wa.me share link, pehle se likhe hue paigham ke sath (paigham me link aur, agar ho, welcome bonus)."""
+    from urllib.parse import quote
+    name = (company_name or 'our shop').strip() or 'our shop'
+    text = f'Assalam o Alaikum! {name} se online order karen'
+    if referee_reward and referee_reward > 0:
+        text += f' aur apne pehle order (Rs. {min_order:,.0f} ya zyada) par Rs. {referee_reward:,.0f} ka welcome bonus payen'
+    text += f'. Mera link: {link}'
+    return 'https://wa.me/?text=' + quote(text, safe='')
+
+
+def referral_card(request, customer, company_name=''):
+    """Account page ke liye card ka data. None agar referral band hai, ya customer ka portal profile nahi.
+
+    {'code', 'link', 'whatsapp_url', 'referrer_reward', 'referee_reward', 'min_order',
+     'invited', 'pending', 'rewarded', 'rejected', 'earned'}
+    earned = is customer ke 'referral' kind wale wallet credits ka jod (refbonus yahan nahi ginta).
+    """
+    if customer is None or not enabled():
+        return None
+    code = ensure_code(customer)
+    if not code:
+        return None
+    from django.db.models import Count
+    from django.urls import reverse
+    from ..models import Referral, WalletTransaction
+    cfg = referral_settings()
+    counts = {row['status']: row['n'] for row in
+              Referral.objects.filter(referrer=customer).values('status').annotate(n=Count('id'))}
+    earned = WalletTransaction.objects.filter(customer=customer, kind='referral').aggregate(t=Sum('amount'))['t']
+    link = request.build_absolute_uri(reverse('referral_landing', args=[code]))
+    return {
+        'code': code,
+        'link': link,
+        'whatsapp_url': whatsapp_url(link, company_name, cfg['referee_reward'], cfg['min_order']),
+        'referrer_reward': cfg['referrer_reward'],
+        'referee_reward': cfg['referee_reward'],
+        'min_order': cfg['min_order'],
+        'invited': sum(counts.values()),
+        'pending': counts.get('pending', 0),
+        'rewarded': counts.get('rewarded', 0),
+        'rejected': counts.get('rejected', 0),
+        'earned': Decimal(earned or 0).quantize(CENT),
+    }
+
+
+def award_on_phone_verified(customer):
+    """Phone abhi verify hua. Agar referee ka pehla order pehle hi delivered ho chuka tha aur reward sirf
+    phone verify na hone ki wajah se ruka hua tha, to ab reward do (sab checks award_for_order dobara chalata hai).
+    Referral nahi / koi delivered order nahi / flag band ho to kuch nahi hota. Verify ke kaam ko kabhi nahi rokta."""
+    try:
+        if customer is None or not enabled():
+            return None
+        from ..models import Referral, SaleOrder
+        if not Referral.objects.filter(referee=customer, status='pending').exists():
+            return None
+        order = (SaleOrder.objects.filter(customer=customer, status__in=DONE_STATUSES)
+                 .order_by('order_date', 'pk').first())
+        return award_for_order(order) if order is not None else None
+    except Exception:
+        logger.exception('referral: award_on_phone_verified failed (customer %s)', getattr(customer, 'pk', None))
+        return None
+
+
+# ---------------------------------------------------------------- admin ke haath se faisla
+class ReferralActionError(Exception):
+    """Admin ko seedha dikhai jane wali wajah."""
+
+
+def manual_approve(referral_id):
+    """Admin ka 'approve': fraud checks, minimum amount aur mahine ka cap nazar-andaz, reward de do.
+    Phir bhi zaroori: referral / wallet ON, referee ka koi delivered order ho (reward usi order se bandha hota hai),
+    khud ko refer na ho, aur reward pehle na mil chuka ho. Referee ka SAB SE PEHLA delivered order reward order banta hai."""
+    from ..models import Referral, SaleOrder
+    if not enabled():
+        raise ReferralActionError('Referral ya Wallet band hai (Settings > Shop).')
+    cfg = referral_settings()
+    if cfg['referrer_reward'] <= 0 and cfg['referee_reward'] <= 0:
+        raise ReferralActionError('Dono reward 0 hain (Settings > Shop).')
+    with transaction.atomic():
+        referral = Referral.objects.select_for_update().select_related('referrer', 'referee').get(pk=referral_id)
+        if referral.status == 'rewarded':
+            raise ReferralActionError('Reward pehle hi mil chuka hai.')
+        if referral.referrer_id == referral.referee_id:
+            raise ReferralActionError('Khud ko refer karne par reward nahi ho sakta.')
+        order = (SaleOrder.objects.filter(customer_id=referral.referee_id, status__in=DONE_STATUSES)
+                 .order_by('order_date', 'pk').first())
+        if order is None:
+            raise ReferralActionError('Referee ka abhi koi delivered order nahi.')
+        return _grant(referral, order, cfg)

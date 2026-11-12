@@ -383,6 +383,60 @@ class WalletTransactionAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+@admin.register(Referral, site=admin.site)
+class ReferralAdmin(admin.ModelAdmin):
+    """Customer referrals. Reward system khud deta hai (referee ka pehla delivered order); yahan sirf dekhna aur
+    haath se faisla: Approve (fraud checks ke baghair reward) ya Reject (pending ko band)."""
+    list_display = ('created_at', 'referrer', 'referrer_phone', 'referee', 'referee_phone', 'status',
+                    'referrer_amount', 'referee_amount', 'rewarded_at', 'reject_reason')
+    list_filter = ('status', 'created_at')
+    search_fields = ('referrer__name', 'referrer__contact_number', 'referee__name', 'referee__contact_number',
+                     'referrer__portal_profile__referral_code', 'referee__portal_profile__referral_code')
+    date_hierarchy = 'created_at'
+    list_select_related = ('referrer', 'referee')
+    readonly_fields = ('referrer', 'referee', 'status', 'reject_reason', 'device_hash', 'reward_order',
+                       'referrer_amount', 'referee_amount', 'created_at', 'rewarded_at')
+    actions = ['approve_selected', 'reject_selected']
+
+    @admin.display(description='Referrer phone')
+    def referrer_phone(self, obj):
+        return obj.referrer.contact_number
+
+    @admin.display(description='Referee phone')
+    def referee_phone(self, obj):
+        return obj.referee.contact_number
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description='✅ Approve (reward do - fraud checks ke baghair)')
+    def approve_selected(self, request, queryset):
+        from ..customer.referrals import ReferralActionError, manual_approve
+        done, errors = 0, []
+        for pk in queryset.exclude(status='rewarded').values_list('pk', flat=True):
+            try:
+                manual_approve(pk)
+                done += 1
+            except ReferralActionError as exc:
+                errors.append(f'#{pk}: {exc}')
+        if done:
+            self.message_user(request, f'{done} referral ka reward de diya gaya.', messages.SUCCESS)
+        if errors:
+            self.message_user(request, 'Nahi hua: ' + ' | '.join(errors[:5]), messages.WARNING)
+        if not done and not errors:
+            self.message_user(request, 'Chune hue sab referral ko reward pehle hi mil chuka hai.', messages.INFO)
+
+    @admin.action(description='❌ Reject (sirf pending; reward ho chuka wapas nahi hota)')
+    def reject_selected(self, request, queryset):
+        n = queryset.filter(status='pending').update(status='rejected', reject_reason='Admin ne reject kiya')
+        skipped = queryset.exclude(status='pending').count()
+        self.message_user(request, f'{n} referral reject ho gaye.' + (f' {skipped} chhor diye (pending nahi the).' if skipped else ''),
+                          messages.WARNING if n else messages.INFO)
+
+
 @admin.register(ProMembership, site=admin.site)
 class ProMembershipAdmin(admin.ModelAdmin):
     list_display = ('customer', 'status', 'requested_at', 'starts_on', 'ends_on', 'amount')

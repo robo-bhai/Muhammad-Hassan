@@ -284,6 +284,15 @@ def auto_place_order(request, customer):
 # 1. CUSTOMER REGISTER
 # ============================================
 
+def _referral_on_phone_verified(customer):
+    """Phone abhi verify hua: ruka hua referral reward (agar ho) ab de do. Verification ko kabhi nahi rokta."""
+    try:
+        from . import referrals
+        referrals.award_on_phone_verified(customer)
+    except Exception:
+        logger.exception('referral: phone-verified hook failed (customer %s)', getattr(customer, 'pk', None))
+
+
 def referral_landing(request, code):
     """Dost ka link /shop/r/<code>/: code session me rakho, phir register page par bhejo.
     Referral band ho ya customer pehle se login ho to seedha shop_home."""
@@ -612,11 +621,20 @@ def my_account(request):
     
     default_address = customer.addresses.filter(is_default=True).first()
     company = CompanyInfo.objects.first()
-    
+
+    # 'Dost ko bulao' card (flag band ho to None). Isme koi bhi masla account page ko nahi rokta.
+    referral = None
+    try:
+        from . import referrals
+        referral = referrals.referral_card(request, customer, company.name if company else '')
+    except Exception:
+        logger.exception('my_account: referral card failed (customer %s)', customer.pk)
+
     context = {
         'company_name': company.name if company else 'Shop',
         'profile': profile,
         'customer': customer,
+        'referral': referral,
         'stats': stats,
         'recent_orders': recent_orders,
         'default_address': default_address,
@@ -769,8 +787,11 @@ def verify_order_token(request, token):
         request.session.save()
 
         # Update profile phone verification state
+        newly_verified = not profile.phone_verified
         profile.phone_verified = True
         profile.save(update_fields=['phone_verified'])
+        if newly_verified:
+            _referral_on_phone_verified(profile.customer)
 
         # ✅ AUTO PLACE ORDER
         order, error = auto_place_order(request, profile.customer)
@@ -828,8 +849,11 @@ def verify_order_otp(request):
         request.session.save()
         
         profile = request.user.customer_profile
+        newly_verified = not profile.phone_verified
         profile.phone_verified = True
         profile.save(update_fields=['phone_verified'])
+        if newly_verified:
+            _referral_on_phone_verified(profile.customer)
         
         # ✅ AUTO ORDER PLACE
         order, error = auto_place_order(request, profile.customer)
@@ -949,8 +973,11 @@ def verify_otp_later(request):
             request.session.modified = True
             request.session.save()
             
+            newly_verified = not customer.portal_profile.phone_verified
             customer.portal_profile.phone_verified = True
             customer.portal_profile.save(update_fields=['phone_verified'])
+            if newly_verified:
+                _referral_on_phone_verified(customer)
             
             try:
                 OTPAuditLog.objects.create(

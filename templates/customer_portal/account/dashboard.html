@@ -70,6 +70,29 @@
     .stat-card:hover { transform: translateY(-3px); }
     
     .stat-card .stat-icon { font-size: 28px; margin-bottom: 8px; }
+
+    /* ---- Dost ko bulao (referral) ---- */
+    .ref-card { background: #fff; border-radius: 20px; padding: 18px; margin-bottom: 20px;
+                box-shadow: 0 4px 20px rgba(0,0,0,.08); border: 1px solid #ede9fe; }
+    .ref-card h3 { font-size: 18px; font-weight: 700; margin: 0 0 4px; color: #4c1d95; }
+    .ref-card .ref-sub { font-size: 13.5px; color: #6b7280; margin-bottom: 14px; line-height: 1.5; }
+    .ref-code-row { display: flex; gap: 8px; align-items: center; background: #f5f3ff; border-radius: 12px;
+                    padding: 10px 12px; margin-bottom: 8px; }
+    .ref-code-row .ref-label { font-size: 11px; text-transform: uppercase; color: #7c3aed; font-weight: 700; }
+    .ref-code-row .ref-value { font-family: monospace; font-size: 16px; font-weight: 700; color: #1f2937;
+                               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ref-code-row .ref-grow { flex: 1; min-width: 0; }
+    .ref-btn { border: 0; border-radius: 10px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+               background: #7c3aed; color: #fff; white-space: nowrap; }
+    .ref-btn.copied { background: #059669; }
+    .ref-wa { display: block; text-align: center; text-decoration: none; background: #25d366; color: #fff;
+              border-radius: 12px; padding: 11px; font-weight: 700; margin: 12px 0; }
+    .ref-wa:hover { color: #fff; filter: brightness(.95); }
+    .ref-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+    .ref-stats div { background: #f9fafb; border-radius: 12px; padding: 10px 4px; font-size: 12px; color: #6b7280; }
+    .ref-stats b { display: block; font-size: 20px; color: #111827; }
+    .ref-stats .earn b { color: #059669; }
+
     
     .stat-card .stat-value {
         font-size: 24px;
@@ -300,6 +323,62 @@
         </div>
         
     </div>
+
+    {% if referral %}
+    <!-- Dost ko bulao (Referral) -->
+    <div class="ref-card" id="referralCard">
+        <h3>🎁 Invite a friend, earn rewards</h3>
+        <div class="ref-sub">
+            When your friend joins with your link and gets their <b>first order delivered</b>
+            {% if referral.min_order > 0 %}(Rs. {{ referral.min_order|floatformat:0 }} or more){% endif %},
+            {% if referral.referrer_reward > 0 %}you get <b>Rs. {{ referral.referrer_reward|floatformat:0 }}</b>{% endif %}
+            {% if referral.referrer_reward > 0 and referral.referee_reward > 0 %} and {% endif %}
+            {% if referral.referee_reward > 0 %}your friend gets <b>Rs. {{ referral.referee_reward|floatformat:0 }}</b>{% endif %}
+            in the wallet.
+        </div>
+
+        <div class="ref-code-row">
+            <div class="ref-grow"><div class="ref-label">Your code</div><div class="ref-value" id="refCode">{{ referral.code }}</div></div>
+            <button type="button" class="ref-btn" data-copy="{{ referral.code }}">Copy code</button>
+        </div>
+        <div class="ref-code-row">
+            <div class="ref-grow"><div class="ref-label">Your link</div><div class="ref-value" id="refLink">{{ referral.link }}</div></div>
+            <button type="button" class="ref-btn" data-copy="{{ referral.link }}">Copy link</button>
+        </div>
+
+        <a class="ref-wa" href="{{ referral.whatsapp_url }}" target="_blank" rel="noopener">
+            <i class="bi bi-whatsapp"></i> Share on WhatsApp
+        </a>
+
+        <div class="ref-stats">
+            <div><b>{{ referral.invited }}</b>Friends joined</div>
+            <div><b>{{ referral.rewarded }}</b>Rewarded</div>
+            <div class="earn"><b>Rs. {{ referral.earned|floatformat:0 }}</b>You earned</div>
+        </div>
+    </div>
+    <script>
+    (function () {
+        function flash(btn) {
+            var old = btn.textContent; btn.textContent = 'Copied \u2713'; btn.classList.add('copied');
+            setTimeout(function () { btn.textContent = old; btn.classList.remove('copied'); }, 1600);
+        }
+        function fallbackCopy(text) {
+            var t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+            document.body.appendChild(t); t.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(t);
+        }
+        document.querySelectorAll('#referralCard [data-copy]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var text = btn.getAttribute('data-copy');
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function () { flash(btn); }, function () { fallbackCopy(text); flash(btn); });
+                } else { fallbackCopy(text); flash(btn); }
+            });
+        });
+    })();
+    </script>
+    {% endif %}
 
     <!-- Menu Section -->
     <div class="menu-section">
