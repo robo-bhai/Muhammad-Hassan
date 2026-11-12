@@ -428,4 +428,12 @@ PORTAL_DEFAULTS_3 = [
     ('then contact us', 'پھر ہم سے رابطہ کریں', ''),
     ('to apply a coupon', 'کوپن لگانے کے لیے', ''),
     ('to confirm', 'کنفرم کرنے کے لیے', ''),
+    # --- admin forgot / reset password pages ---
+    ('Forgot password', 'پاس ورڈ بھول گئے', ''),
+    ('Apna username likhein. Account ke email par 6-digit code aayega.', 'اپنا یوزرنیم لکھیں۔ اکاؤنٹ کی ای میل پر 6 ہندسوں کا کوڈ آئے گا۔', ''),
+    ('Back to sign in', 'سائن ان پر واپس جائیں', ''),
+    ('Reset password', 'پاس ورڈ ری سیٹ کریں', ''),
+    ('Email code (6 digits)', 'ای میل کوڈ (6 ہندسے)', ''),
+    ('Authenticator / backup code', 'آتھنٹیکیٹر / بیک اپ کوڈ', ''),
+    ('Agar aap ke account par authenticator app enabled hai to zaroori hai, warna khali chor dein.', 'اگر آپ کے اکاؤنٹ پر آتھنٹیکیٹر ایپ چالو ہے تو یہ ضروری ہے، ورنہ خالی چھوڑ دیں۔', ''),
 ]

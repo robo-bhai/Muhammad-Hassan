@@ -238,6 +238,14 @@ CATALOG = [
     ('If this phone is registered, a 6-digit code has been sent (by WhatsApp or email, valid for 5 minutes). Please also check your spam folder.', 'اگر یہ فون نمبر رجسٹرڈ ہے تو 6 ہندسوں کا کوڈ بھیج دیا گیا ہے (واٹس ایپ یا ای میل پر، 5 منٹ کے لیے قابل استعمال)۔ اپنا اسپیم فولڈر بھی دیکھ لیں۔'),
     ('If this phone belongs to a registered rider, a 6-digit code has been sent on WhatsApp (valid for 5 minutes).', 'اگر یہ فون نمبر کسی رجسٹرڈ رائیڈر کا ہے تو 6 ہندسوں کا کوڈ واٹس ایپ پر بھیج دیا گیا ہے (5 منٹ کے لیے قابل استعمال)۔'),
     ('If this phone belongs to a registered rider, the manager has been informed. Enter the 6-digit code from the manager here (valid for 5 minutes).', 'اگر یہ فون نمبر کسی رجسٹرڈ رائیڈر کا ہے تو مینیجر کو اطلاع دے دی گئی ہے۔ مینیجر سے 6 ہندسوں کا کوڈ لے کر یہاں لکھیں (5 منٹ کے لیے قابل استعمال)۔'),
+    ('Bohat zyada koshishen. Thori der baad dobara try karein.', 'بہت زیادہ کوششیں ہو گئیں۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔'),
+    ('Agar yeh account maujood hai aur us par email set hai to 6-digit code bhej diya gaya hai (10 minute valid). Spam folder bhi dekh lein.', 'اگر یہ اکاؤنٹ موجود ہے اور اس پر ای میل سیٹ ہے تو 6 ہندسوں کا کوڈ بھیج دیا گیا ہے (10 منٹ کے لیے درست)۔ اسپیم فولڈر بھی دیکھ لیں۔'),
+    ('Pehle apna username likhein.', 'پہلے اپنا یوزرنیم لکھیں۔'),
+    ('Code ghalat ya expire ho chuka hai.', 'کوڈ غلط ہے یا ختم ہو چکا ہے۔'),
+    ('Code ghalat ya expire ho chuka hai. Naya code mangwayein.', 'کوڈ غلط ہے یا ختم ہو چکا ہے۔ نیا کوڈ منگوائیں۔'),
+    ('Bohat ghalat koshishen. Naya code mangwayein.', 'بہت زیادہ غلط کوششیں۔ نیا کوڈ منگوائیں۔'),
+    ('Authenticator ya backup code ghalat hai.', 'آتھنٹیکیٹر یا بیک اپ کوڈ غلط ہے۔'),
+    ('Password badal gaya. Ab naye password se login karein.', 'پاس ورڈ بدل گیا۔ اب نئے پاس ورڈ سے لاگ اِن کریں۔'),
 ]
 
 # Used only by the {% t %} template tag (kept apart so they never act as patterns for flash messages).

@@ -6,11 +6,26 @@ from django.views.decorators.http import require_http_methods
 from app.security import admin_reset as ar
 from app.security import totp
 from app.customer.views_customer_auth import get_client_ip
+from app.i18n.i18n_lang import get_language
+from app.i18n.server_t import translate
 
 SESSION_KEY = 'arp_username'
 TOO_MANY = 'Bohat zyada koshishen. Thori der baad dobara try karein.'
 GENERIC = ('Agar yeh account maujood hai aur us par email set hai to 6-digit code bhej diya gaya hai '
            '(10 minute valid). Spam folder bhi dekh lein.')
+
+
+def _translate_flash(request):
+    """render() returns a plain HttpResponse, so the message middleware does not run: translate here."""
+    try:
+        code = get_language(request)['code']
+        if code != 'en':
+            for m in messages.get_messages(request):
+                if not getattr(m, '_i18n_done', False):
+                    m.message = translate(str(m.message), code)
+                    m._i18n_done = True
+    except Exception:
+        pass
 
 
 def _ctx(extra=None):
@@ -38,6 +53,7 @@ def admin_forgot_password(request):
         request.session.modified = True
         messages.info(request, GENERIC)
         return redirect('admin_reset_password')
+    _translate_flash(request)
     return render(request, 'auth/forgot_password.html', _ctx())
 
 
@@ -69,4 +85,5 @@ def admin_reset_password(request):
         messages.error(request, msg)
         return redirect('admin_reset_password')
 
+    _translate_flash(request)
     return render(request, 'auth/reset_password.html', _ctx({'username': username}))
