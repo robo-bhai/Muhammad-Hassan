@@ -157,20 +157,20 @@ def redeem_points(customer, points):
     from ..models import Customer, LoyaltyTransaction, WalletTransaction
     cfg = loyalty_settings()
     if not (cfg['enabled'] and wallet_enabled()):
-        return False, 'Points abhi convert nahi ho sakte.'
+        return False, 'Points cannot be converted right now.'
     try:
         points = int(points)
     except (TypeError, ValueError):
-        return False, 'Points sahi likhein.'
+        return False, 'Enter a valid number of points.'
     if points < cfg['min_redeem']:
         return False, f"Kam az kam {cfg['min_redeem']} points convert ho sakte hain."
     credit = (Decimal(points) * cfg['value']).quantize(CENT, ROUND_HALF_UP)
     if credit <= 0:
-        return False, 'Abhi points ki koi value set nahi.'
+        return False, 'No value is set for points yet.'
     with transaction.atomic():
         Customer.objects.select_for_update().filter(pk=customer.pk).first()
         if points > points_balance(customer):
-            return False, 'Itne points nahi hain.'
+            return False, 'You do not have that many points.'
         LoyaltyTransaction.objects.create(customer=customer, points=-points, kind='redeem',
                                           note=f'Wallet credit Rs. {credit}')
         WalletTransaction.objects.create(customer=customer, amount=credit, kind='points',

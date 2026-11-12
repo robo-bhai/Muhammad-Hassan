@@ -40,7 +40,7 @@ def vendor_product_options(request, pk):
     product = get_object_or_404(Product, pk=pk, vendor=profile.vendor)
 
     if not profile.is_approved:
-        messages.warning(request, '⏳ Aap ka account abhi approve nahi hua.')
+        messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
 
     if request.method == 'POST':
@@ -49,7 +49,7 @@ def vendor_product_options(request, pk):
             _handle(request, product, action)
         except Exception:
             logger.exception('Product options error')
-            messages.error(request, '❌ Kuch masla aa gaya, dobara koshish karein')
+            messages.error(request, '❌ Something went wrong. Please try again')
         return redirect('vendor_product_options', pk=product.pk)
 
     groups = product.option_groups.filter(parent_option__isnull=True).prefetch_related(
@@ -68,7 +68,7 @@ def _handle(request, product, action):
     if action == 'add_group':
         name = (post.get('name') or '').strip()[:60]
         if not name:
-            messages.error(request, '❌ Group ka naam likhein (jaise Size)')
+            messages.error(request, '❌ Enter a group name (e.g. Size)')
             return
         # Sub-choice: group sirf tab dikhega jab parent option chuna ho (sirf ek level, top-level group ke option par)
         parent = None
@@ -76,10 +76,10 @@ def _handle(request, product, action):
             parent = get_object_or_404(ProductOption, pk=post.get('parent_option_id'),
                                        group__product=product, group__parent_option__isnull=True)
             if product.option_groups.filter(parent_option__isnull=False).count() >= MAX_SUBGROUPS:
-                messages.error(request, f'❌ Ek product par ziyada se ziyada {MAX_SUBGROUPS} sub-choice groups')
+                messages.error(request, f'❌ A product can have at most {MAX_SUBGROUPS} sub-choice groups')
                 return
         elif product.option_groups.filter(parent_option__isnull=True).count() >= MAX_GROUPS:
-            messages.error(request, f'❌ Ek product par ziyada se ziyada {MAX_GROUPS} groups')
+            messages.error(request, f'❌ A product can have at most {MAX_GROUPS} groups')
             return
         kind = post.get('kind') if post.get('kind') in ('single', 'multiple') else 'single'
         try:
@@ -93,7 +93,7 @@ def _handle(request, product, action):
             sort_order=product.option_groups.filter(parent_option=parent).count(),
             parent_option=parent,
         )
-        messages.success(request, f'✅ "{name}" group ban gaya. Ab is mein options jodein.')
+        messages.success(request, f'✅ Group "{name}" created. Now add options to it.')
         return
 
     # baqi sab actions kisi group/option par hain, jo isi product ka hona chahiye
@@ -101,27 +101,27 @@ def _handle(request, product, action):
         group = get_object_or_404(ProductOptionGroup, pk=post.get('group_id'), product=product)
         if action == 'delete_group':
             group.delete()
-            messages.success(request, '✅ Group hata diya.')
+            messages.success(request, '✅ Group removed.')
             return
         name = (post.get('name') or '').strip()[:60]
         price = _price(post.get('extra_price'))
         if not name:
-            messages.error(request, '❌ Option ka naam likhein')
+            messages.error(request, '❌ Enter an option name')
         elif price is None:
-            messages.error(request, '❌ Extra price sahi nahi (0 se 99999.99 tak)')
+            messages.error(request, '❌ Extra price is not valid (0 to 99999.99)')
         elif group.options.count() >= MAX_OPTIONS:
-            messages.error(request, f'❌ Ek group mein ziyada se ziyada {MAX_OPTIONS} options')
+            messages.error(request, f'❌ A group can have at most {MAX_OPTIONS} options')
         else:
             ProductOption.objects.create(group=group, name=name, extra_price=price,
                                          sort_order=group.options.count())
-            messages.success(request, f'✅ "{name}" jur gaya.')
+            messages.success(request, f'✅ "{name}" added.')
         return
 
     if action in ('delete_option', 'toggle_option'):
         option = get_object_or_404(ProductOption, pk=post.get('option_id'), group__product=product)
         if action == 'delete_option':
             option.delete()
-            messages.success(request, '✅ Option hata diya.')
+            messages.success(request, '✅ Option removed.')
         else:
             option.is_available = not option.is_available
             option.save(update_fields=['is_available'])

@@ -1,16 +1,16 @@
 {% extends 'customer_portal/info/base_info.html' %}
 {% block page_title %}Terms & Conditions{% endblock %}
-{% block heading %}<i class="bi bi-file-earmark-text text-primary"></i> Terms &amp; Conditions{% endblock %}
-{% block subheading %}{{ company_name }} istemal karne ki shartein{% endblock %}
+{% block heading %}<i class="bi bi-file-earmark-text text-primary"></i> {% if LANG_CODE == 'ur' %}شرائط و ضوابط{% else %}Terms &amp; Conditions{% endif %}{% endblock %}
+{% block subheading %}{% if LANG_CODE == 'ur' %}{{ company_name }} استعمال کرنے کی شرائط{% else %}Terms for using {{ company_name }}{% endif %}{% endblock %}
 
 {% block info_body %}
-<div class="info-card"><h2>1. Qabooliyat</h2><p class="mb-0">Is shop ko istemal karne ka matlab hai ke aap in shartoon se agree hain.</p></div>
-<div class="info-card"><h2>2. Account</h2><p class="mb-0">Account ki maloomat sahi rakhna aur apna password mehfooz rakhna aap ki zimmedari hai.</p></div>
-<div class="info-card"><h2>3. Orders aur qeematein</h2><p class="mb-0">Qeematein aur stock badal sakte hain. Order ki tasdeeq ke baad hi wo pakka samjha jaye ga. Ghalat qeemat ya stock ki soorat mein hum order cancel ya theek karne ka haq rakhte hain.</p></div>
-<div class="info-card"><h2>4. Delivery</h2><p class="mb-0">Delivery ka waqt andaza hai, zamanat nahi. Sahi address aur rabte ka number dena aap ki zimmedari hai.</p></div>
-<div class="info-card"><h2>5. Return aur refund</h2><p class="mb-0"><a href="{% url 'shop_returns' %}">Return Policy</a> ke mutabiq.</p></div>
-<div class="info-card"><h2>6. Sellers</h2><p class="mb-0">Seller apni products ki sahi maloomat aur maiyar ke zimmedar hain. Humein ghalat ya mamnoo products hatane ka haq hai.</p></div>
-<div class="info-card"><h2>7. Tabdeeli</h2><p class="mb-0">Ye shartein waqt ke saath badal sakti hain. Tabdeeli ke baad shop ka istemal naye shartoon ki qabooliyat samjha jaye ga.</p></div>
-<div class="info-card"><h2>Rabta</h2><p class="mb-0">{% if company_email %}{{ company_email }}{% endif %}{% if company_contact_number %} | {{ company_contact_number }}{% endif %}</p></div>
-<p class="info-updated">Aakhri update: {% now "d M Y" %}</p>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}۱۔ قبولیت{% else %}1. Acceptance{% endif %}</h2><p class="mb-0">{% if LANG_CODE == 'ur' %}اس شاپ کو استعمال کرنے کا مطلب ہے کہ آپ ان شرائط سے متفق ہیں۔{% else %}By using this shop you agree to these terms.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}۲۔ اکاؤنٹ{% else %}2. Account{% endif %}</h2><p class="mb-0">{% if LANG_CODE == 'ur' %}اکاؤنٹ کی معلومات درست رکھنا اور اپنا پاس ورڈ محفوظ رکھنا آپ کی ذمہ داری ہے۔{% else %}You are responsible for keeping your account details correct and your password safe.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}۳۔ آرڈرز اور قیمتیں{% else %}3. Orders and prices{% endif %}</h2><p class="mb-0">{% if LANG_CODE == 'ur' %}قیمتیں اور اسٹاک بدل سکتے ہیں۔ آرڈر کی تصدیق کے بعد ہی وہ پکا سمجھا جائے گا۔ غلط قیمت یا اسٹاک کی صورت میں ہم آرڈر منسوخ یا درست کرنے کا حق رکھتے ہیں۔{% else %}Prices and stock may change. An order is final only after it is confirmed. If a price or stock is wrong, we may cancel or correct the order.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}۴۔ ڈیلیوری{% else %}4. Delivery{% endif %}</h2><p class="mb-0">{% if LANG_CODE == 'ur' %}ڈیلیوری کا وقت اندازہ ہے، ضمانت نہیں۔ درست پتہ اور رابطے کا نمبر دینا آپ کی ذمہ داری ہے۔{% else %}Delivery time is an estimate, not a guarantee. You are responsible for giving a correct address and contact number.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}۵۔ واپسی اور رقم کی واپسی{% else %}5. Returns and refunds{% endif %}</h2><p class="mb-0">{% if LANG_CODE == 'ur' %}<a href="{% url 'shop_returns' %}">Return Policy</a> کے مطابق۔{% else %}As described in the <a href="{% url 'shop_returns' %}">Return Policy</a>.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}۶۔ سیلرز{% else %}6. Sellers{% endif %}</h2><p class="mb-0">{% if LANG_CODE == 'ur' %}سیلر اپنی پروڈکٹس کی درست معلومات اور معیار کے ذمہ دار ہیں۔ ہمیں غلط یا ممنوع پروڈکٹس ہٹانے کا حق ہے۔{% else %}Sellers are responsible for the accuracy and quality of their products. We have the right to remove wrong or prohibited products.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}۷۔ تبدیلی{% else %}7. Changes{% endif %}</h2><p class="mb-0">{% if LANG_CODE == 'ur' %}یہ شرائط وقت کے ساتھ بدل سکتی ہیں۔ تبدیلی کے بعد شاپ کا استعمال نئی شرائط کی قبولیت سمجھا جائے گا۔{% else %}These terms may change over time. Using the shop after a change means you accept the new terms.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}رابطہ{% else %}Contact{% endif %}</h2><p class="mb-0">{% if company_email %}{{ company_email }}{% endif %}{% if company_contact_number %} | {{ company_contact_number }}{% endif %}</p></div>
+<p class="info-updated">{% if LANG_CODE == 'ur' %}آخری اپڈیٹ{% else %}Last updated{% endif %}: {% now "d M Y" %}</p>
 {% endblock %}

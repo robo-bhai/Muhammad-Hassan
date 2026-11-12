@@ -50,14 +50,14 @@ def vendor_pause(request):
     if minutes == 0:
         profile.paused_until = None
         profile.save(update_fields=['paused_until'])
-        messages.success(request, '✅ Busy mode band. Customer ab order de sakte hain.')
+        messages.success(request, '✅ Busy mode is off. Customers can order now.')
     elif minutes in PAUSE_CHOICES:
         profile.paused_until = timezone.now() + timedelta(minutes=minutes)
         profile.save(update_fields=['paused_until'])
-        messages.success(request, f'⏸️ Busy mode: {minutes} minute tak naye orders band '
+        messages.success(request, f'⏸️ Busy mode: new orders paused for {minutes} minutes '
                                   f'({profile.paused_until_text} par khud khul jayega).')
     else:
-        messages.error(request, '❌ Waqt sahi nahi')
+        messages.error(request, '❌ Invalid time')
     return redirect('vendor_orders' if request.POST.get('next') == 'orders' else 'vendor_dashboard')
 
 
@@ -217,7 +217,7 @@ def _apply_discount(product, discount, pct):
 def vendor_offers(request):
     profile = request.user.vendor_profile
     if not profile.is_approved:
-        messages.warning(request, '⏳ Aap ka account abhi approve nahi hua.')
+        messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
     vendor = profile.vendor
     pct = commission_percent(profile)
@@ -227,7 +227,7 @@ def vendor_offers(request):
             _offers_post(request, vendor, pct)
         except Exception:
             logger.exception('Vendor offers error')
-            messages.error(request, '❌ Kuch masla aa gaya, dobara koshish karein')
+            messages.error(request, '❌ Something went wrong. Please try again')
         return redirect('vendor_offers')
 
     products = list(Product.objects.filter(vendor=vendor).select_related('category').order_by('name'))
@@ -272,7 +272,7 @@ def _offers_post(request, vendor, pct):
         if product:
             with transaction.atomic():
                 _apply_discount(product, Decimal('0'), pct)
-            messages.success(request, f'✅ "{product.name}" ka offer khatam.')
+            messages.success(request, f'✅ Offer ended for "{product.name}".')
         return
 
     if action in ('apply', 'clear_scope'):
@@ -281,7 +281,7 @@ def _offers_post(request, vendor, pct):
             messages.error(request, f'❌ {err}')
             return
         if not products:
-            messages.error(request, '❌ Is mein koi product nahi mila')
+            messages.error(request, '❌ No products found in this')
             return
         if action == 'clear_scope':
             discount = Decimal('0')
@@ -291,12 +291,12 @@ def _offers_post(request, vendor, pct):
             except (InvalidOperation, ValueError):
                 discount = Decimal('0')
             if discount < 1 or discount > MAX_DISCOUNT:
-                messages.error(request, f'❌ Discount 1 se {int(MAX_DISCOUNT)} percent ke beech likhein')
+                messages.error(request, f'❌ Enter a discount between 1 and {int(MAX_DISCOUNT)} percent')
                 return
         with transaction.atomic():
             for p in products:
                 _apply_discount(p, discount, pct)
         if discount:
-            messages.success(request, f'🏷️ {len(products)} product(s) par {discount.normalize()}% discount lag gaya.')
+            messages.success(request, f'🏷️ {discount.normalize()}% discount applied to {len(products)} product(s).')
         else:
-            messages.success(request, f'✅ {len(products)} product(s) ka offer khatam.')
+            messages.success(request, f'✅ Offer ended for {len(products)} product(s).')

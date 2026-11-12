@@ -1509,3 +1509,6 @@ PORTAL_DEFAULTS_2 = [
     ('Enter your username', 'اپنا صارف نام درج کریں', ''),
 ]
 DEFAULTS = DEFAULTS + PORTAL_DEFAULTS_2
+
+from .i18n_portal_defaults import PORTAL_DEFAULTS_3  # noqa: E402
+DEFAULTS = DEFAULTS + PORTAL_DEFAULTS_3

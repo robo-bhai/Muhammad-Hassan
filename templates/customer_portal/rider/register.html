@@ -1,3 +1,4 @@
+{% load portal_i18n %}
 {% load static %}
 <!DOCTYPE html>
 <!-- rider-auth -->
@@ -45,7 +46,7 @@
 <div class="card">
   <div class="logo">🏍️</div>
   <h1>Register as a Rider</h1>
-  <p class="sub">{{ company_name }} ke saath delivery karein. Admin approval ke baad aap login kar sakenge.</p>
+  <p class="sub">{% t "Deliver with {}. You can log in after admin approval." company_name %}</p>
   {% for m in messages %}<div class="m {{ m.tags }}">{{ m }}</div>{% endfor %}
   <form method="post" novalidate>{% csrf_token %}
     <div class="field">
@@ -62,7 +63,7 @@
     </div>
     <div class="field pw">
       <label for="password">Password</label>
-      <input id="password" type="password" name="password" placeholder="Kam az kam 6 harf" required minlength="6" autocomplete="new-password">
+      <input id="password" type="password" name="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
       <button type="button" class="toggle" aria-label="Show or hide password">Show</button>
     </div>
     <div class="field pw">
@@ -72,7 +73,7 @@
     </div>
     <button type="submit" class="btn">Register as a Rider</button>
   </form>
-  {% if SHOP.rider_login_enabled %}<p class="alt">Pehle se account hai? <a href="{% url 'rider_login' %}">Rider Login</a></p>{% endif %}
+  {% if SHOP.rider_login_enabled %}<p class="alt">Already have an account? <a href="{% url 'rider_login' %}">Rider Login</a></p>{% endif %}
   <p class="back"><a href="{% url 'shop_home' %}">&larr; Back to shop</a></p>
 </div>
 <script>

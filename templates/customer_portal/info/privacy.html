@@ -1,22 +1,24 @@
 {% extends 'customer_portal/info/base_info.html' %}
 {% block page_title %}Privacy Policy{% endblock %}
-{% block heading %}<i class="bi bi-shield-lock text-primary"></i> Privacy Policy{% endblock %}
-{% block subheading %}Aap ka data, aap ka bharosa{% endblock %}
+{% block heading %}<i class="bi bi-shield-lock text-primary"></i> {% if LANG_CODE == 'ur' %}پرائیویسی پالیسی{% else %}Privacy Policy{% endif %}{% endblock %}
+{% block subheading %}{% if LANG_CODE == 'ur' %}آپ کا ڈیٹا، آپ کا بھروسہ{% else %}Your data, your trust{% endif %}{% endblock %}
 
 {% block info_body %}
-<div class="info-card"><h2>Hum kya maloomat lete hain</h2>
-  <ul><li>Naam, phone number, email</li><li>Delivery address</li><li>Order ki tafseel</li><li>Chat messages (live chat istemal karne par)</li></ul></div>
-<div class="info-card"><h2>Istemal</h2>
-  <p class="mb-0">Ye maloomat sirf order poora karne, delivery, tracking aur madad dene ke liye istemal hoti hain.</p></div>
-<div class="info-card"><h2>Share karna</h2>
-  <p class="mb-0">Aap ka data bechte nahi. Seller ko order poora karne ke liye aap ka naam, phone aur (rider assign hone tak) address nazar aata hai. Rider ko address aur phone sirf us delivery ke dauran nazar aate hain jab tak wo chal rahi ho. Order mukammal hone ke baad seller ko address nahi dikhta aur phone number masked ho jata hai.</p></div>
-<div class="info-card"><h2>Hifazat</h2>
-  <p class="mb-0">Pori site HTTPS par chalti hai. Aap ke address aur dusri hasaas maloomat database mein encrypted form mein rakhi jati hain. Phir bhi koi bhi system 100% mehfooz hone ki zamanat nahi de sakta.</p></div>
-<div class="info-card"><h2>Aap ke haqooq</h2>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}ہم کون سی معلومات لیتے ہیں{% else %}What information we collect{% endif %}</h2>
+  {% if LANG_CODE == 'ur' %}<ul><li>نام، فون نمبر، ای میل</li><li>ڈیلیوری کا پتہ</li><li>آرڈر کی تفصیل</li><li>چیٹ پیغامات (لائیو چیٹ استعمال کرنے پر)</li></ul>{% else %}<ul><li>Name, phone number, email</li><li>Delivery address</li><li>Order details</li><li>Chat messages (if you use live chat)</li></ul>{% endif %}</div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}استعمال{% else %}How we use it{% endif %}</h2>
+  {% if LANG_CODE == 'ur' %}<p class="mb-0">یہ معلومات صرف آرڈر پورا کرنے، ڈیلیوری، ٹریکنگ اور مدد دینے کے لیے استعمال ہوتی ہیں۔</p>{% else %}<p class="mb-0">This information is used only to complete your order, deliver it, track it and help you.</p>{% endif %}</div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}شیئر کرنا{% else %}Sharing{% endif %}</h2>
+  {% if LANG_CODE == 'ur' %}<p class="mb-0">ہم آپ کا ڈیٹا بیچتے نہیں۔ سیلر کو آرڈر تیار کرنے کے لیے آپ کا نام، فون اور (رائیڈر مقرر ہونے تک) پتہ نظر آتا ہے۔ رائیڈر کو پتہ اور فون صرف اسی ڈیلیوری کے دوران نظر آتے ہیں۔ آرڈر مکمل ہونے کے بعد سیلر کو پتہ نظر نہیں آتا اور فون نمبر چھپا دیا جاتا ہے۔</p>{% else %}<p class="mb-0">We do not sell your data. The seller sees your name, phone and (until a rider is assigned) your address so they can prepare your order. The rider sees your address and phone only during that delivery. After the order is complete, the seller no longer sees your address and your phone number is masked.</p>{% endif %}</div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}حفاظت{% else %}Security{% endif %}</h2>
+  {% if LANG_CODE == 'ur' %}<p class="mb-0">پوری سائٹ HTTPS پر چلتی ہے۔ آپ کا پتہ اور دوسری حساس معلومات ڈیٹا بیس میں انکرپٹڈ شکل میں رکھی جاتی ہیں۔ پھر بھی کوئی نظام 100٪ محفوظ ہونے کی ضمانت نہیں دے سکتا۔</p>{% else %}<p class="mb-0">The whole site runs on HTTPS. Your address and other sensitive information are stored encrypted in the database. Still, no system can guarantee 100% security.</p>{% endif %}</div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}آپ کے حقوق{% else %}Your rights{% endif %}</h2>
   <ul>
-    <li>Apni maloomat dekhna aur badalna: <a href="{% url 'my_account' %}">My Account</a>.</li>
-    <li>Account aur personal data delete karna: My Account mein <a href="{% url 'delete_my_account' %}">Delete Account</a>. Chalte order ya bakaya raqam ki soorat mein pehle wo mukammal karna hoga. Hisab-kitab ke liye order ki raqam reh sakti hai, lekin aap ki personal maloomat nahi.</li>
-    <li>Koi aur sawal: {% if company_email %}{{ company_email }}{% else %}hum se rabta karein{% endif %}.</li>
+  {% if LANG_CODE == 'ur' %}  <li>اپنی معلومات دیکھنا اور بدلنا: <a href="{% url 'my_account' %}">My Account</a>۔</li>
+    <li>اکاؤنٹ اور ذاتی ڈیٹا حذف کرنا: My Account میں <a href="{% url 'delete_my_account' %}">Delete Account</a>۔ چلتے آرڈر یا بقایا رقم کی صورت میں پہلے وہ مکمل کرنا ہوگا۔ حساب کتاب کے لیے آرڈر کی رقم رہ سکتی ہے، لیکن آپ کی ذاتی معلومات نہیں۔</li>
+    <li>کوئی اور سوال: {% if company_email %}{{ company_email }}{% else %}ہم سے رابطہ کریں{% endif %}۔</li>{% else %}  <li>View and change your information: <a href="{% url 'my_account' %}">My Account</a>.</li>
+    <li>Delete your account and personal data: <a href="{% url 'delete_my_account' %}">Delete Account</a> in My Account. Any running order or unpaid balance must be completed first. The order amount may be kept for accounting, but not your personal information.</li>
+    <li>Any other question: {% if company_email %}{{ company_email }}{% else %}contact us{% endif %}.</li>{% endif %}
   </ul></div>
-<p class="info-updated">Aakhri update: {% now "d M Y" %}</p>
+<p class="info-updated">{% if LANG_CODE == 'ur' %}آخری اپڈیٹ{% else %}Last updated{% endif %}: {% now "d M Y" %}</p>
 {% endblock %}

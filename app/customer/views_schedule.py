@@ -23,7 +23,7 @@ def set_schedule(request):
     try:
         when = store_orders.parse_schedule(raw)
     except (ValueError, TypeError):
-        return JsonResponse({'success': False, 'message': 'Waqt sahi nahi hai.'})
+        return JsonResponse({'success': False, 'message': 'Invalid time hai.'})
 
     cart = request.session.get('cart', {})
     err = store_orders.schedule_error(cart, when) if cart else 'Cart khali hai.'

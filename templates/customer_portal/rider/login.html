@@ -1,3 +1,4 @@
+{% load portal_i18n %}
 {% load static %}
 <!DOCTYPE html>
 <!-- rider-auth -->
@@ -45,7 +46,7 @@
 <div class="card">
   <div class="logo">🏍️</div>
   <h1>Rider Login</h1>
-  <p class="sub">{{ company_name }} &mdash; apna phone aur password likhein.</p>
+  <p class="sub">{{ company_name }} &mdash; {% t "Enter your phone and password." %}</p>
   {% for m in messages %}<div class="m {{ m.tags }}">{{ m }}</div>{% endfor %}
   <form method="post" novalidate>{% csrf_token %}
     <div class="field">

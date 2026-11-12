@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}Verify OTP (Later) - {{ company_name }}{% endblock %}
@@ -390,11 +391,9 @@
             <!-- Info Box -->
             <div class="info-box">
                 <i class="bi bi-info-circle-fill"></i>
-                <strong>Order Token kahan milega?</strong>
+                <strong>Where do I find the Order Token?</strong>
                 <br>
-                When you placed the order, you pressed the <strong>"Send OTP"</strong> button, 
-                aapko ek <strong>8-character Order Token</strong> mila tha 
-                (jaise: <code>A3F7B2C9</code>).
+                {% t 'When you placed the order and pressed the <strong>"Send OTP"</strong> button, you received an <strong>8-character Order Token</strong> (e.g. <code>A3F7B2C9</code>).' %}
                 <br><br>
                 If you do not have a token, please 
                 <a href="{% url 'shop_home' %}" style="color: #0c5460; font-weight: bold; text-decoration: underline;">

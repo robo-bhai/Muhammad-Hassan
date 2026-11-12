@@ -1,20 +1,20 @@
 <div style="margin-bottom:12px;padding:10px;border-radius:12px;background:#eff6ff">
-  <button type="button" id="dropPinBtn" class="btn btn-sm btn-primary">📍 Meri current location pin karein</button>
-  <small id="dropPinMsg" style="display:block;margin-top:6px;color:#475569">Rider ko seedha aap ke ghar ka rasta milega. Pin 3 ghante tak valid rehta hai.</small>
+  <button type="button" id="dropPinBtn" class="btn btn-sm btn-primary">📍 {% if LANG_CODE == 'ur' %}میری موجودہ لوکیشن پن کریں{% else %}Pin my current location{% endif %}</button>
+  <small id="dropPinMsg" style="display:block;margin-top:6px;color:#475569">{% if LANG_CODE == 'ur' %}رائیڈر کو سیدھا آپ کے گھر کا راستہ ملے گا۔ پن 3 گھنٹے تک قابل استعمال رہتا ہے۔{% else %}The rider will get directions straight to your home. The pin stays valid for 3 hours.{% endif %}</small>
 </div>
 <script>
 (function(){
   var b=document.getElementById('dropPinBtn'), m=document.getElementById('dropPinMsg');
   b.addEventListener('click',function(){
-    if(!navigator.geolocation){m.textContent='Browser location support nahi karta';return;}
+    if(!navigator.geolocation){m.textContent='{% if LANG_CODE == 'ur' %}آپ کا براؤزر لوکیشن سپورٹ نہیں کرتا{% else %}Your browser does not support location{% endif %}';return;}
     m.textContent='Location le raha hoon...';
     navigator.geolocation.getCurrentPosition(function(p){
       var body=new URLSearchParams(); body.append('lat',p.coords.latitude); body.append('lng',p.coords.longitude);
       fetch("{% url 'customer_set_drop_location' %}",{method:'POST',credentials:'same-origin',
         headers:{'X-CSRFToken':"{{ csrf_token }}",'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(r){return r.json()}).then(function(d){m.textContent=d.ok?'✅ Pin lag gaya':'❌ Pin save nahi hua';})
-        .catch(function(){m.textContent='❌ Network masla';});
-    },function(){m.textContent='❌ Location ki ijazat dein';},{enableHighAccuracy:true,timeout:20000});
+        .then(function(r){return r.json()}).then(function(d){m.textContent=d.ok?'✅ {% if LANG_CODE == 'ur' %}پن لگ گیا{% else %}Pin saved{% endif %}':'❌ {% if LANG_CODE == 'ur' %}پن محفوظ نہیں ہوا{% else %}Pin could not be saved{% endif %}';})
+        .catch(function(){m.textContent='❌ {% if LANG_CODE == 'ur' %}نیٹ ورک کا مسئلہ{% else %}Network problem{% endif %}';});
+    },function(){m.textContent='❌ {% if LANG_CODE == 'ur' %}لوکیشن کی اجازت دیں{% else %}Please allow location access{% endif %}';},{enableHighAccuracy:true,timeout:20000});
   });
 })();
 </script>

@@ -1,3 +1,4 @@
+{% load portal_i18n %}
 {# Vendor page: ek group, uske options, aur har option ke neeche sub-choice groups (sirf ek level) #}
 <div class="po-group{% if g.parent_option_id %} po-subgroup{% endif %}">
     <div class="po-group-head">
@@ -36,7 +37,7 @@
     {% for cg in o.child_groups.all %}{% include 'customer_portal/vendor/_option_group.html' with g=cg %}{% endfor %}
     {% if not g.parent_option_id %}
     <details class="po-det">
-        <summary>+ "{{ o.name }}" chunne par sub-choice</summary>
+        <summary>+ {% t 'Sub-choice when "{}" is chosen' o.name %}</summary>
         <form method="post" class="po-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="add_group">
@@ -53,7 +54,7 @@
     </details>
     {% endif %}
     {% empty %}
-    <div class="po-empty">Abhi koi option nahi. Neeche se jodein.</div>
+    <div class="po-empty">No options yet. Add one below.</div>
     {% endfor %}
 
     <form method="post" class="po-form">

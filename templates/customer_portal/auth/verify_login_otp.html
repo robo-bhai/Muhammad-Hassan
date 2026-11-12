@@ -63,9 +63,9 @@
                     </button>
                     
                     <div class="auth-footer">
-                        OTP nahi mila? 
+                        {% if LANG_CODE == 'ur' %}OTP نہیں ملا؟{% else %}Didn't get the OTP?{% endif %} 
                         <button type="submit" name="action" value="resend" class="btn-link">
-                            Resend karein
+                            {% if LANG_CODE == 'ur' %}دوبارہ بھیجیں{% else %}Resend{% endif %}
                         </button>
                     </div>
                 </form>

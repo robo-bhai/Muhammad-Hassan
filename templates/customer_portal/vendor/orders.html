@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 {% load privacy_filters %}
 
@@ -72,11 +73,11 @@
     </div>
 
     {% if not profile.is_approved %}
-        <div class="vo-alert warning">Account approve hone ke baad hi aap orders handle kar sakenge.</div>
+        <div class="vo-alert warning">You can handle orders only after your account is approved.</div>
     {% endif %}
 
     <div id="voNewBanner" onclick="location.href='{% url 'vendor_orders' %}?tab=new'">
-        🔔 Naya order aaya hai! Dekhne ke liye yahan tap karein
+        🔔 New order received! Tap here to view
     </div>
 
     {% if profile.is_approved %}
@@ -89,7 +90,7 @@
             <span style="font-weight:700;">⏸️ Busy:</span>
             <button type="submit" name="minutes" value="15" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px 12px;font-weight:700;">15 min</button>
             <button type="submit" name="minutes" value="30" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px 12px;font-weight:700;">30 min</button>
-            <button type="submit" name="minutes" value="60" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px 12px;font-weight:700;">1 ghanta</button>
+            <button type="submit" name="minutes" value="60" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px 12px;font-weight:700;">1 hour</button>
         {% endif %}
     </form>
     {% endif %}
@@ -137,14 +138,14 @@
             {% if row.wallet_paid > 0 %}<div class="tot"><span>👛 Wallet se ada</span><span>- Rs. {{ row.wallet_paid|floatformat:0 }}</span></div><div class="tot"><span><b>Cash lena hai</b></span><span><b>Rs. {{ row.cash_due|floatformat:0 }}</b></span></div>{% endif %}
         </div>
         <div style="margin-top:6px;">
-            <span class="vo-pay">{% if row.is_cod %}💵 Cash on Delivery &mdash; customer se cash lein{% else %}📱 {{ o.payment_method|title }} (online){% endif %}</span>
+            <span class="vo-pay">{% if row.is_cod %}💵 Cash on Delivery &mdash; collect cash from the customer{% else %}📱 {{ o.payment_method|title }} (online){% endif %}</span>
         </div>
 
         {% if o.status == 'confirmed' and o.prep_minutes %}
-            <div class="vo-note info">Aap ne tayyari ka time ~{{ o.prep_minutes }} minute bataya hai.</div>
+            <div class="vo-note info">{% t "You gave a preparation time of about {} minutes." o.prep_minutes %}</div>
         {% endif %}
         {% if o.status == 'pending' and row.accept_deadline %}
-            <div class="vo-note rej">⏳ Jawab dene ka waqt: <b class="vo-cd" data-deadline="{{ row.accept_deadline|date:'c' }}"></b> &mdash; warna order khud cancel ho jayega.</div>
+            <div class="vo-note rej">⏳ Time left to respond: <b class="vo-cd" data-deadline="{{ row.accept_deadline|date:'c' }}"></b> &mdash; otherwise the order will be cancelled automatically.</div>
         {% endif %}
         {% if o.status == 'cancelled' and o.reject_reason %}
             <div class="vo-note rej">Reject wajah: {{ o.reject_reason }}</div>
@@ -165,7 +166,7 @@
                 {% if row.delivery and row.delivery.rider %}
                     <div class="vo-note info" style="flex-basis:100%;">
                         🏍️ Rider: <b>{{ row.delivery.rider.name }}</b> ({{ row.delivery.rider.phone }}) —
-                        {% if row.delivery.status == 'assigned' %}maal lene aa raha hai{% else %}maal le kar raaste mein hai{% endif %}
+                        {% if row.delivery.status == 'assigned' %}is coming to pick up the order{% else %}has the order and is on the way{% endif %}
                     </div>
                 {% endif %}
                 {% if not row.delivery or row.delivery.status == 'assigned' or not row.delivery.rider %}
@@ -198,7 +199,7 @@
         <form class="vo-form" id="acc-{{ o.id }}" method="post" action="{% url 'vendor_order_action' o.id 'accept' %}">
             {% csrf_token %}<input type="hidden" name="tab" value="{{ tab }}">
             <label for="prep-{{ o.id }}">Tayyar hone mein kitne minute? (optional)</label>
-            <input type="number" id="prep-{{ o.id }}" name="prep_minutes" min="1" max="600" placeholder="jaise 20">
+            <input type="number" id="prep-{{ o.id }}" name="prep_minutes" min="1" max="600" placeholder="e.g. 20">
             <div style="margin-top:10px;"><button type="submit" class="vo-btn vo-accept">Order qubool karein</button></div>
         </form>
 
@@ -206,10 +207,10 @@
             {% csrf_token %}<input type="hidden" name="tab" value="{{ tab }}">
             <label for="rc-{{ o.id }}">Reject karne ki wajah (customer ko dikhegi)</label>
             <select id="rc-{{ o.id }}" name="reason_code" required>
-                <option value="">-- wajah chunein --</option>
+                <option value="">-- Choose a reason --</option>
                 {% for code, label in reject_reasons %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
             </select>
-            <label for="rn-{{ o.id }}">Mazeed batayein (optional; "Doosri wajah" mein zaroori)</label>
+            <label for="rn-{{ o.id }}">Tell us more (optional; required for "Other reason")</label>
             <textarea id="rn-{{ o.id }}" name="reason_note" rows="2" maxlength="150"></textarea>
             <div style="margin-top:10px;"><button type="submit" class="vo-btn vo-reject">Order reject karein</button></div>
         </form>

@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load img_tools %}
 {% load static %}
 
@@ -102,17 +103,17 @@
     <div style="background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.06);padding:14px 16px;margin-top:16px;">
         {% if profile.is_paused %}
             <div style="font-weight:800;color:#b45309;">⏸️ Busy mode ON</div>
-            <div style="font-size:14px;color:#6b7280;margin:2px 0 10px;">Naye orders band hain. {{ profile.paused_until_text }} par khud khul jayega.</div>
+            <div style="font-size:14px;color:#6b7280;margin:2px 0 10px;">{% t "New orders are paused. The store will reopen by itself at {}." profile.paused_until_text %}</div>
             <form method="post" action="{% url 'vendor_pause' %}">{% csrf_token %}<input type="hidden" name="minutes" value="0">
                 <button type="submit" style="border:0;border-radius:10px;padding:10px 16px;font-weight:700;color:#fff;background:#198754;">▶ Abhi dobara kholein</button></form>
         {% else %}
             <div style="font-weight:800;">⏸️ Busy mode</div>
-            <div style="font-size:13.5px;color:#6b7280;margin:2px 0 10px;">Rush hai? Naye orders thori der ke liye rokein. Waqt poora hone par store khud khul jata hai.</div>
+            <div style="font-size:13.5px;color:#6b7280;margin:2px 0 10px;">Too busy? Pause new orders for a while. The store reopens by itself when the time is up.</div>
             <form method="post" action="{% url 'vendor_pause' %}" style="display:flex;gap:8px;flex-wrap:wrap;">{% csrf_token %}
                 <button type="submit" name="minutes" value="15" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;">15 min</button>
                 <button type="submit" name="minutes" value="30" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;">30 min</button>
-                <button type="submit" name="minutes" value="60" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;">1 ghanta</button>
-                <button type="submit" name="minutes" value="120" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;">2 ghante</button>
+                <button type="submit" name="minutes" value="60" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;">1 hour</button>
+                <button type="submit" name="minutes" value="120" style="border:2px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;">2 hours</button>
             </form>
         {% endif %}
     </div>
@@ -121,7 +122,7 @@
     {% if not profile.is_approved %}
         <div class="vd-alert warn" style="margin-top:20px;">
             <i class="bi bi-hourglass-split"></i>
-            Aap ka vendor account admin approval ke intezar mein hai. Approve hote hi aap products list kar sakenge.
+            Your vendor account is waiting for admin approval. You can list products once it is approved.
         </div>
     {% endif %}
 
@@ -159,7 +160,7 @@
     <div class="vd-card">
         <h5 style="margin:0 0 8px;">⭐ Customer ki rating:
             {% if rating.avg %}<b style="color:#f59e0b;">{{ rating.avg }}/5</b> <small>({{ rating.count }} reviews)</small>
-            {% else %}<small>abhi koi rating nahi</small>{% endif %}</h5>
+            {% else %}<small>No ratings yet</small>{% endif %}</h5>
         {% for rv in recent_reviews %}
             <div style="border-top:1px dashed #e5e7eb;padding:8px 0;">
                 <b style="color:#f59e0b;">{{ rv.vendor_rating }} ★</b>
@@ -216,7 +217,7 @@
             {% empty %}
                 <tr class="vd-empty"><td colspan="6" style="text-align:center;padding:40px;color:#888;">
                     Abhi koi product list nahi hua.
-                    {% if profile.is_approved %}<br><a href="{% url 'vendor_product_add' %}">Pehle products add karein</a>{% endif %}
+                    {% if profile.is_approved %}<br><a href="{% url 'vendor_product_add' %}">Add products first</a>{% endif %}
                 </td></tr>
             {% endfor %}
             </tbody>

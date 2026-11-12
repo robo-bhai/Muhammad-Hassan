@@ -1,36 +1,39 @@
 {% extends 'customer_portal/info/base_info.html' %}
 {% block page_title %}Help Center{% endblock %}
-{% block heading %}<i class="bi bi-life-preserver text-primary"></i> Help Center{% endblock %}
-{% block subheading %}Aap ko kis cheez mein madad chahiye?{% endblock %}
+{% block heading %}<i class="bi bi-life-preserver text-primary"></i> {% if LANG_CODE == 'ur' %}مدد مرکز{% else %}Help Center{% endif %}{% endblock %}
+{% block subheading %}{% if LANG_CODE == 'ur' %}آپ کو کس چیز میں مدد چاہیے؟{% else %}What do you need help with?{% endif %}{% endblock %}
 
 {% block info_body %}
 <div class="row g-3 mb-3">
   <div class="col-sm-6"><a href="{% url 'track_order' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
-      <h2><i class="bi bi-truck text-primary"></i> Order track karein</h2><p class="mb-0 small">Order ya bill number se status dekhein.</p></a></div>
+      <h2><i class="bi bi-truck text-primary"></i> {% if LANG_CODE == 'ur' %}آرڈر ٹریک کریں{% else %}Track your order{% endif %}</h2><p class="mb-0 small">{% if LANG_CODE == 'ur' %}آرڈر یا بل نمبر سے اسٹیٹس دیکھیں۔{% else %}See the status with your order or bill number.{% endif %}</p></a></div>
   <div class="col-sm-6"><a href="{% url 'my_orders' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
-      <h2><i class="bi bi-receipt text-primary"></i> Mere orders</h2><p class="mb-0 small">Purane aur maujooda orders.</p></a></div>
+      <h2><i class="bi bi-receipt text-primary"></i> {% if LANG_CODE == 'ur' %}میرے آرڈرز{% else %}My orders{% endif %}</h2><p class="mb-0 small">{% if LANG_CODE == 'ur' %}پرانے اور موجودہ آرڈرز۔{% else %}Past and current orders.{% endif %}</p></a></div>
   <div class="col-sm-6"><a href="{% url 'shop_returns' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
-      <h2><i class="bi bi-arrow-return-left text-primary"></i> Return aur refund</h2><p class="mb-0 small">Policy aur tareeqa.</p></a></div>
+      <h2><i class="bi bi-arrow-return-left text-primary"></i> {% if LANG_CODE == 'ur' %}واپسی اور رقم کی واپسی{% else %}Returns & refunds{% endif %}</h2><p class="mb-0 small">{% if LANG_CODE == 'ur' %}پالیسی اور طریقہ۔{% else %}Policy and how it works.{% endif %}</p></a></div>
   <div class="col-sm-6"><a href="{% url 'shop_faq' %}" class="info-card d-block text-decoration-none text-reset h-100 mb-0">
-      <h2><i class="bi bi-question-circle text-primary"></i> FAQ</h2><p class="mb-0 small">Aam sawalon ke jawab.</p></a></div>
+      <h2><i class="bi bi-question-circle text-primary"></i> {% if LANG_CODE == 'ur' %}اکثر پوچھے گئے سوالات{% else %}FAQ{% endif %}</h2><p class="mb-0 small">{% if LANG_CODE == 'ur' %}عام سوالوں کے جواب۔{% else %}Answers to common questions.{% endif %}</p></a></div>
 </div>
 
 <div class="info-card">
-  <h2>Aam masail</h2>
+  <h2>{% if LANG_CODE == 'ur' %}عام مسائل{% else %}Common problems{% endif %}</h2>
   <ul>
-    <li><b>Login nahi ho raha:</b> sahi phone/email check karein, OTP aaye to usay time par enter karein.</li>
-    <li><b>Order place nahi hua:</b> cart mein items aur checkout ka address dobara dekhein, phir koshish karein.</li>
-    <li><b>Ghalat address likh diya:</b> fauran WhatsApp ya call par batayen.</li>
-    <li><b>Delivery late hai:</b> <a href="{% url 'track_order' %}">Track Order</a> par status dekhein, phir hamein rabta karein.</li>
+    {% if LANG_CODE == 'ur' %}<li><b>لاگ اِن نہیں ہو رہا:</b> درست فون/ای میل چیک کریں، OTP آئے تو وقت پر لکھیں۔</li>
+    <li><b>آرڈر نہیں ہوا:</b> کارٹ کی چیزیں اور چیک آؤٹ کا پتہ دوبارہ دیکھیں، پھر کوشش کریں۔</li>
+    <li><b>غلط پتہ لکھ دیا:</b> فوراً واٹس ایپ یا فون پر بتائیں۔</li>
+    <li><b>ڈیلیوری لیٹ ہے:</b> <a href="{% url 'track_order' %}">Track Order</a> پر اسٹیٹس دیکھیں، پھر ہم سے رابطہ کریں۔</li>{% else %}<li><b>Cannot log in:</b> check your phone/email and enter the OTP on time.</li>
+    <li><b>Order was not placed:</b> check the cart items and checkout address, then try again.</li>
+    <li><b>Wrong address entered:</b> tell us immediately on WhatsApp or by phone.</li>
+    <li><b>Delivery is late:</b> check the status in <a href="{% url 'track_order' %}">Track Order</a>, then contact us.</li>{% endif %}
   </ul>
 </div>
 
 <div class="info-card">
-  <h2>Hum se rabta</h2>
+  <h2>{% if LANG_CODE == 'ur' %}ہم سے رابطہ{% else %}Contact us{% endif %}</h2>
   <ul>
-    {% if company_contact_number %}<li>Phone: <a href="tel:{{ company_contact_number }}">{{ company_contact_number }}</a></li>{% endif %}
-    {% if company_email %}<li>Email: <a href="mailto:{{ company_email }}">{{ company_email }}</a></li>{% endif %}
-    {% if company_address %}<li>Address: {{ company_address }}</li>{% endif %}
+    {% if company_contact_number %}<li>{% if LANG_CODE == 'ur' %}فون{% else %}Phone{% endif %}: <a href="tel:{{ company_contact_number }}" dir="ltr">{{ company_contact_number }}</a></li>{% endif %}
+    {% if company_email %}<li>{% if LANG_CODE == 'ur' %}ای میل{% else %}Email{% endif %}: <a href="mailto:{{ company_email }}">{{ company_email }}</a></li>{% endif %}
+    {% if company_address %}<li>{% if LANG_CODE == 'ur' %}پتہ{% else %}Address{% endif %}: {{ company_address }}</li>{% endif %}
   </ul>
 </div>
 {% endblock %}

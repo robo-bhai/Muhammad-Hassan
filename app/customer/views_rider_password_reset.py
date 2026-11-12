@@ -17,7 +17,7 @@ from ..utils import whatsapp_otp
 from .views_customer_auth import get_client_ip, is_valid_phone, normalize_phone
 
 SESSION_KEY = 'rfp_phone'
-TOO_MANY_MSG = '🔒 Bohat zyada koshishen. Thori der baad dobara try karein.'
+TOO_MANY_MSG = '🔒 Too many attempts. Please try again later.'
 
 
 def _company_name():
@@ -31,7 +31,7 @@ def rider_forgot_password(request):
     if request.method == 'POST':
         phone_raw = request.POST.get('phone', '').strip()[:20]
         if not phone_raw or not is_valid_phone(phone_raw):
-            messages.error(request, '❌ Sahi phone number likhein.')
+            messages.error(request, '❌ Enter a valid phone number.')
             return redirect('rider_forgot_password')
         phone = normalize_phone(phone_raw)
         ip = get_client_ip(request) or ''
@@ -47,11 +47,10 @@ def rider_forgot_password(request):
         request.session[SESSION_KEY] = phone
         request.session.modified = True
         if whatsapp_otp.is_configured():
-            messages.info(request, 'Agar yeh phone registered rider ka hai to 6-digit code WhatsApp par bhej diya '
-                                   'gaya hai (5 minute valid).')
+            messages.info(request, 'If this phone belongs to a registered rider, a 6-digit code has been sent on WhatsApp (valid for 5 minutes).')
         else:
-            messages.info(request, 'Agar yeh phone registered rider ka hai to manager ko khabar de di gayi hai. '
-                                   'Manager se 6-digit code le kar yahan likhein (5 minute valid).')
+            messages.info(request, 'If this phone belongs to a registered rider, the manager has been informed. '
+                                   'Enter the 6-digit code from the manager here (valid for 5 minutes).')
         return redirect('rider_reset_password')
 
     return render(request, 'customer_portal/rider/forgot_password.html', {
@@ -64,7 +63,7 @@ def rider_forgot_password(request):
 def rider_reset_password(request):
     phone = request.session.get(SESSION_KEY)
     if not phone:
-        messages.info(request, 'Pehle apna phone number likhein.')
+        messages.info(request, 'Please enter your phone number first.')
         return redirect('rider_forgot_password')
 
     if request.method == 'POST':
@@ -78,7 +77,7 @@ def rider_reset_password(request):
 
         account = pr.find_account(phone, pr.RIDER_KINDS)
         if not account:
-            messages.error(request, '❌ Code ghalat ya expire ho chuka hai.')
+            messages.error(request, '❌ The code is wrong or has expired.')
             return redirect('rider_reset_password')
 
         ok, msg = pr.complete_reset(account, code, request.POST.get('password', ''),

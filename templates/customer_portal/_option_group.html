@@ -6,13 +6,13 @@
         <span>{{ g.name }}</span>
         <span class="po-badge {% if g.is_required %}req{% endif %}">{% if g.is_required %}Lazmi{% else %}Marzi{% endif %}</span>
     </div>
-    <div class="po-hint">{% if g.kind == 'single' %}Ek chunein{% else %}{% if g.max_select %}Ziyada se ziyada {{ g.max_select }} chunein{% else %}Jitne chahein chunein{% endif %}{% endif %}</div>
+    <div class="po-hint">{% if g.kind == 'single' %}{% if LANG_CODE == 'ur' %}ایک چنیں{% else %}Choose one{% endif %}{% else %}{% if g.max_select %}{% if LANG_CODE == 'ur' %}زیادہ سے زیادہ {{ g.max_select }} چنیں{% else %}Choose up to {{ g.max_select }}{% endif %}{% else %}{% if LANG_CODE == 'ur' %}جتنے چاہیں چنیں{% else %}Choose as many as you like{% endif %}{% endif %}{% endif %}</div>
     {% for o in g.options.all %}
     <label class="po-row {% if not o.is_available %}off{% endif %}">
         <input type="{% if g.kind == 'single' %}radio{% else %}checkbox{% endif %}" class="po-input"
                name="po-{{ g.id }}" value="{{ o.id }}" data-extra="{{ o.extra_price|stringformat:'.2f' }}"
                {% if not o.is_available %}disabled{% endif %}>
-        <span class="po-name">{{ o.name }}{% if not o.is_available %} (khatam){% endif %}</span>
+        <span class="po-name">{{ o.name }}{% if not o.is_available %} (sold out){% endif %}</span>
         <span class="po-extra">{% if o.extra_price %}+ Rs. {{ o.extra_price|floatformat:0 }}{% endif %}</span>
     </label>
     {% for cg in o.child_groups.all %}{% if cg.is_active %}{% include 'customer_portal/_option_group.html' with g=cg %}{% endif %}{% endfor %}

@@ -1606,7 +1606,7 @@ def place_order(request):
             _chosen, _extras, opt_error = resolve_selection(
                 products[item['product_id']], item.get('option_ids') or [])
             if opt_error:
-                messages.error(request, f'{item["name"]}: {opt_error}. Cart se hata kar dobara chunein.')
+                messages.error(request, f'{item["name"]}: {opt_error}. Remove it from the cart and choose again.')
                 return redirect('cart_view')
         
         # 🔒 Stock lock: inventory rows lock + pending orders ginkar check (overselling se bachao)
@@ -1644,7 +1644,7 @@ def place_order(request):
         if summary['coupon_code'] and summary['coupon_error']:
             request.session.pop(coupon_logic.SESSION_KEY, None)
             request.session.modified = True
-            messages.error(request, '🏷️ ' + summary['coupon_error'] + ' Coupon hata diya gaya, total dobara dekhein.')
+            messages.error(request, '🏷️ ' + summary['coupon_error'] + ' Coupon removed. Please check the total again.')
             return redirect('checkout')
         delivery_charges = summary['delivery']
         
@@ -2056,7 +2056,7 @@ def cancel_order_customer(request, order_id):
     if order.vendor_id and order.status == 'confirmed':
         return JsonResponse({
             'success': False,
-            'message': 'Store order qubool kar chuka hai. Cancel ke liye store se rabta karein.'
+            'message': 'The store has already accepted the order. To cancel, please contact the store.'
         })
     if order.status not in cancellable_statuses:
         return JsonResponse({

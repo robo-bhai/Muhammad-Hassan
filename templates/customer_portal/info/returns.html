@@ -1,17 +1,17 @@
 {% extends 'customer_portal/info/base_info.html' %}
 {% block page_title %}Return Policy{% endblock %}
-{% block heading %}<i class="bi bi-arrow-return-left text-primary"></i> Return aur Refund Policy{% endblock %}
-{% block subheading %}Saaf aur asaan usool{% endblock %}
+{% block heading %}<i class="bi bi-arrow-return-left text-primary"></i> {% if LANG_CODE == 'ur' %}واپسی اور رقم کی واپسی کی پالیسی{% else %}Return & Refund Policy{% endif %}{% endblock %}
+{% block subheading %}{% if LANG_CODE == 'ur' %}صاف اور آسان اصول{% else %}Clear and simple rules{% endif %}{% endblock %}
 
 {% block info_body %}
-<div class="info-card"><h2>Return ki muddat</h2>
-  <p class="mb-0">Saman milne ke <b>{{ return_window_days }} din</b> ke andar return ki darkhwast kar sakte hain.</p></div>
-<div class="info-card"><h2>Kin sooraton mein return hoga</h2>
-  <ul><li>Product kharab ya toota hua mila</li><li>Ghalat product deliver hua</li><li>Order mein koi item kam tha</li></ul></div>
-<div class="info-card"><h2>Kin sooraton mein return nahi hoga</h2>
-  <ul><li>Istemal shuda ya kharab kiya hua saman</li><li>Original packing ke baghair</li><li>Jaldi kharab hone wali cheezein (khane peene ka saman) siwaye is ke ke wo kharab ya ghalat aayi hon</li></ul></div>
-<div class="info-card"><h2>Tareeqa</h2>
-  <ol><li>WhatsApp ya call par order number ke saath rabta karein.</li><li>Masle ki tasveer bhejein.</li><li>Hamari team tasdeeq ke baad pickup ya replacement tay karegi.</li></ol></div>
-<div class="info-card"><h2>Refund</h2>
-  <p class="mb-0">Manzoor hone par refund {{ refund_days }} working din mein usi tareeqe se hoga jis se payment hui thi.</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}واپسی کی مدت{% else %}Return period{% endif %}</h2>
+  <p class="mb-0">{% if LANG_CODE == 'ur' %}سامان ملنے کے <b>{{ return_window_days }} دن</b> کے اندر واپسی کی درخواست کی جا سکتی ہے۔{% else %}You can request a return within <b>{{ return_window_days }} days</b> of receiving the goods.{% endif %}</p></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}کن صورتوں میں واپسی ہوگی{% else %}When a return is accepted{% endif %}</h2>
+  <ul>{% if LANG_CODE == 'ur' %}<li>پروڈکٹ خراب یا ٹوٹی ہوئی ملی</li><li>غلط پروڈکٹ ڈیلیور ہوئی</li><li>آرڈر میں کوئی آئٹم کم تھا</li>{% else %}<li>Product arrived damaged or broken</li><li>Wrong product was delivered</li><li>An item was missing from the order</li>{% endif %}</ul></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}کن صورتوں میں واپسی نہیں ہوگی{% else %}When a return is not accepted{% endif %}</h2>
+  <ul>{% if LANG_CODE == 'ur' %}<li>استعمال شدہ یا خراب کیا ہوا سامان</li><li>اصل پیکنگ کے بغیر</li><li>جلد خراب ہونے والی چیزیں (کھانے پینے کا سامان)، سوائے اس کے کہ وہ خراب یا غلط آئی ہوں</li>{% else %}<li>Used or damaged goods</li><li>Without the original packaging</li><li>Perishable items (food and drink), unless they arrived spoiled or wrong</li>{% endif %}</ul></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}طریقہ{% else %}How it works{% endif %}</h2>
+  <ol>{% if LANG_CODE == 'ur' %}<li>واٹس ایپ یا فون پر آرڈر نمبر کے ساتھ رابطہ کریں۔</li><li>مسئلے کی تصویر بھیجیں۔</li><li>ہماری ٹیم تصدیق کے بعد پک اپ یا تبدیلی طے کرے گی۔</li>{% else %}<li>Contact us on WhatsApp or by phone with your order number.</li><li>Send a photo of the problem.</li><li>After checking, our team will arrange a pickup or replacement.</li>{% endif %}</ol></div>
+<div class="info-card"><h2>{% if LANG_CODE == 'ur' %}رقم کی واپسی{% else %}Refund{% endif %}</h2>
+  <p class="mb-0">{% if LANG_CODE == 'ur' %}منظور ہونے پر رقم {{ refund_days }} کاروباری دن میں اسی طریقے سے واپس ہوگی جس سے ادائیگی ہوئی تھی۔{% else %}Once approved, the refund is made within {{ refund_days }} working days by the same method used for payment.{% endif %}</p></div>
 {% endblock %}

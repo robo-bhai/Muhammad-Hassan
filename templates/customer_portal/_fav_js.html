@@ -17,13 +17,13 @@
           location.href = res.d.login_url + '?next=' + encodeURIComponent(location.pathname + location.search);
           return;
         }
-        if (!res.d.success) { alert(res.d.message || 'Kuch masla aa gaya'); return; }
+        if (!res.d.success) { alert(res.d.message || '{% if LANG_CODE == 'ur' %}کچھ مسئلہ آ گیا{% else %}Something went wrong{% endif %}'); return; }
         btn.classList.toggle('on', !!res.d.favorited);
         btn.innerHTML = res.d.favorited ? '<i class="bi bi-heart-fill"></i>' : '<i class="bi bi-heart"></i>';
         if (removeCard && !res.d.favorited) {
           var card = btn.closest('[data-fav-card]'); if (card) card.remove();
         }
       })
-      .catch(function () { btn.disabled = false; alert('Network masla, dobara koshish karein'); });
+      .catch(function () { btn.disabled = false; alert('{% if LANG_CODE == 'ur' %}نیٹ ورک کا مسئلہ، دوبارہ کوشش کریں{% else %}Network problem. Please try again{% endif %}'); });
   }
 </script>

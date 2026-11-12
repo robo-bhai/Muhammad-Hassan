@@ -29,12 +29,12 @@ def validate(code, customer, vendor_id, subtotal, lock=False):
     qs = Coupon.objects.select_for_update() if lock else Coupon.objects
     coupon = qs.filter(code=code).select_related('store').first()
     if coupon is None:
-        return None, ZERO, 'Yeh coupon code sahi nahi hai.'
+        return None, ZERO, 'This coupon code is not valid.'
     st = coupon.status
     if st == 'off':
-        return None, ZERO, 'Yeh coupon abhi band hai.'
+        return None, ZERO, 'This coupon is not active right now.'
     if st == 'scheduled':
-        return None, ZERO, 'Yeh coupon abhi shuru nahi hua.'
+        return None, ZERO, 'This coupon has not started yet.'
     if st == 'expired':
         return None, ZERO, 'Yeh coupon expire ho chuka hai.'
     if st == 'used_up':
@@ -48,7 +48,7 @@ def validate(code, customer, vendor_id, subtotal, lock=False):
         return None, ZERO, 'Coupon use karne ke liye pehle login karein.'
     mine = coupon.redemptions.filter(customer=customer).exclude(order__status='cancelled')
     if coupon.per_customer_limit and mine.count() >= coupon.per_customer_limit:
-        return None, ZERO, 'Aap yeh coupon pehle hi use kar chuke hain.'
+        return None, ZERO, 'You have already used this coupon.'
     if coupon.first_order_only and SaleOrder.objects.filter(customer=customer).exclude(status='cancelled').exists():
         return None, ZERO, 'Yeh coupon sirf pehle order par chalta hai.'
     discount = coupon.compute(subtotal)

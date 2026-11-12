@@ -4,13 +4,13 @@
 {% block body %}
 <div class="stats">
   <div class="stat"><b>{{ today.deliveries }}</b><small>Aaj</small></div>
-  <div class="stat"><b>{{ week.deliveries }}</b><small>7 din</small></div>
+  <div class="stat"><b>{{ week.deliveries }}</b><small>7 days</small></div>
   <div class="stat"><b>{{ b.deliveries }}</b><small>Kul deliveries</small></div>
 </div>
 <div class="wrap">
   <div class="card">
     <div class="row"><span>Aaj ki kamai</span><b>Rs. {{ today.earned|floatformat:0 }}</b></div>
-    <div class="row"><span>Pichle 7 din</span><b>Rs. {{ week.earned|floatformat:0 }}</b></div>
+    <div class="row"><span>Last 7 days</span><b>Rs. {{ week.earned|floatformat:0 }}</b></div>
     <div class="row"><span>Kul kamai</span><b>Rs. {{ b.earned|floatformat:0 }}</b></div>
     <div class="row"><span>Mil chuki</span><b>Rs. {{ b.paid_out|floatformat:0 }}</b></div>
     <div class="sep"></div>
@@ -27,7 +27,7 @@
     <div class="row"><span>Admin ko jama kiya</span><b>Rs. {{ b.cash_deposited|floatformat:0 }}</b></div>
     <div class="sep"></div>
     <div class="row"><span><b>Aap ke paas cash</b></span><span class="fee" style="color:#c2410c">Rs. {{ b.cash_in_hand|floatformat:0 }}</span></div>
-    <div class="cod">Yeh cash company ka hai — admin ko jama karwayein.</div>
+    <div class="cod">This cash belongs to the company — deposit it with the admin.</div>
   </div>
 
   <h3>Hisab ki history</h3>

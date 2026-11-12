@@ -4312,7 +4312,7 @@ function toggleVoiceSearch() {
     voiceRecognition.onerror = function(event) {
         let errorMsg = 'Error!';
         if (event.error === 'no-speech') errorMsg = 'No sound was heard.';
-        else if (event.error === 'audio-capture') errorMsg = 'Microphone nahi mila.';
+        else if (event.error === 'audio-capture') errorMsg = '{% if LANG_CODE == 'ur' %}مائیکروفون نہیں ملا۔{% else %}Microphone not found.{% endif %}';
         else if (event.error === 'not-allowed') errorMsg = 'Permission denied.';
         else if (event.error === 'network') errorMsg = 'Network error.';
         

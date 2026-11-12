@@ -27,10 +27,10 @@
       } else { marker.setLatLng(ll); }
       if(d.dest_lat!==undefined){
         var dl=[d.dest_lat,d.dest_lng];
-        if(!home){ home=L.marker(dl,{icon:L.divIcon({html:'🏠',className:'',iconSize:[28,28],iconAnchor:[14,14]})}).addTo(map).bindPopup('Aap ki delivery location'); }
+        if(!home){ home=L.marker(dl,{icon:L.divIcon({html:'🏠',className:'',iconSize:[28,28],iconAnchor:[14,14]})}).addTo(map).bindPopup('{% if LANG_CODE == 'ur' %}آپ کی ڈیلیوری لوکیشن{% else %}Your delivery location{% endif %}'); }
         if(!fitted){ map.fitBounds([ll,dl],{padding:[40,40],maxZoom:17}); fitted=true; }
       } else { map.panTo(ll); }
-      document.getElementById('liveMapAge').textContent = d.stale ? 'Location ruk gayi hai' : 'Live';
+      document.getElementById('liveMapAge').textContent = d.stale ? '{% if LANG_CODE == 'ur' %}لوکیشن رک گئی ہے{% else %}Location has stopped updating{% endif %}' : 'Live';
     }).catch(function(){});
   }
   tick(); setInterval(tick,8000);

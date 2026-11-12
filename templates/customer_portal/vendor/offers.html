@@ -1,5 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
-
+{% load portal_i18n %}
 {% block title %}Offers{% endblock %}
 
 {% block content %}
@@ -36,18 +36,18 @@
     {% for m in messages %}<div class="vo2-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
 
     <div class="vo2-card">
-        <div class="vo2-head"><h3>🏷️ Naya offer</h3><p>Discount lagte hi store card par "Up to N% off" dikhega aur "Deals" mein aap ka store aayega.</p></div>
+        <div class="vo2-head"><h3>🏷️ Naya offer</h3><p>Once a discount is applied, your store card shows "Up to N% off" and your store appears in "Deals".</p></div>
         <div class="vo2-body">
             <form method="post" id="offerForm">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="apply">
                 <div class="vo2-field">
                     <label class="t" for="pct">Kitna discount (%)</label>
-                    <input type="number" id="pct" name="percent" min="1" max="{{ max_discount }}" step="1" inputmode="numeric" placeholder="Jaise 20" required>
+                    <input type="number" id="pct" name="percent" min="1" max="{{ max_discount }}" step="1" inputmode="numeric" placeholder="e.g. 20" required>
                 </div>
                 <div class="vo2-field">
                     <label class="t">Kin products par</label>
-                    <label class="vo2-radio"><input type="radio" name="scope" value="all" checked> Poora store ({{ products|length }} products)</label>
+                    <label class="vo2-radio"><input type="radio" name="scope" value="all" checked> {% t "Whole store ({} products)" products|length %}</label>
                     <label class="vo2-radio"><input type="radio" name="scope" value="category"> Ek category</label>
                     <select name="category_id" id="catSel" style="display:none;">
                         {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
@@ -59,13 +59,13 @@
                 </div>
                 <button class="vo2-btn" type="submit">Offer lagayein</button>
             </form>
-            <div class="vo2-note">Discount aap ke hissay se katta hai (commission discounted price par lagti hai). Offer khatam karne tak chalta rehta hai; neeche se khatam karein.</div>
+            <div class="vo2-note">The discount comes out of your share (commission is charged on the discounted price). The offer runs until you end it; you can end it below.</div>
         </div>
     </div>
 
     <div class="vo2-card">
         <div class="vo2-body">
-            <div style="font-weight:800;margin-bottom:6px;">Chalte hue offers ({{ on_offer|length }})</div>
+            <div style="font-weight:800;margin-bottom:6px;">{% t "Running offers ({})" on_offer|length %}</div>
             {% for p in on_offer %}
             <div class="vo2-row">
                 <span class="n">{{ p.name }}<br><span class="vo2-old">Rs {{ p.original_price|floatformat:0 }}</span> <span class="vo2-new">Rs {{ p.price|floatformat:0 }}</span></span>

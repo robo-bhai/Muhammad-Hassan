@@ -4,19 +4,19 @@
     {% if coupons_on %}
         {% if offer.coupon %}
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span style="font-weight:700;color:#198754;">🏷️ {{ offer.coupon.code }} laga hua hai (− Rs. {{ offer.discount|floatformat:0 }})</span>
+                <span style="font-weight:700;color:#198754;">🏷️ {% if LANG_CODE == 'ur' %}{{ offer.coupon.code }} لگا ہوا ہے (− Rs. {{ offer.discount|floatformat:0 }}){% else %}{{ offer.coupon.code }} applied (− Rs. {{ offer.discount|floatformat:0 }}){% endif %}</span>
                 <form method="post" action="{% url 'remove_coupon' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_page }}">
-                    <button type="submit" style="border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:8px;padding:4px 10px;">✕ Hatayein</button></form>
+                    <button type="submit" style="border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:8px;padding:4px 10px;">{% if LANG_CODE == 'ur' %}✕ ہٹائیں{% else %}✕ Remove{% endif %}</button></form>
             </div>
         {% else %}
             {% if offer.coupon_error %}<div style="color:#b91c1c;font-size:13px;margin-bottom:6px;">❌ {{ offer.coupon_error }}</div>{% endif %}
             {% if user.is_authenticated %}
             <form method="post" action="{% url 'apply_coupon' %}" style="display:flex;gap:8px;">{% csrf_token %}<input type="hidden" name="next" value="{{ next_page }}">
                 <input type="text" name="code" maxlength="30" placeholder="Coupon code" autocomplete="off" style="flex:1;min-width:0;padding:9px 12px;border:2px solid #e5e7eb;border-radius:10px;text-transform:uppercase;font-size:15px;">
-                <button type="submit" style="border:0;border-radius:10px;padding:9px 16px;font-weight:700;color:#fff;background:linear-gradient(135deg,#2563eb,#7c3aed);">Lagayein</button>
+                <button type="submit" style="border:0;border-radius:10px;padding:9px 16px;font-weight:700;color:#fff;background:linear-gradient(135deg,#2563eb,#7c3aed);"{% if LANG_CODE == 'ur' %}>لگائیں<{% else %}>Apply<{% endif %}/button>
             </form>
             {% else %}
-            <div style="font-size:13.5px;"><a href="{% url 'customer_login' %}?next={{ request.path }}">Login</a> karke coupon lagayein.</div>
+            <div style="font-size:13.5px;"><a href="{% url 'customer_login' %}?next={{ request.path }}">Login{% if LANG_CODE == 'ur' %}</a> کر کے کوپن لگائیں۔{% else %}</a> to apply a coupon.{% endif %}</div>
             {% endif %}
         {% endif %}
     {% endif %}
@@ -28,21 +28,21 @@
         <form method="post" action="{% url 'wallet_toggle' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_page }}">
             <input type="hidden" name="use" value="{% if offer.use_wallet %}0{% else %}1{% endif %}">
             <button type="submit" style="border:2px solid {% if offer.use_wallet %}#198754{% else %}#e5e7eb{% endif %};background:{% if offer.use_wallet %}#e8f5e9{% else %}#fff{% endif %};border-radius:10px;padding:6px 12px;font-weight:700;">
-                {% if offer.use_wallet %}✓ Wallet se ada ho raha hai{% else %}Wallet se ada karein{% endif %}</button>
+                {% if offer.use_wallet %}{% if LANG_CODE == 'ur' %}✓ والٹ سے ادائیگی ہو رہی ہے{% else %}✓ Paying from wallet{% endif %}{% else %}{% if LANG_CODE == 'ur' %}والٹ سے ادا کریں{% else %}Pay from wallet{% endif %}{% endif %}</button>
         </form>
         {% else %}
-        <a href="{% url 'wallet_page' %}" style="font-size:13px;">Wallet dekhein</a>
+        <a href="{% url 'wallet_page' %}" style="font-size:13px;"{% if LANG_CODE == 'ur' %}>والٹ دیکھیں<{% else %}>View wallet<{% endif %}/a>
         {% endif %}
     </div>
     {% endif %}
 
     {% if offer.pro_enabled %}
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f1f1f1;font-size:13.5px;">
-        {% if offer.pro_waived > 0 %}⭐ Pro member: Rs. {{ offer.pro_waived|floatformat:0 }} delivery maaf.
-        {% elif offer.pro_hint %}⭐ {{ offer.pro_hint }}{% if not offer.pro_active %} <a href="{% url 'pro_page' %}">Pro dekhein</a>{% endif %}
+        {% if offer.pro_waived > 0 %}⭐ {% if LANG_CODE == 'ur' %}پرو ممبر: Rs. {{ offer.pro_waived|floatformat:0 }} ڈیلیوری فیس معاف۔{% else %}Pro member: Rs. {{ offer.pro_waived|floatformat:0 }} delivery fee waived.{% endif %}
+        {% elif offer.pro_hint %}⭐ {{ offer.pro_hint }}{% if not offer.pro_active %} <a href="{% url 'pro_page' %}"{% if LANG_CODE == 'ur' %}>پرو دیکھیں<{% else %}>View Pro<{% endif %}/a>{% endif %}
         {% endif %}
     </div>
     {% endif %}
 </div>
-{% if offer.points_est %}<div style="font-size:13px;color:#7c3aed;margin-top:6px;">⭐ Delivery ke baad ~{{ offer.points_est }} loyalty points milenge.</div>{% endif %}
+{% if offer.points_est %}<div style="font-size:13px;color:#7c3aed;margin-top:6px;">⭐ {% if LANG_CODE == 'ur' %}ڈیلیوری کے بعد ~{{ offer.points_est }} لائلٹی پوائنٹس ملیں گے۔{% else %}You will earn ~{{ offer.points_est }} loyalty points after delivery.{% endif %}</div>{% endif %}
 {% endif %}

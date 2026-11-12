@@ -38,9 +38,9 @@
     <div class="alert alert-danger">🔒 {{ store.closed_message }}</div>
     {% elif not store.min_ok %}
     <div class="alert alert-warning">
-        ⚠️ {{ store.name }} ka minimum order Rs. {{ store.min_order|floatformat:0 }} hai.
-        Aur <b>Rs. {{ store.short_by|floatformat:0 }}</b> ka maal add karein.
-        {% if store.profile %}<a href="{% url 'store_detail' store.profile.pk %}" class="alert-link">Is store se aur add karein</a>{% endif %}
+        ⚠️ {% if LANG_CODE == 'ur' %}{{ store.name }} کا کم از کم آرڈر Rs. {{ store.min_order|floatformat:0 }} ہے۔{% else %}{{ store.name }} has a minimum order of Rs. {{ store.min_order|floatformat:0 }}.{% endif %}
+        {% if LANG_CODE == 'ur' %}مزید <b>Rs. {{ store.short_by|floatformat:0 }}</b> کا سامان شامل کریں۔{% else %}Add <b>Rs. {{ store.short_by|floatformat:0 }}</b> more to order.{% endif %}
+        {% if store.profile %}<a href="{% url 'store_detail' store.profile.pk %}" class="alert-link">{% if LANG_CODE == 'ur' %}اس اسٹور سے مزید شامل کریں{% else %}Add more from this store{% endif %}</a>{% endif %}
     </div>
     {% endif %}
     {% endif %}
@@ -52,9 +52,9 @@
             {% if free_delivery_progress %}
             <div class="free-ship {% if free_delivery_progress.unlocked %}unlocked{% endif %}">
                 {% if free_delivery_progress.unlocked %}
-                <div class="free-ship-text"><i class="bi bi-gift-fill"></i> Mubarak ho! Aap ki <b>FREE Delivery</b> unlock ho gayi</div>
+                <div class="free-ship-text"><i class="bi bi-gift-fill"></i> {% if LANG_CODE == 'ur' %}مبارک ہو! آپ کی <b>مفت ڈیلیوری</b> کھل گئی{% else %}Congratulations! You unlocked <b>FREE Delivery</b>{% endif %}</div>
                 {% else %}
-                <div class="free-ship-text"><i class="bi bi-truck"></i> Aur <b>Rs. {{ free_delivery_progress.remaining|floatformat:0 }}</b> ka maal add karein aur <b>FREE Delivery</b> payein</div>
+                <div class="free-ship-text"><i class="bi bi-truck"></i> {% if LANG_CODE == 'ur' %}مزید <b>Rs. {{ free_delivery_progress.remaining|floatformat:0 }}</b> کا سامان شامل کریں اور <b>مفت ڈیلیوری</b> پائیں{% else %}Add <b>Rs. {{ free_delivery_progress.remaining|floatformat:0 }}</b> more and get <b>FREE Delivery</b>{% endif %}</div>
                 {% endif %}
                 <div class="free-ship-bar"><div class="free-ship-fill" style="width: {{ free_delivery_progress.percent }}%;"></div></div>
             </div>
@@ -184,7 +184,7 @@
                     </button>
                     {% else %}
                     {% if SHOP.shop_ordering_enabled %}
-                    <div class="cart-cta-hint"><i class="bi bi-hand-index-thumb-fill"></i> Order karne ke liye yahan click karein</div>
+                    <div class="cart-cta-hint"><i class="bi bi-hand-index-thumb-fill"></i> {% if LANG_CODE == 'ur' %}آرڈر کرنے کے لیے یہاں دبائیں{% else %}Click here to place your order{% endif %}</div>
                     <a href="{% url 'checkout' %}" class="btn-checkout-pro mb-2">
                         <span class="cp-left">
                             <i class="bi bi-bag-check-fill cp-icon"></i>
@@ -193,7 +193,7 @@
                         <span class="cp-right">Rs. {{ total_amount|floatformat:0 }} <i class="bi bi-arrow-right-circle-fill"></i></span>
                     </a>
                     {% else %}
-                    <div class="alert alert-secondary text-center mb-2"><i class="bi bi-pause-circle"></i> Ordering abhi band hai, thori der baad try karein.</div>
+                    <div class="alert alert-secondary text-center mb-2"><i class="bi bi-pause-circle"></i> Ordering is closed right now. Please try again later.</div>
                     {% endif %}
                     {% endif %}
                     
@@ -203,7 +203,7 @@
                     
                     <div class="cart-trust">
                         <span><i class="bi bi-cash-coin"></i> Delivery par payment</span>
-                        <span><i class="bi bi-x-circle"></i> Advance nahi dena</span>
+                        <span><i class="bi bi-x-circle"></i> {% if LANG_CODE == 'ur' %}ایڈوانس نہیں دینا{% else %}No advance payment{% endif %}</span>
                         <span><i class="bi bi-shield-lock-fill"></i> 100% Secure</span>
                     </div>
                     
@@ -217,10 +217,10 @@
     
     <div class="empty-cart text-center py-5">
         <div class="empty-cart-icon"><i class="bi bi-cart-x"></i></div>
-        <h3 class="mt-3 fw-bold">Aap ki cart khali hai</h3>
-        <p class="text-muted mb-4">Pasandida products add karein aur Cash on Delivery se order karein.</p>
+        <h3 class="mt-3 fw-bold">{% if LANG_CODE == 'ur' %}آپ کا کارٹ خالی ہے{% else %}Your cart is empty{% endif %}</h3>
+        <p class="text-muted mb-4">Add your favourite products and order with Cash on Delivery.</p>
         <a href="{% url 'shop_home' %}" class="btn-checkout-pro d-inline-flex" style="width:auto; padding:14px 28px;">
-            <span class="cp-left"><i class="bi bi-shop cp-icon"></i><span class="cp-text"><strong>Shopping shuru karein</strong></span></span>
+            <span class="cp-left"><i class="bi bi-shop cp-icon"></i><span class="cp-text"><strong>{% if LANG_CODE == 'ur' %}خریداری شروع کریں{% else %}Start shopping{% endif %}</strong></span></span>
             <i class="bi bi-arrow-right-circle-fill"></i>
         </a>
     </div>
@@ -374,11 +374,11 @@
 <div class="cp-overlay" id="cpConfirm" role="dialog" aria-modal="true">
     <div class="cp-box">
         <div class="cp-ico"><i class="bi bi-trash3-fill"></i></div>
-        <h5>Item hata dein?</h5>
-        <p id="cpItemName">Yeh product aap ki cart se hata diya jayega.</p>
+        {% if LANG_CODE == 'ur' %}<h5>آئٹم ہٹا دیں؟</h5>{% else %}<h5>Remove item?</h5>{% endif %}
+        <p id="cpItemName">This product will be removed from your cart.</p>
         <div class="cp-actions">
-            <button type="button" class="cp-no" id="cpNo">Nahi</button>
-            <button type="button" class="cp-yes" id="cpYes">Haan, hata dein</button>
+            <button type="button" class="cp-no" id="cpNo"{% if LANG_CODE == 'ur' %}>نہیں<{% else %}>No<{% endif %}/button>
+            <button type="button" class="cp-yes" id="cpYes"{% if LANG_CODE == 'ur' %}>ہاں، ہٹا دیں<{% else %}>Yes, remove<{% endif %}/button>
         </div>
     </div>
 </div>
@@ -386,7 +386,7 @@
 function askRemove(productId) {
     const box = document.getElementById('cpConfirm');
     const nameEl = document.querySelector('.cart-item[data-product-id="' + productId + '"] .cart-item-name');
-    document.getElementById('cpItemName').textContent = nameEl ? nameEl.textContent.trim() + ' cart se hata diya jayega.' : 'Yeh product cart se hata diya jayega.';
+    document.getElementById('cpItemName').textContent = nameEl ? nameEl.textContent.trim() + '{% if LANG_CODE == 'ur' %} کارٹ سے ہٹا دیا جائے گا۔{% else %} will be removed from the cart.{% endif %}' : '{% if LANG_CODE == 'ur' %}یہ پروڈکٹ کارٹ سے ہٹا دی جائے گی۔{% else %}This product will be removed from the cart.{% endif %}';
     const close = () => { box.classList.remove('show'); document.removeEventListener('keydown', onKey); };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     document.getElementById('cpNo').onclick = close;
