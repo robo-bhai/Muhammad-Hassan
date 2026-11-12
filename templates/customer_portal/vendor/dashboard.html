@@ -89,8 +89,10 @@
             <a href="{% url 'vendor_menu' %}" class="vd-btn"><i class="bi bi-list-stars"></i> Menu</a>
             <a href="{% url 'vendor_reports' %}" class="vd-btn"><i class="bi bi-graph-up"></i> Reports</a>
             {% if profile.is_approved %}<a href="{% url 'vendor_offers' %}" class="vd-btn"><i class="bi bi-tag"></i> Offers</a>{% endif %}
+            {% if profile.is_approved and SHOP.vendor_deals_enabled %}<a href="{% url 'vendor_deals' %}" class="vd-btn"><i class="bi bi-gift"></i> Deals</a>{% endif %}
             {% if profile.is_approved and SHOP.shop_sponsored_enabled %}<a href="{% url 'vendor_promote' %}" class="vd-btn"><i class="bi bi-megaphone"></i> Promote</a>{% endif %}
             <a href="{% url 'vendor_orders' %}" class="vd-btn"><i class="bi bi-bag-check"></i> Orders{% if new_orders %} <span class="vd-badge" style="background:#dc3545;color:#fff;">{{ new_orders }}</span>{% endif %}</a>
+            <a href="{% url 'vendor_reviews' %}" class="vd-btn"><i class="bi bi-star"></i> Reviews</a>
             <a href="{% url 'vendor_disputes' %}" class="vd-btn"><i class="bi bi-exclamation-triangle"></i> Disputes{% if dispute_pending %} <span class="vd-badge" style="background:#dc3545;color:#fff;">{{ dispute_pending }}</span>{% endif %}</a>
             <a href="{% url 'vendor_store_settings' %}" class="vd-btn"><i class="bi bi-gear"></i> Store</a>
             {% if profile.is_approved %}
@@ -170,6 +172,16 @@
         {% endfor %}
     </div>
 
+    {% if low_count or out_count %}
+    <div class="vd-card" style="border-left:4px solid #f59e0b;">
+        <b>&#128230; Stock alert</b>
+        <div style="font-size:14px;margin-top:4px;">
+            {% if out_count %}<span style="color:#b91c1c;">{{ out_count }} product{{ out_count|pluralize }} sold out</span> &mdash; customers see "Out of stock" until you add more.{% endif %}
+            {% if low_count %}<br><span style="color:#92400e;">{{ low_count }} product{{ low_count|pluralize }} running low</span> ({{ low_level }} or fewer left).{% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="vd-card">
         <h5 style="margin:0 0 8px;">⭐ Customer ki rating:
             {% if rating.avg %}<b style="color:#f59e0b;">{{ rating.avg }}/5</b> <small>({% t "{} reviews" rating.count %})</small>
@@ -179,8 +191,11 @@
                 <b style="color:#f59e0b;">{{ rv.vendor_rating }} ★</b>
                 <small style="color:#6b7280;">#{{ rv.sale_order.order_no }} · {{ rv.created_at|date:"d M" }}</small>
                 {% if rv.vendor_comment %}<div>{{ rv.vendor_comment }}</div>{% endif %}
+                {% if rv.vendor_reply %}<div style="font-size:13px;color:#2563eb;">&#8617; {{ rv.vendor_reply }}</div>
+                {% else %}<a href="{% url 'vendor_reviews' %}" style="font-size:13px;">Reply</a>{% endif %}
             </div>
         {% endfor %}
+        {% if rating.count %}<a href="{% url 'vendor_reviews' %}" style="font-size:13px;">All reviews &rarr;</a>{% endif %}
     </div>
 
     <div class="vd-card">
@@ -208,6 +223,8 @@
                     <td data-label="Status">
                         {% if p.approval_status == 'approved' %}
                             {% if p.is_active %}<span class="vd-badge vd-approved">Live on shop</span>
+                                {% if p.stock_state == 'out' %}<br><span class="vd-badge" style="background:#fee2e2;color:#b91c1c;">Sold out (auto)</span>
+                                {% elif p.stock_state == 'low' %}<br><span class="vd-badge" style="background:#fef3c7;color:#92400e;">Low stock</span>{% endif %}
                             {% else %}<span class="vd-badge vd-hidden">Hidden</span>{% endif %}
                         {% elif p.approval_status == 'pending' %}
                             <span class="vd-badge vd-pending">Pending review</span>

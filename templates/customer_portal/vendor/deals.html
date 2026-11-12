@@ -1,0 +1,105 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Deals{% endblock %}
+
+{% block content %}
+<style>
+    .dl-wrap { max-width: 680px; margin: 26px auto; padding: 0 14px; }
+    .dl-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .dl-card { background: #fff; border-radius: 18px; box-shadow: 0 6px 28px rgba(0,0,0,.07); padding: 16px 18px; margin-bottom: 14px; }
+    .dl-card h4 { margin: 0 0 10px; font-weight: 800; }
+    .dl-in, .dl-sel { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 8px 10px; font-size: 15px; margin-top: 4px; }
+    .dl-lbl { display: block; font-weight: 700; font-size: 13.5px; margin-top: 10px; }
+    .dl-btn { border: 0; border-radius: 12px; padding: 11px 18px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#ea580c,#f59e0b); cursor: pointer; width: 100%; margin-top: 14px; }
+    .dl-end { border: 1px solid #fecaca; background: #fff; color: #b91c1c; border-radius: 8px; padding: 4px 12px; font-size: 13px; }
+    .dl-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #f1f1f1; }
+    .dl-pick { max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 10px; padding: 4px 10px; margin-top: 4px; }
+    .dl-p { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #f0f0f0; font-size: 14px; }
+    .dl-p:last-child { border-bottom: 0; }
+    .dl-p .nm { flex: 1; }
+    .dl-p input[type=number] { width: 54px; border: 1px solid #d1d5db; border-radius: 8px; padding: 3px 6px; }
+    .dl-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .dl-alert.error { background: #f8d7da; color: #721c24; }
+    .dl-note { font-size: 12.5px; color: #6b7280; margin-top: 8px; }
+    .dl-badge { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 700; }
+</style>
+
+<div class="dl-wrap">
+    <a class="dl-back" href="{% url 'vendor_dashboard' %}">&larr; Dashboard</a>
+    {% for m in messages %}<div class="dl-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="dl-card">
+        <h4>&#127873; Running deals</h4>
+        {% for d in running %}
+        <div class="dl-row">
+            <div><b>{{ d.title }}</b> <span class="dl-badge">{{ d.text }}</span><br><small style="color:#6b7280;">{{ d.names }}{% if d.ends_at %} &middot; ends {{ d.ends_at|date:"d M, h:i A" }}{% else %} &middot; until you end it{% endif %}</small></div>
+            <form method="post" action="{% url 'vendor_deal_end' d.pk %}">{% csrf_token %}<button class="dl-end" type="submit">End</button></form>
+        </div>
+        {% empty %}<p style="margin:0;color:#6b7280;">No deal is running. Create one below.</p>{% endfor %}
+    </div>
+
+    <div class="dl-card">
+        <h4>&#10133; New deal</h4>
+        <form method="post" id="dealForm">
+            {% csrf_token %}
+            <label class="dl-lbl">Type
+                <select class="dl-sel" name="kind" id="kindSel">
+                    <option value="bogo">Buy 1 Get 1 Free</option>
+                    <option value="combo">Combo (products together at one price)</option>
+                    <option value="flash">Flash sale (limited-time % off)</option>
+                </select>
+            </label>
+
+            <div id="fTitle" style="display:none;"><label class="dl-lbl">Combo name<input class="dl-in" type="text" name="title" maxlength="60" placeholder="e.g. Family Meal"></label></div>
+            <div id="fPercent" style="display:none;"><label class="dl-lbl">Discount % (1&ndash;{{ max_flash }})<input class="dl-in" type="number" name="percent" min="1" max="{{ max_flash }}" step="0.5" inputmode="decimal"></label></div>
+            <div id="fPrice" style="display:none;"><label class="dl-lbl">Combo price (Rs.) for one full set<input class="dl-in" type="number" name="combo_price" min="1" step="any" inputmode="decimal"></label></div>
+
+            <label class="dl-lbl"><span id="pickHint">Choose one product</span></label>
+            <div class="dl-pick">
+                {% for p in products %}
+                <label class="dl-p"><input type="checkbox" name="product_ids" value="{{ p.pk }}" class="pchk"><span class="nm">{{ p.name }} <small style="color:#6b7280;">Rs. {{ p.price|floatformat:0 }}</small></span>
+                    <input type="number" name="qty_{{ p.pk }}" value="1" min="1" max="{{ combo_max_qty }}" class="qtyBox" style="display:none;" title="Quantity in the combo"></label>
+                {% empty %}<p style="color:#6b7280;margin:8px 0;">You need an approved, live product first.</p>{% endfor %}
+            </div>
+
+            <label class="dl-lbl">Runs for
+                <select class="dl-sel" name="duration" id="durSel">
+                    <option value="0">Until I end it</option>
+                    {% for h, label in durations %}<option value="{{ h }}">{{ label }}</option>{% endfor %}
+                </select>
+            </label>
+            <button class="dl-btn" type="submit"{% if not products %} disabled{% endif %}>Start deal</button>
+            <div class="dl-note">The discount comes from your share (it is deducted from your payable). You can run up to {{ max_active }} deals at once. Each item gets one deal only.</div>
+        </form>
+    </div>
+
+    {% if others %}
+    <div class="dl-card">
+        <h4>Earlier deals</h4>
+        {% for d in others %}<div class="dl-row"><div>{{ d.title }}<br><small style="color:#6b7280;">{{ d.names }}</small></div><small style="color:#6b7280;">Ended</small></div>{% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    var kind = document.getElementById('kindSel'), hint = document.getElementById('pickHint');
+    var dur = document.getElementById('durSel');
+    function sync() {
+        var k = kind.value;
+        document.getElementById('fTitle').style.display = k === 'combo' ? '' : 'none';
+        document.getElementById('fPrice').style.display = k === 'combo' ? '' : 'none';
+        document.getElementById('fPercent').style.display = k === 'flash' ? '' : 'none';
+        hint.textContent = k === 'bogo' ? 'Choose one product' : (k === 'combo' ? 'Choose 2 or more products (set the quantity of each)' : 'Choose the products on sale');
+        document.querySelectorAll('.qtyBox').forEach(function (q) { q.style.display = k === 'combo' ? '' : 'none'; });
+        if (k === 'flash' && dur.value === '0') dur.value = '3';
+        if (k === 'bogo') { var on = document.querySelectorAll('.pchk:checked'); for (var i = 1; i < on.length; i++) on[i].checked = false; }
+    }
+    document.querySelectorAll('.pchk').forEach(function (c) {
+        c.addEventListener('change', function () {
+            if (kind.value === 'bogo' && c.checked) document.querySelectorAll('.pchk').forEach(function (o) { if (o !== c) o.checked = false; });
+        });
+    });
+    kind.addEventListener('change', sync); sync();
+})();
+</script>
+{% endblock %}

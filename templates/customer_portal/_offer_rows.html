@@ -1,7 +1,8 @@
 {# Summary ki extra rows. part='mid': discount + Pro; part='end': wallet + cash dena hai #}
 {% if offer %}
   {% if part == 'mid' %}
-    {% if offer.discount > 0 %}<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#198754;"><span>🏷️ Coupon{% if offer.coupon %} ({{ offer.coupon.code }}){% endif %}</span><strong>− Rs. {{ offer.discount|floatformat:0 }}</strong></div>{% endif %}
+    {% for d in offer.deals %}<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#c2410c;"><span>🎁 {{ d.title }}</span><strong>− Rs. {{ d.amount|floatformat:0 }}</strong></div>{% endfor %}
+    {% if offer.coupon_discount > 0 %}<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#198754;"><span>🏷️ Coupon{% if offer.coupon %} ({{ offer.coupon.code }}){% endif %}</span><strong>− Rs. {{ offer.coupon_discount|floatformat:0 }}</strong></div>{% endif %}
     {% if offer.pro_waived > 0 %}<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px;color:#7c3aed;"><span>⭐ {% if LANG_CODE == 'ur' %}پرو: ڈیلیوری فیس معاف{% else %}Pro: delivery fee waived{% endif %}</span><strong>− Rs. {{ offer.pro_waived|floatformat:0 }}</strong></div>{% endif %}
   {% else %}
     {% if offer.wallet_used > 0 %}

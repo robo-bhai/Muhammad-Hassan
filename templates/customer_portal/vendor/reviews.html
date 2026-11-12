@@ -1,0 +1,68 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Reviews{% endblock %}
+
+{% block content %}
+<style>
+    .vr-wrap { max-width: 680px; margin: 26px auto; padding: 0 14px; }
+    .vr-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .vr-card { background: #fff; border-radius: 18px; box-shadow: 0 6px 28px rgba(0,0,0,.07); padding: 16px 18px; margin-bottom: 14px; }
+    .vr-score { font-size: 40px; font-weight: 900; line-height: 1; }
+    .vr-star { color: #f59e0b; }
+    .vr-reply { background: #f8fafc; border-left: 3px solid #2563eb; border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 14px; }
+    .vr-area { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 8px 10px; font-size: 14px; margin-top: 8px; }
+    .vr-btn { border: 0; border-radius: 10px; padding: 8px 16px; font-weight: 700; color: #fff; background: #2563eb; cursor: pointer; margin-top: 6px; }
+    .vr-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .vr-alert.error { background: #f8d7da; color: #721c24; }
+    .vr-bar { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 3px 0; }
+    .vr-bar div { flex: 1; background: #eef0f4; border-radius: 6px; height: 8px; overflow: hidden; }
+    .vr-bar i { display: block; height: 100%; background: #f59e0b; }
+</style>
+
+<div class="vr-wrap">
+    <a class="vr-back" href="{% url 'vendor_dashboard' %}">&larr; Dashboard</a>
+    {% for m in messages %}<div class="vr-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="vr-card">
+        <h4 style="margin:0 0 10px;font-weight:800;">&#11088; Your store rating <small style="font-weight:500;color:#6b7280;">(public)</small></h4>
+        {% if rating.avg %}
+        <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;">
+            <div style="text-align:center;min-width:90px;">
+                <div class="vr-score">{{ rating.avg }}</div>
+                <div class="vr-star">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                <small style="color:#6b7280;">{{ rating.count }} rating{{ rating.count|pluralize }}</small>
+            </div>
+            <div style="flex:1;min-width:200px;">
+                {% for b in bars %}<div class="vr-bar"><span style="width:22px;">{{ b.stars }}&#9733;</span><div><i style="width:{{ b.pct }}%;"></i></div><span style="width:30px;text-align:right;color:#6b7280;">{{ b.count }}</span></div>{% endfor %}
+            </div>
+        </div>
+        {% if unanswered %}<div style="margin-top:10px;font-size:13.5px;color:#92400e;">&#128172; {{ unanswered }} review{{ unanswered|pluralize }} without a reply. A polite reply builds trust.</div>{% endif %}
+        {% else %}
+        <p style="margin:0;color:#6b7280;">No ratings yet.</p>
+        {% endif %}
+    </div>
+
+    {% for rv in reviews %}
+    <div class="vr-card">
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+            <b>{{ rv.reviewer }}</b>
+            <small style="color:#6b7280;">#{{ rv.sale_order.order_no }} &middot; {{ rv.created_at|date:"d M Y" }}</small>
+        </div>
+        <div class="vr-star">{% for i in "12345" %}{% if forloop.counter <= rv.vendor_rating %}&#9733;{% else %}<span style="color:#d1d5db;">&#9733;</span>{% endif %}{% endfor %}</div>
+        {% if rv.vendor_comment %}<div style="margin-top:2px;">{{ rv.vendor_comment }}</div>{% else %}<small style="color:#9ca3af;">(No comment)</small>{% endif %}
+
+        {% if rv.vendor_reply %}<div class="vr-reply"><b>Your reply</b>{% if rv.vendor_replied_at %} <small style="color:#6b7280;">&middot; {{ rv.vendor_replied_at|date:"d M Y" }}</small>{% endif %}<div>{{ rv.vendor_reply }}</div></div>{% endif %}
+
+        {% if can_reply %}
+        <form method="post" action="{% url 'vendor_reply_review' rv.pk %}">
+            {% csrf_token %}
+            <textarea class="vr-area" name="reply" rows="2" maxlength="{{ reply_max }}" placeholder="Write a public reply...">{{ rv.vendor_reply }}</textarea>
+            <button type="submit" class="vr-btn">{% if rv.vendor_reply %}Update reply{% else %}Reply{% endif %}</button>
+            {% if rv.vendor_reply %}<small style="color:#6b7280;margin-left:8px;">Send it empty to remove.</small>{% endif %}
+        </form>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="vr-card" style="color:#6b7280;">Reviews will show here after customers rate their delivered orders.</div>
+    {% endfor %}
+</div>
+{% endblock %}

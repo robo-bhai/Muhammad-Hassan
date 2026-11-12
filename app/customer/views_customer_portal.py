@@ -687,6 +687,19 @@ def get_product_final_price(product):
 # 1. SHOP HOME
 # ============================================
 
+def _home_reco(request, search, category_id, brand_id):
+    """Personal recommendations: sirf bina search / filter wale pehle page par (ghalti par khali)."""
+    if search or category_id or brand_id or request.GET.get('page', '1') not in ('', '1'):
+        return None
+    try:
+        from .recommendations import home_rows
+        rows = home_rows(request)
+        return rows if (rows['reorder'] or rows['favourites'] or rows['trending']) else None
+    except Exception as exc:
+        logger.error(f"Home recommendations error: {exc}")
+        return None
+
+
 def _club_cards():
     """Homepage par Pro aur Loyalty ke cards. Flag band ho to khali; ghalti homepage nahi rokti."""
     cards = []
@@ -914,9 +927,14 @@ def shop_home(request):
                 VendorProfile.objects.filter(is_approved=True, vendor__in=live_vendors, pk__in=spons_ids - have)
                 .select_related('vendor'))
         order = {'open': 0, 'busy': 1, 'closed': 2}
+        from .views_reviews import store_rating_map
+        ratings = store_rating_map()
         for st in featured_stores:
             st.status = st.status_label
             st.sponsored = st.pk in spons_ids
+            _r = ratings.get(st.vendor_id)
+            st.rating_avg = _r['avg'] if _r else None
+            st.rating_count = _r['count'] if _r else 0
         featured_stores.sort(key=lambda x: (order.get(x.status, 3), 0 if x.sponsored else 1))
         if len(featured_stores) > 12:       # sponsored ko pehle rakh kar 12 tak (baqi sab pehle jaise)
             featured_stores = featured_stores[:max(12, len(spons_ids))]
@@ -932,6 +950,7 @@ def shop_home(request):
     context = {
         'banners': banners,
         'club_cards': _club_cards(),
+        'reco': _home_reco(request, search, category_id, brand_id),
         'featured_stores': featured_stores,
         'company_name': company.name if company else 'Shop',
         'company': company,

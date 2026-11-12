@@ -490,14 +490,25 @@ def vendor_dashboard(request):
         .order_by('-id')
     )
     counts = {'approved': 0, 'pending': 0, 'rejected': 0}
+    from .stock_alerts import low_stock_settings, stock_state
+    stock_cfg = low_stock_settings()
+    low_count = out_count = 0
     for p in products:
         counts[p.approval_status] = counts.get(p.approval_status, 0) + 1
+        p.stock_state = None
+        if stock_cfg['enabled'] and p.approval_status == 'approved' and p.is_active:
+            p.stock_state = stock_state(p.total_stock, stock_cfg['level'])
+            low_count += p.stock_state == 'low'
+            out_count += p.stock_state == 'out'
 
     return render(request, 'customer_portal/vendor/dashboard.html', {
         'page_title': 'Vendor Dashboard',
         'profile': profile,
         'products': products,
         'counts': counts,
+        'low_count': low_count,
+        'out_count': out_count,
+        'low_level': stock_cfg['level'],
         'earnings': vendor_earnings(vendor),
         'payouts': vendor.marketplace_payouts.all()[:10],
         'rating': vendor_rating(vendor),

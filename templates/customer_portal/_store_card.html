@@ -4,7 +4,7 @@
         <a class="sd-pimg" href="{% url 'shop_product_detail' p.pk %}">
           {% if p.image %}<img src="{{ p.image|thumb:480 }}" alt="{{ p.name }}" loading="lazy">{% else %}<div class="ph"></div>{% endif %}
           {% if p.has_discount and p.stock_int > 0 %}<span class="sd-off">-{{ p.discount_percentage|floatformat:0 }}%</span>{% endif %}
-          {% if p.stock_int <= 0 %}<span class="sd-oos-tag">Out of stock</span>{% endif %}
+          {% if p.stock_int <= 0 %}<span class="sd-oos-tag">Out of stock</span>{% elif p.deal_badge %}<span style="position:absolute;left:6px;bottom:6px;background:#ea580c;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 8px;">{{ p.deal_badge }}</span>{% endif %}
         </a>
         <div class="sd-pb">
           <a class="sd-pn" href="{% url 'shop_product_detail' p.pk %}">{{ p.name }}</a>

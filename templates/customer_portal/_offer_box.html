@@ -4,7 +4,7 @@
     {% if coupons_on %}
         {% if offer.coupon %}
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span style="font-weight:700;color:#198754;">🏷️ {% if LANG_CODE == 'ur' %}{{ offer.coupon.code }} لگا ہوا ہے (− Rs. {{ offer.discount|floatformat:0 }}){% else %}{{ offer.coupon.code }} applied (− Rs. {{ offer.discount|floatformat:0 }}){% endif %}</span>
+                <span style="font-weight:700;color:#198754;">🏷️ {% if LANG_CODE == 'ur' %}{{ offer.coupon.code }} لگا ہوا ہے (− Rs. {{ offer.coupon_discount|floatformat:0 }}){% else %}{{ offer.coupon.code }} applied (− Rs. {{ offer.coupon_discount|floatformat:0 }}){% endif %}</span>
                 <form method="post" action="{% url 'remove_coupon' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_page }}">
                     <button type="submit" style="border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:8px;padding:4px 10px;">{% if LANG_CODE == 'ur' %}✕ ہٹائیں{% else %}✕ Remove{% endif %}</button></form>
             </div>

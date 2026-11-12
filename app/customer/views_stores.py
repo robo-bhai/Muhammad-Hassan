@@ -299,8 +299,10 @@ def store_detail(request, pk):
     if search:
         products = products.filter(Q(name__icontains=search) | Q(description__icontains=search))
 
-    products = products.annotate(section_rank=section_rank)
-    page_obj = Paginator(products.order_by('section_rank', 'category__name', 'name'), 24).get_page(
+    products = products.annotate(
+        section_rank=section_rank,
+        sold_out=Case(When(total_stock__lte=0, then=Value(1)), default=Value(0), output_field=IntegerField()))
+    page_obj = Paginator(products.order_by('section_rank', 'category__name', 'sold_out', 'name'), 24).get_page(
         request.GET.get('page', 1))
 
     # Popular section: sirf pehle page par, bina search/category filter ke
@@ -317,6 +319,8 @@ def store_detail(request, pk):
     for key, item in cart.items():
         if (item.get('vendor_id') or 0) == store.vendor_id:
             cart_state[str(key)] = {'qty': int(item.get('quantity', 0) or 0), 'price': float(item.get('price', 0) or 0)}
+    from .deals import store_view as deals_store_view
+    deal_badges, store_deals = deals_store_view(store.vendor_id)
     from ..models import ProductOptionGroup
     option_pids = set(ProductOptionGroup.objects.filter(
         product__in=list(page_obj) + popular, is_active=True).values_list('product_id', flat=True))
@@ -334,6 +338,7 @@ def store_detail(request, pk):
         p.cart_qty = cart_state.get(str(p.id), {}).get('qty', 0)
         p.in_cart = p.cart_qty > 0
         p.stock_int = int(p.total_stock or 0)
+        p.deal_badge = deal_badges.get(p.id)
 
     favorites_on = shop_flag('shop_favorites_enabled')
     is_fav = favorites_on and store.pk in favorite_store_ids(request)
@@ -350,6 +355,7 @@ def store_detail(request, pk):
         'fee_range_message': fee_q['message'],
         'store_cuisines': store_cuisines,
         'reviews': store_reviews(store.vendor),
+        'store_deals': store_deals,
         'store': store,
         'status': store.status_label,
         'products': page_obj,

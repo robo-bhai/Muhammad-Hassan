@@ -176,6 +176,13 @@
   </div>
 
   {% if products %}
+    {% if store_deals %}
+    <div class="sd-sec">🎁 Deals<small>{% if store_deals|length == 1 %}{% t "{} deal" store_deals|length %}{% else %}{% t "{} deals" store_deals|length %}{% endif %}</small></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+      {% for d in store_deals %}<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:9px 12px;"><b style="color:#c2410c;">{{ d.text }}</b> &middot; {{ d.title }}<div style="font-size:12.5px;color:#6b7280;">{{ d.items }}</div></div>{% endfor %}
+    </div>
+    {% endif %}
+
     {% if popular %}
     <div class="sd-sec">⭐ Popular<small>{% if popular|length == 1 %}{% t "{} item" popular|length %}{% else %}{% t "{} items" popular|length %}{% endif %}</small></div>
     <div class="sd-grid">
@@ -223,11 +230,12 @@
       </div>
     </div>
     {% for rv in reviews.latest %}
-      {% if rv.comment or forloop.first %}
+      {% if rv.comment or rv.reply or forloop.first %}
       <div style="border-top:1px solid #f0f0f5;margin-top:12px;padding-top:10px;">
         <div style="display:flex;justify-content:space-between;"><b>{{ rv.name }}</b><small style="color:#6b7280;">{{ rv.date|date:"d M Y" }}</small></div>
         <div style="color:#f59e0b;">{% for i in "12345" %}{% if forloop.counter <= rv.stars %}★{% else %}<span style="color:#d1d5db;">★</span>{% endif %}{% endfor %}</div>
         {% if rv.comment %}<div style="margin-top:2px;">{{ rv.comment }}</div>{% endif %}
+        {% if rv.reply %}<div style="margin-top:8px;background:#f8fafc;border-left:3px solid #2563eb;border-radius:8px;padding:7px 11px;font-size:14px;"><b style="font-size:13px;">{{ store.business_name }}</b> <small style="color:#6b7280;">&middot; {% t "Reply from the store" %}</small><div>{{ rv.reply }}</div></div>{% endif %}
       </div>
       {% endif %}
     {% endfor %}

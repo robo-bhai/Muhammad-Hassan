@@ -375,3 +375,67 @@ class StoreSponsorship(models.Model):
         self.status = 'active'
         self.save()
 
+
+
+class StoreDeal(models.Model):
+    """Vendor ki apni deal: Buy 1 Get 1, Combo, ya Flash sale. Cart / checkout mein discount ki tarah lagti hai;
+    discount vendor ke hisaab se katta hai (vendor ki payable mein se)."""
+    KIND_CHOICES = [
+        ('bogo', 'Buy 1 Get 1 Free'),
+        ('combo', 'Combo deal'),
+        ('flash', 'Flash sale'),
+    ]
+
+    profile = models.ForeignKey('VendorProfile', on_delete=models.CASCADE, related_name='deals')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    title = models.CharField(max_length=80)
+    percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                  help_text="Flash sale: kitne percent discount")
+    combo_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                                      help_text="Combo: poore set ki qeemat")
+    starts_at = models.DateTimeField(default=timezone.now)
+    ends_at = models.DateTimeField(null=True, blank=True, help_text="Khali = jab tak vendor khud band na kare")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Store Deal'
+        verbose_name_plural = 'Store Deals'
+
+    def __str__(self):
+        return f"{self.get_kind_display()}: {self.title}"
+
+    def is_running(self, now=None):
+        now = now or timezone.now()
+        return bool(self.is_active and self.starts_at <= now and (self.ends_at is None or self.ends_at >= now))
+
+
+class StoreDealItem(models.Model):
+    """Deal mein shamil product (aur combo mein uski miqdar)."""
+    deal = models.ForeignKey('StoreDeal', on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='deal_items')
+    qty = models.PositiveSmallIntegerField(default=1)
+
+    class Meta:
+        verbose_name = 'Store Deal Item'
+        verbose_name_plural = 'Store Deal Items'
+
+    def __str__(self):
+        return f"{self.qty} x {self.product_id}"
+
+
+class OrderDeal(models.Model):
+    """Order par kaun si deal lagi aur kitna discount mila (vendor ki payable se kati hui raqam ka record)."""
+    order = models.ForeignKey('SaleOrder', on_delete=models.CASCADE, related_name='deals_applied')
+    deal = models.ForeignKey('StoreDeal', on_delete=models.SET_NULL, null=True, blank=True, related_name='uses')
+    vendor = models.ForeignKey('Vendor', on_delete=models.SET_NULL, null=True, blank=True, related_name='deal_discounts')
+    title = models.CharField(max_length=80)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        verbose_name = 'Order Deal'
+        verbose_name_plural = 'Order Deals'
+
+    def __str__(self):
+        return f"{self.order_id}: {self.title} -{self.amount}"

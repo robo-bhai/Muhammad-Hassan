@@ -4,11 +4,13 @@ import logging
 from django.contrib import messages
 from django.db import IntegrityError, transaction
 from django.db.models import Avg, Count
-from django.shortcuts import get_object_or_404, redirect
-from ..shop_flags import flag_required
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from ..shop_flags import flag_required, shop_flag
 from django.views.decorators.http import require_POST
 
-from ..decorators import customer_login_required
+from ..decorators import customer_login_required, vendor_login_required
 from ..models import DeliveryInfo, OrderReview, SaleOrder, VendorProfile
 from . import store_orders
 
@@ -119,5 +121,66 @@ def store_reviews(vendor, limit=10):
     latest = []
     for rv in qs.select_related('sale_order__customer')[:limit]:
         latest.append({'stars': rv.vendor_rating, 'comment': rv.vendor_comment,
-                       'name': _reviewer_name(rv.sale_order), 'date': rv.created_at})
+                       'name': _reviewer_name(rv.sale_order), 'date': rv.created_at,
+                       'reply': rv.vendor_reply, 'reply_date': rv.vendor_replied_at})
     return {'summary': summary, 'bars': bars, 'latest': latest}
+
+
+# ============================================================
+# Vendor: reviews dekhna aur jawab dena (public reply)
+# ============================================================
+
+REPLY_MAX = 300
+
+
+@vendor_login_required
+def vendor_reviews(request):
+    """Store ke saare reviews + har review par jawab dene ka form."""
+    profile = request.user.vendor_profile
+    vendor = profile.vendor
+    qs = (OrderReview.objects.filter(vendor=vendor, vendor_rating__isnull=False)
+          .select_related('sale_order__customer'))
+    reviews = list(qs[:100])
+    for rv in reviews:
+        rv.reviewer = _reviewer_name(rv.sale_order)
+    return render(request, 'customer_portal/vendor/reviews.html', {
+        'profile': profile,
+        'rating': vendor_rating(vendor),
+        'bars': store_reviews(vendor, limit=0)['bars'],
+        'reviews': reviews,
+        'unanswered': sum(1 for r in reviews if not r.vendor_reply),
+        'can_reply': shop_flag('vendor_can_reply_reviews'),
+        'reply_max': REPLY_MAX,
+    })
+
+
+@flag_required('vendor_can_reply_reviews', redirect_to='vendor_dashboard')
+@vendor_login_required
+@require_POST
+def vendor_reply_review(request, review_id):
+    """Vendor apne store ke review par ek public jawab likhta ya badalta hai (khali bhejne par hata deta hai)."""
+    profile = request.user.vendor_profile
+    review = get_object_or_404(OrderReview, id=review_id, vendor=profile.vendor, vendor_rating__isnull=False)
+    text = ' '.join(request.POST.get('reply', '').split())[:REPLY_MAX]
+    first_reply = not review.vendor_reply
+
+    if not text:
+        if review.vendor_reply:
+            review.vendor_reply, review.vendor_replied_at = '', None
+            review.save(update_fields=['vendor_reply', 'vendor_replied_at'])
+            messages.info(request, 'Your reply was removed.')
+        return redirect('vendor_reviews')
+
+    review.vendor_reply = text
+    review.vendor_replied_at = timezone.now()
+    review.save(update_fields=['vendor_reply', 'vendor_replied_at'])
+
+    if first_reply:     # sirf pehle jawab par customer ko khabar (badalne par dobara nahi)
+        try:
+            user = store_orders._customer_user(review.sale_order)
+            store_orders._notify(user, f'💬 {profile.business_name} replied to your review',
+                                 text[:200], reverse('order_detail_customer', args=[review.sale_order_id]), 'info')
+        except Exception as exc:
+            logger.error("Review reply notify error: %s", exc)
+    messages.success(request, '✅ Reply saved. Customers can see it on your store page.')
+    return redirect('vendor_reviews')

@@ -237,17 +237,25 @@ def prepare(cart, cart_data, customer, session, lock=False):
     out = {
         'subtotal': subtotal, 'delivery_original': delivery, 'delivery': delivery,
         'coupon': None, 'coupon_code': '', 'coupon_error': None, 'discount': ZERO,
+        'coupon_discount': ZERO, 'deals': [], 'deals_discount': ZERO,
         'pro_enabled': False, 'pro_active': False, 'pro_waived': ZERO, 'pro_hint': '',
         'wallet_on': False, 'wallet_balance': ZERO, 'use_wallet': False, 'wallet_used': ZERO,
     }
 
-    # ---- coupon
+    # ---- vendor ki deals (Buy 1 Get 1 / Combo / Flash): coupon se pehle
+    vendor_id = store_orders.cart_store_id(cart) or 0
+    from . import deals as deals_logic
+    found = deals_logic.compute(cart, vendor_id)
+    out['deals'], out['deals_discount'] = found['lines'], min(found['total'], subtotal)
+
+    # ---- coupon (deals ke baad bache hue subtotal par)
     code = (session.get(coupon_logic.SESSION_KEY) or '').strip().upper()
     out['coupon_code'] = code
     if code and shop_flag('shop_coupons_enabled'):
-        vendor_id = store_orders.cart_store_id(cart) or 0
-        coupon, discount, error = coupon_logic.validate(code, customer, vendor_id, subtotal, lock=lock)
-        out.update({'coupon': coupon, 'discount': discount, 'coupon_error': error})
+        coupon, discount, error = coupon_logic.validate(
+            code, customer, vendor_id, max(subtotal - out['deals_discount'], ZERO), lock=lock)
+        out.update({'coupon': coupon, 'coupon_discount': discount, 'coupon_error': error})
+    out['discount'] = out['coupon_discount'] + out['deals_discount']
 
     # ---- Pro: delivery maaf
     pro = pro_settings()
@@ -287,8 +295,11 @@ def prepare(cart, cart_data, customer, session, lock=False):
 def finalize(order, summary, customer, session):
     """Order ban gaya: coupon ka istemal likho, wallet se paisa kato, session saaf karo."""
     from ..models import WalletTransaction
-    if summary.get('coupon') and summary['discount'] > 0:
-        coupon_logic.record_redemption(order, summary['coupon'], customer, summary['discount'])
+    if summary.get('coupon') and summary.get('coupon_discount', ZERO) > 0:
+        coupon_logic.record_redemption(order, summary['coupon'], customer, summary['coupon_discount'])
+    if summary.get('deals'):
+        from . import deals as deals_logic
+        deals_logic.record(order, summary)
     if summary.get('wallet_used', ZERO) > 0:
         WalletTransaction.objects.create(
             customer=customer, amount=-summary['wallet_used'], kind='spend', order=order,

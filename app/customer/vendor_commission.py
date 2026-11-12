@@ -127,11 +127,17 @@ def vendor_earnings(vendor):
         t=Sum(ExpressionWrapper(
             F('qty') * F('options_extra_share'), output_field=DecimalField(max_digits=18, decimal_places=2))))['t']
     payable = (Decimal(pay['payable'] or 0) + Decimal(extras or 0)).quantize(CENT, ROUND_HALF_UP)
+    # Vendor ki apni deals (Buy 1 Get 1 / Combo / Flash) ka discount vendor ke hisaab se: sales aur payable dono se kam
+    from .deals import vendor_deals_total
+    deals = vendor_deals_total(vendor)
+    sales -= deals
+    payable -= deals
     from app.models import VendorPayout
     paid = Decimal(VendorPayout.objects.filter(vendor=vendor).aggregate(t=Sum('amount'))['t'] or 0)
     paid = paid.quantize(CENT, ROUND_HALF_UP)
     return {
         'units': agg['units'] or 0,
+        'deals': deals,
         'sales': sales,
         'commission': (sales - payable).quantize(CENT, ROUND_HALF_UP),
         'payable': payable,

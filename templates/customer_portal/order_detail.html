@@ -140,6 +140,7 @@
     <div class="card border-0 shadow-sm mb-4"><div class="card-body">
       <h6 class="mb-2">⭐ {% if LANG_CODE == 'ur' %}آپ کی ریٹنگ{% else %}Your rating{% endif %}</h6>
       {% if review.vendor_rating %}<div>🏪 {{ store_name }}: <b style="color:#f59e0b">{{ review.vendor_rating }}/5 ★</b>{% if review.vendor_comment %} — {{ review.vendor_comment }}{% endif %}</div>{% endif %}
+      {% if review.vendor_reply %}<div style="margin:6px 0 4px;background:#f8fafc;border-left:3px solid #2563eb;border-radius:8px;padding:7px 11px;font-size:14px;">💬 <b>{{ store_name }}</b> {% t "replied:" %} {{ review.vendor_reply }}</div>{% endif %}
       {% if review.rider_rating %}<div>🏍️ {% t "Rider:" %} <b style="color:#f59e0b">{{ review.rider_rating }}/5 ★</b>{% if review.rider_comment %} — {{ review.rider_comment }}{% endif %}</div>{% endif %}
     </div></div>
     {% endif %}

@@ -17,6 +17,7 @@ from app.customer import views_rider_password_reset
 from app.customer import views_live_tracking
 from app.customer import views_dispatch
 from app.customer import views_reviews
+from app.customer import views_vendor_deals
 from app.customer import views_disputes
 from app.customer import views_dispute_responses
 from app.customer import views_vendor_payouts
@@ -1166,6 +1167,8 @@ urlpatterns = [
      path('shop/vendor/offers/', views_vendor_tools.vendor_offers, name='vendor_offers'),
      path('shop/vendor/busy/', views_vendor_tools.vendor_pause, name='vendor_pause'),
      path('shop/vendor/promote/', views_vendor_tools.vendor_promote, name='vendor_promote'),
+     path('shop/vendor/deals/', views_vendor_deals.vendor_deals, name='vendor_deals'),
+     path('shop/vendor/deals/<int:pk>/end/', views_vendor_deals.vendor_deal_end, name='vendor_deal_end'),
      path('shop/coupon/apply/', views_coupons.apply_coupon, name='apply_coupon'),
      path('shop/coupon/remove/', views_coupons.remove_coupon, name='remove_coupon'),
      path('shop/wallet/', views_offers.wallet_page, name='wallet_page'),
@@ -1220,6 +1223,8 @@ urlpatterns = [
      path('shop/order/<int:order_id>/', views_customer_portal.order_detail_customer, name='order_detail_customer'),
      path('shop/order/<int:order_id>/cancel/', views_customer_portal.cancel_order_customer, name='cancel_order_customer'),
      path('shop/order/<int:order_id>/rate/', views_reviews.rate_order, name='rate_order'),
+     path('shop/vendor/reviews/', views_reviews.vendor_reviews, name='vendor_reviews'),
+     path('shop/vendor/reviews/<int:review_id>/reply/', views_reviews.vendor_reply_review, name='vendor_reply_review'),
      path('shop/order/<int:order_id>/dispute/', views_disputes.dispute_create, name='dispute_create'),
      path('shop/vendor/payouts/', views_vendor_payouts.vendor_payouts, name='vendor_payouts'),
      path('shop/vendor/payouts/<int:pk>/cancel/', views_vendor_payouts.vendor_payout_cancel, name='vendor_payout_cancel'),

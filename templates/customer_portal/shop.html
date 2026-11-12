@@ -1266,6 +1266,7 @@
                 {% if st.sponsored %}<span class="store-spons">Sponsored</span>{% endif %}
                 <div class="store-name">{{ st.business_name }}</div>
                 <div class="store-meta">
+                    {% if st.rating_avg %}<span style="color:#b45309;"><i class="bi bi-star-fill" style="color:#f59e0b;"></i> {{ st.rating_avg }} <small>({{ st.rating_count }})</small></span>{% endif %}
                     <span><i class="bi bi-clock"></i> {{ st.delivery_time_min }}-{{ st.delivery_time_max }} min</span>
                     <span><i class="bi bi-bicycle"></i> {% if st.delivery_fee > 0 %}Rs {{ st.delivery_fee|floatformat:0 }}{% else %}Free{% endif %}</span>
                 </div>
@@ -1274,6 +1275,59 @@
         {% endfor %}
         <a href="{% url 'store_list' %}" class="store-card store-more"><i class="bi bi-arrow-right-circle-fill"></i><span>See all stores</span></a>
     </div>
+    {% endif %}
+
+    <!-- ========== PERSONAL RECOMMENDATIONS ========== -->
+    {% if reco %}
+    <style>
+        .reco-track { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 12px; scroll-snap-type: x proximity; scrollbar-width: none; }
+        .reco-track::-webkit-scrollbar { display: none; }
+        .reco-card { flex: 0 0 150px; scroll-snap-align: start; background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.07); overflow: hidden; text-decoration: none; color: inherit; display: block; }
+        .reco-img { height: 100px; background: #f1f5f9 center/cover no-repeat; }
+        .reco-body { padding: 8px 10px 10px; }
+        .reco-name { font-weight: 700; font-size: .86rem; line-height: 1.25; max-height: 2.5em; overflow: hidden; }
+        .reco-sub { font-size: .72rem; color: #64748b; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .reco-price { font-weight: 800; font-size: .9rem; margin-top: 4px; color: #1e3a8a; }
+        .reco-again { flex: 0 0 230px; scroll-snap-align: start; background: linear-gradient(135deg,#eff6ff,#f5f3ff); border: 1px solid #dbeafe; border-radius: 16px; padding: 12px 14px; }
+        .reco-again b { display: block; font-size: .95rem; }
+        .reco-again .reco-sub { white-space: normal; }
+        .reco-again button { margin-top: 8px; width: 100%; border: 0; border-radius: 10px; padding: 8px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#2563eb,#7c3aed); }
+    </style>
+    {% if reco.reorder %}
+    <div class="row-head"><h2>Order again</h2></div>
+    <div class="reco-track">
+        {% for o in reco.reorder %}
+        <div class="reco-again">
+            <b>{{ o.store_name }}</b>
+            <div class="reco-sub">{{ o.summary }}</div>
+            <div class="reco-sub">Rs {{ o.total|floatformat:0 }} &middot; {{ o.date|date:"d M" }}</div>
+            <form method="post" action="{% url 'reorder' o.order_id %}">{% csrf_token %}<button type="submit"><i class="bi bi-arrow-repeat"></i> Reorder</button></form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if reco.favourites %}
+    <div class="row-head"><h2>Your favourites</h2></div>
+    <div class="reco-track">
+        {% for c in reco.favourites %}
+        <a class="reco-card" href="{% url 'shop_product_detail' c.id %}">
+            <div class="reco-img"{% if c.image %} style="background-image:url('{{ c.image|thumb:320 }}')"{% endif %}></div>
+            <div class="reco-body"><div class="reco-name">{{ c.name }}</div><div class="reco-sub">{{ c.store_name }}</div><div class="reco-price">Rs {{ c.price|floatformat:0 }}</div></div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if reco.trending %}
+    <div class="row-head"><h2>Trending{% if reco.area %} in {{ reco.area }}{% else %} near you{% endif %}</h2></div>
+    <div class="reco-track">
+        {% for c in reco.trending %}
+        <a class="reco-card" href="{% url 'shop_product_detail' c.id %}">
+            <div class="reco-img"{% if c.image %} style="background-image:url('{{ c.image|thumb:320 }}')"{% endif %}></div>
+            <div class="reco-body"><div class="reco-name">{{ c.name }}</div><div class="reco-sub">{{ c.store_name }}</div><div class="reco-price">Rs {{ c.price|floatformat:0 }}</div></div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% endif %}
 
     <!-- ========== DEALS ROW ========== -->

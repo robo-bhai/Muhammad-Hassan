@@ -463,6 +463,28 @@ class ProMembershipAdmin(admin.ModelAdmin):
         self.message_user(request, f'{n} membership cancel ho gayi.', messages.WARNING)
 
 
+class StoreDealItemInline(admin.TabularInline):
+    model = StoreDealItem
+    extra = 0
+    raw_id_fields = ('product',)
+
+
+@admin.register(StoreDeal, site=admin.site)
+class StoreDealAdmin(admin.ModelAdmin):
+    list_display = ('title', 'profile', 'kind', 'percent', 'combo_price', 'starts_at', 'ends_at', 'is_active')
+    list_filter = ('kind', 'is_active')
+    search_fields = ('title', 'profile__business_name')
+    raw_id_fields = ('profile',)
+    inlines = [StoreDealItemInline]
+
+
+@admin.register(OrderDeal, site=admin.site)
+class OrderDealAdmin(admin.ModelAdmin):
+    list_display = ('order', 'title', 'vendor', 'amount')
+    search_fields = ('title', 'order__order_no')
+    raw_id_fields = ('order', 'deal', 'vendor')
+
+
 @admin.register(StoreSponsorship, site=admin.site)
 class StoreSponsorshipAdmin(admin.ModelAdmin):
     list_display = ('profile', 'status', 'requested_at', 'starts_on', 'ends_on', 'amount')
