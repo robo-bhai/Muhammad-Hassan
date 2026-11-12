@@ -101,6 +101,12 @@ html[dir="rtl"] .dropdown-menu { text-align: right; }
   var pending = {}, pendingN = 0, sentKey = 'erp_i18n_sent', sent = {};
   try { sent = JSON.parse(sessionStorage.getItem(sentKey) || '{}'); } catch (e) { sent = {}; }
 
+  // an English full stop / question mark after Urdu text becomes the Urdu one (۔ and ؟)
+  function urduStop(t) {
+    if (L !== 'ur' || !t) return t;
+    return t.replace(/^(\s*)\.(\s*)$/, '$1\u06d4$2').replace(/^(\s*)\?(\s*)$/, '$1\u061f$2');
+  }
+
   function lookup(s) {
     if (!s) return null;
     var t = s.replace(/\s+/g, ' ').trim();
@@ -111,7 +117,7 @@ html[dir="rtl"] .dropdown-menu { text-align: right; }
     var v = D[(core + trail).toLowerCase()];
     if (v) return {lead: lead, out: v, trail: ''};
     v = D[core.toLowerCase()];
-    if (v) return {lead: lead, out: v, trail: trail};
+    if (v) return {lead: lead, out: v, trail: urduStop(trail)};
     return null;
   }
 

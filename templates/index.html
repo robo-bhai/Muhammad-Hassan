@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static portal_i18n %}
 
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
@@ -195,6 +195,53 @@
     .dp-shift .grid b { display: block; font-size: 1rem; color: var(--text-primary); }
     .dp-shift .grid span { font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
     @media (max-width: 900px) { .dp-row.c-3 { grid-template-columns: minmax(0, 1fr); } }
+    /* ---------- Urdu (Nastaleeq) + RTL fixes for the dashboard ---------- */
+    /* letter-spacing / uppercase break joined Urdu letters; Jameel Noori has one weight only */
+    html[lang="ur"] .dp .lbl, html[lang="ur"] .dp .l, html[lang="ur"] .dp-sub-title, html[lang="ur"] .dp-role, html[lang="ur"] .dp-table th,
+    html[lang="ur"] .dp-shift .grid span, html[lang="ur"] .dp-card > .hd h2, html[lang="ur"] .dp-kpi .val, html[lang="ur"] .dp-stat .v,
+    html[lang="ur"] .dp-hero h1 { letter-spacing: 0 !important; text-transform: none !important; }
+    html[lang="ur"] .dp-hero h1, html[lang="ur"] .dp-card > .hd h2, html[lang="ur"] .dp-kpi .lbl, html[lang="ur"] .dp-stat .l, html[lang="ur"] .dp-sub-title,
+    html[lang="ur"] .dp-role, html[lang="ur"] .dp-chip, html[lang="ur"] .dp-pill, html[lang="ur"] .dp-link, html[lang="ur"] .dp-act, html[lang="ur"] .dp-switch button,
+    html[lang="ur"] .dp-list .nm, html[lang="ur"] .dp-top .line b, html[lang="ur"] .dp-table th, html[lang="ur"] .dp-table a,
+    html[lang="ur"] .dp-shift .grid span, html[lang="ur"] .dp-note strong { font-weight: 400; }
+    /* Nastaleeq is tall and the English sizes (.67-.75rem) are too small for it */
+    html[lang="ur"] .dp-hero h1 { font-size: 1.55rem; line-height: 2; }
+    html[lang="ur"] .dp-hero p { font-size: 1rem; line-height: 2; }
+    html[lang="ur"] .dp-role { font-size: .95rem; line-height: 1.9; padding: 3px 14px 0; }
+    html[lang="ur"] .dp-upd { font-size: .92rem; }
+    html[lang="ur"] .dp-kpi .lbl { font-size: 1rem; line-height: 1.9; }
+    html[lang="ur"] .dp-kpi .sub { font-size: .92rem; line-height: 1.9; }
+    html[lang="ur"] .dp-chip { font-size: .88rem; line-height: 1.8; padding: 2px 10px 0; }
+    html[lang="ur"] .dp-card > .hd { padding-top: 10px; padding-bottom: 8px; }
+    html[lang="ur"] .dp-card > .hd h2 { font-size: 1.2rem; line-height: 1.9; }
+    html[lang="ur"] .dp-link, html[lang="ur"] .dp-pill, html[lang="ur"] .dp-switch button { font-size: .9rem; line-height: 1.9; padding-top: 3px; padding-bottom: 0; }
+    html[lang="ur"] .dp-act { font-size: 1rem; line-height: 1.9; padding-top: 12px; padding-bottom: 8px; }
+    html[lang="ur"] .dp-act span { overflow: visible; white-space: normal; }
+    html[lang="ur"] .dp-stat .l { font-size: .95rem; line-height: 1.9; }
+    html[lang="ur"] .dp-sub-title { font-size: 1.05rem; line-height: 1.9; }
+    html[lang="ur"] .dp-list li, html[lang="ur"] .dp-top .line, html[lang="ur"] .dp-legend li, html[lang="ur"] .dp-meter .top, html[lang="ur"] .dp-note { font-size: 1rem; line-height: 1.95; }
+    html[lang="ur"] .dp-list .mt, html[lang="ur"] .dp-top .mt, html[lang="ur"] .dp-table .mt, html[lang="ur"] .dp-shift .mt, html[lang="ur"] .dp-total { font-size: .9rem; line-height: 1.9; }
+    html[lang="ur"] .dp-table th { font-size: .95rem; line-height: 1.9; }
+    html[lang="ur"] .dp-table td { font-size: .98rem; line-height: 1.9; }
+    html[lang="ur"] .dp-shift .grid span { font-size: .9rem; }
+    html[lang="ur"] .dp-empty { font-size: 1rem; line-height: 2; }
+    html[lang="ur"] .dp-bar .day, html[lang="ur"] .dp-bar .amt { font-size: .8rem; }
+    html[lang="ur"] .dp-list .nm, html[lang="ur"] .dp-top .line b { overflow: visible; text-overflow: clip; white-space: normal; }
+    /* mirror left/right details */
+    html[dir="rtl"] .dp-kpi.alert-on { border-left: 1px solid var(--border-color); border-right: 4px solid #ef4444; }
+    html[dir="rtl"] .dp-date { text-align: left; }
+    html[dir="rtl"] .dp-upd { margin-left: 0; margin-right: 6px; }
+    html[dir="rtl"] .dp-legend .dot { margin-right: 0; margin-left: 8px; }
+    html[dir="rtl"] .dp-legend small { margin-left: 0; margin-right: 4px; }
+    html[dir="rtl"] .dp-table th { text-align: right; }
+    html[dir="rtl"] .dp-table th.r, html[dir="rtl"] .dp-table .r { text-align: left; }
+    html[dir="rtl"] .dp-stack { direction: ltr; }
+    html[dir="rtl"] .dp-chart { direction: ltr; }          /* days run oldest -> newest, left to right, as in English */
+    html[dir="rtl"] .dp-meter .track, html[dir="rtl"] .dp-top .track { direction: ltr; }
+    /* money / numbers stay in one piece (Rs. 12,500) and are not flipped */
+    html[dir="rtl"] .dp-kpi .val, html[dir="rtl"] .dp-stat .v, html[dir="rtl"] .dp-shift .big, html[dir="rtl"] .dp-top .line span,
+    html[dir="rtl"] .dp-legend b, html[dir="rtl"] .dp-total b, html[dir="rtl"] .dp-table .r { unicode-bidi: isolate; font-variant-numeric: lining-nums; }
+    html[dir="rtl"] .dp-act i, html[dir="rtl"] .dp-card > .hd h2 i { margin: 0; }
 </style>
 {% endblock %}
 
@@ -216,13 +263,13 @@
             <div class="dp-role"><i class="bi bi-person-circle"></i>
                 {% if is_superuser %}System Administrator{% elif is_ceo %}Chief Executive Officer{% elif is_md %}Managing Director{% elif is_cto %}Chief Technical Officer{% else %}{{ company_name|default:"Business" }}{% endif %}
             </div>
-            <h1>{% if dp_hour|add:0 < 12 %}Good morning{% elif dp_hour|add:0 < 17 %}Good afternoon{% else %}Good evening{% endif %}, {{ user.get_full_name|default:user.username|title }}</h1>
-            <p>Here is how your business is doing today. <span class="dp-upd">Updated {{ dash_updated|default:"just now" }} &middot; <a href="?refresh=1">Refresh</a></span></p>
+            <h1>{% if dp_hour|add:0 < 12 %}{% t "Good morning, {}" user.get_full_name|default:user.username|title %}{% elif dp_hour|add:0 < 17 %}{% t "Good afternoon, {}" user.get_full_name|default:user.username|title %}{% else %}{% t "Good evening, {}" user.get_full_name|default:user.username|title %}{% endif %}</h1>
+            <p>Here is how your business is doing today. <span class="dp-upd">{% if dash_updated %}{% t "Updated {}" dash_updated %}{% else %}{% t "Updated just now" %}{% endif %} &middot; <a href="?refresh=1">Refresh</a></span></p>
         </div>
     </div>
     <div class="right">
         <button onclick="startDashboardVoice()" id="dashVoiceBtn" title="Voice command (Ctrl+Space)" aria-label="Voice command"><i class="bi bi-mic-fill"></i></button>
-        <div class="dp-date"><b>{% now "d M" %}</b><span>{% now "Y | l" %}</span></div>
+        <div class="dp-date"><b>{% now "d" %} <bdi>{% now "M" %}</bdi></b><span>{% now "Y" %} | <bdi>{% now "l" %}</bdi></span></div>
     </div>
 </section>
 
@@ -247,9 +294,9 @@
         <div class="body">
             <div class="lbl">Today's sales</div>
             <div class="val">Rs. {{ today_sales|floatformat:"0g"|default:"0" }}</div>
-            <div class="sub">{{ today_sales_count|default:"0" }} bills
-                {% if dash_returns_today %}<span class="dp-chip down">Returns Rs. {{ dash_returns_today|floatformat:"0g" }}</span>{% endif %}
-                {% if dash_delta is not None %}<span class="dp-chip {% if dash_delta > 0 %}up{% elif dash_delta < 0 %}down{% else %}flat{% endif %}">{% if dash_delta > 0 %}+{% endif %}{{ dash_delta }}% vs yesterday</span>{% endif %}
+            <div class="sub">{% t "{} bills" today_sales_count|default:"0" %}
+                {% if dash_returns_today %}<span class="dp-chip down">{% t "Returns Rs. {}" dash_returns_today|floatformat:"0g" %}</span>{% endif %}
+                {% if dash_delta is not None %}<span class="dp-chip {% if dash_delta > 0 %}up{% elif dash_delta < 0 %}down{% else %}flat{% endif %}"><bdi dir="ltr">{% if dash_delta > 0 %}+{% endif %}{{ dash_delta }}%</bdi> {% t "vs yesterday" %}</span>{% endif %}
             </div>
         </div>
     </a>
@@ -258,7 +305,7 @@
         <div class="body">
             <div class="lbl">Today's purchases</div>
             <div class="val">Rs. {{ today_purchases_amount|floatformat:"0g"|default:"0" }}</div>
-            <div class="sub">{{ today_purchase_count|default:"0" }} bills</div>
+            <div class="sub">{% t "{} bills" today_purchase_count|default:"0" %}</div>
         </div>
     </a>
     <div class="dp-kpi">
@@ -299,7 +346,7 @@
         <div class="body">
             <div class="lbl">Cash balance</div>
             <div class="val">{% if dash_cash is not None %}Rs. {{ dash_cash|floatformat:"0g" }}{% else %}-{% endif %}</div>
-            <div class="sub">Stock value Rs. {{ total_stock_value|floatformat:"0g"|default:"0" }}</div>
+            <div class="sub">{% t "Stock value Rs. {}" total_stock_value|floatformat:"0g"|default:"0" %}</div>
         </div>
     </div>
     {% else %}
@@ -396,7 +443,7 @@
                     <div><b>{{ dash_shift.bills }}</b><span>Bills</span></div>
                     <div><b>Rs. {{ dash_shift.sales|floatformat:"0g" }}</b><span>Sales</span></div>
                 </div>
-                <div class="mt" style="margin-top:10px;">#{{ dash_shift.id }} &middot; {{ dash_shift.store }} &middot; since {{ dash_shift.since }}</div>
+                <div class="mt" style="margin-top:10px;">#{{ dash_shift.id }} &middot; {{ dash_shift.store }} &middot; {% t "since {}" dash_shift.since %}</div>
             </div>
             <div class="dp-actions" style="margin-top:12px;">
                 <a href="{% url 'pos_screen' %}" class="dp-act"><i class="bi bi-lightning-charge"></i><span>POS</span></a>
@@ -519,11 +566,11 @@
         </div>
         <div class="dp-sub-title">System resources</div>
         <div class="dp-meter">
-            <div class="top"><span><i class="bi bi-device-hdd"></i> Disk usage ({{ cto_stats.disk_usage_percent|default:0 }}%)</span><span>{{ cto_stats.disk_used_gb|default:0 }} GB / {{ cto_stats.disk_total_gb|default:0 }} GB</span></div>
+            <div class="top"><span><i class="bi bi-device-hdd"></i> {% t "Disk usage ({}%)" cto_stats.disk_usage_percent|default:0 %}</span><span>{{ cto_stats.disk_used_gb|default:0 }} GB / {{ cto_stats.disk_total_gb|default:0 }} GB</span></div>
             <div class="track"><div class="fill" style="width: {{ cto_stats.disk_usage_percent|default:0 }}%; background: {% if cto_stats.disk_usage_percent > 85 %}#ef4444{% elif cto_stats.disk_usage_percent > 70 %}#f59e0b{% else %}#10b981{% endif %};"></div></div>
         </div>
         <div class="dp-meter">
-            <div class="top"><span><i class="bi bi-memory"></i> Memory usage ({{ cto_stats.memory_usage_percent|default:0 }}%)</span><span>{{ cto_stats.memory_used_gb|default:0 }} GB / {{ cto_stats.memory_total_gb|default:0 }} GB</span></div>
+            <div class="top"><span><i class="bi bi-memory"></i> {% t "Memory usage ({}%)" cto_stats.memory_usage_percent|default:0 %}</span><span>{{ cto_stats.memory_used_gb|default:0 }} GB / {{ cto_stats.memory_total_gb|default:0 }} GB</span></div>
             <div class="track"><div class="fill" style="width: {{ cto_stats.memory_usage_percent|default:0 }}%; background: {% if cto_stats.memory_usage_percent > 85 %}#ef4444{% elif cto_stats.memory_usage_percent > 70 %}#f59e0b{% else %}#10b981{% endif %};"></div></div>
         </div>
         {% if cto_stats.latest_backup_time %}
@@ -558,9 +605,9 @@
                 <li>
                     <div style="min-width:0;">
                         <div class="nm">{{ item.product.name|truncatechars:34 }}</div>
-                        <div class="mt">{{ item.warehouse.name }} &middot; minimum {{ item.product.low_stock_threshold|floatformat:"-3" }}</div>
+                        <div class="mt">{{ item.warehouse.name }} &middot; {% t "minimum {}" item.product.low_stock_threshold|floatformat:"-3" %}</div>
                     </div>
-                    <span class="dp-pill {% if item.stock <= 0 %}red{% else %}amber{% endif %}">{{ item.stock|floatformat:"-3" }}{% if item.product.unit %} {{ item.product.unit.name }}{% endif %}{% if item.stock <= 0 %} &middot; out{% endif %}</span>
+                    <span class="dp-pill {% if item.stock <= 0 %}red{% else %}amber{% endif %}">{{ item.stock|floatformat:"-3" }}{% if item.product.unit %} {{ item.product.unit.name }}{% endif %}{% if item.stock <= 0 %} &middot; {% t "out" %}{% endif %}</span>
                 </li>
                 {% endfor %}
             </ul>
@@ -599,7 +646,7 @@
                 <div class="dp-top">
                     <div class="line"><b>{{ product.product__name|truncatechars:30 }}</b><span>Rs. {{ product.total_sales|floatformat:"0g" }}</span></div>
                     <div class="track"><i style="width: {{ product.sales_percent|default:0 }}%"></i></div>
-                    <div class="mt">{{ product.total_qty|floatformat:"-3" }} sold</div>
+                    <div class="mt">{% t "{} sold" product.total_qty|floatformat:"-3" %}</div>
                 </div>
                 {% endfor %}
             {% else %}
