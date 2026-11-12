@@ -284,6 +284,18 @@ def auto_place_order(request, customer):
 # 1. CUSTOMER REGISTER
 # ============================================
 
+def referral_landing(request, code):
+    """Dost ka link /shop/r/<code>/: code session me rakho, phir register page par bhejo.
+    Referral band ho ya customer pehle se login ho to seedha shop_home."""
+    from . import referrals
+    if not referrals.enabled():
+        return redirect('shop_home')
+    if request.user.is_authenticated and hasattr(request.user, 'customer_profile'):
+        return redirect('shop_home')
+    referrals.remember_code(request, code)      # galat format ho to chup-chaap nazar-andaz
+    return redirect('customer_register')
+
+
 @flag_required('customer_register_enabled')
 def customer_register(request):
     """Customer registration - Email mandatory - Redirect to Shop after register"""
@@ -346,6 +358,14 @@ def customer_register(request):
             
             phone = normalize_phone(phone)
             
+            # Referral code: form ka box, na ho to link se session me aaya hua (galti registration nahi rokti)
+            try:
+                from . import referrals
+                referral_code = request.POST.get('referral_code', '').strip() or referrals.session_code(request)
+            except Exception:
+                logger.exception('referral: reading code failed')
+                referral_code = ''
+            
             if Customer.objects.filter(contact_number=phone).exists():
                 messages.error(request, '⚠️ This phone is already registered')
                 return redirect('customer_login')
@@ -391,6 +411,14 @@ def customer_register(request):
                     last_login_at=now()
                 )
                 
+                # Referral: pending record (sirf flag ON ho aur code theek ho; warna kuch nahi hota)
+                if referral_code:
+                    try:
+                        from . import referrals
+                        referrals.create_pending(customer, referral_code, request)
+                    except Exception:
+                        logger.exception('referral: create_pending failed')
+                
                 CustomerAddress.objects.create(
                     customer=customer,
                     address_type='home',
@@ -403,6 +431,13 @@ def customer_register(request):
                 
                 safe_login(request, user)
                 request.session.save()
+            
+            if referral_code:
+                try:
+                    from . import referrals
+                    referrals.clear_session_code(request)
+                except Exception:
+                    logger.exception('referral: clearing session code failed')
             
             # ✅ WELCOME MESSAGE WITH SHOP GREETING
             messages.success(
@@ -421,6 +456,14 @@ def customer_register(request):
         'company_name': company.name if company else 'Shop',
         'page_title': 'Create Account',
     }
+    try:
+        from . import referrals
+        context['referral_enabled'] = referrals.enabled()
+        context['referral_code'] = referrals.session_code(request) if context['referral_enabled'] else ''
+    except Exception:
+        logger.exception('referral: register context failed')
+        context['referral_enabled'] = False
+        context['referral_code'] = ''
     return render(request, 'customer_portal/auth/register.html', context)
 
 

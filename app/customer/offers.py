@@ -114,6 +114,17 @@ def loyalty_settings():
     }
 
 
+def referral_settings():
+    """Referral ki Settings > Shop wali raqmen. 0 = 'nahi' (cap me 0 = koi had nahi)."""
+    return {
+        'enabled': shop_flag('shop_referral_enabled'),
+        'referrer_reward': max(setting_decimal('referral_reward_referrer', '100'), ZERO),
+        'referee_reward': max(setting_decimal('referral_reward_referee', '100'), ZERO),
+        'min_order': max(setting_decimal('referral_min_order', '500'), ZERO),
+        'monthly_cap': max(setting_decimal('referral_monthly_cap', '1000'), ZERO),
+    }
+
+
 def points_from_amount(amount, per_100):
     """Rs amount par kitne points (poore points, baqi chhor diye jate hain)."""
     amount, per_100 = Decimal(amount or 0), Decimal(per_100 or 0)
@@ -178,12 +189,25 @@ def redeem_points(customer, points):
     return True, f'{points} points se Rs. {credit:,.0f} wallet mein aa gaye.'
 
 
+def _award_referral(order):
+    """Referral reward (referrals.award_for_order). Cashback / points ki tarah order ko kabhi nahi rokta."""
+    try:
+        from . import referrals          # der se import: referrals khud offers se kuch cheezen leta hai
+        return referrals.award_for_order(order)
+    except Exception:
+        logger.exception('Referral reward error for order %s', getattr(order, 'pk', None))
+        return None
+
+
 def sync_status(order):
     """Order ki halat ke mutabiq wallet ka kaam: delivered -> cashback, cancelled -> wapas.
-    Signal aur admin ki bulk status tabdeeli (queryset.update, jis par signal nahi chalta) dono yahi bulate hain."""
+    Signal aur admin ki bulk status tabdeeli (queryset.update, jis par signal nahi chalta) dono yahi bulate hain.
+    Delivered par referral reward bhi yahin se (referral band ho to kuch nahi hota; cancel / return par kuch nahi)."""
     if order.status in DONE_STATUSES:
         award_points(order)
-        return award_cashback(order)
+        cashback = award_cashback(order)
+        _award_referral(order)
+        return cashback
     if order.status == 'cancelled':
         return refund_wallet(order)
     return None

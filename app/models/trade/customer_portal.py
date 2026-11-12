@@ -7,8 +7,22 @@ from app.security.field_crypto import EncryptedCharField, EncryptedTextField
 from django.utils.translation import gettext_lazy as _
 import hashlib
 import logging
+import secrets
 
 logger = logging.getLogger(__name__)
+
+# Referral code: 0/O aur 1/I ke baghair (parhne me ghalti na ho)
+REFERRAL_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+REFERRAL_CODE_LENGTH = 8
+
+
+def new_referral_code():
+    """Random 8 harfi code (abhi tak kisi ke paas na ho)."""
+    for _ in range(20):
+        code = ''.join(secrets.choice(REFERRAL_ALPHABET) for _ in range(REFERRAL_CODE_LENGTH))
+        if not CustomerProfile.objects.filter(referral_code=code).exists():
+            return code
+    raise RuntimeError('Could not generate a unique referral code')
 
 class CustomerOTP(models.Model):
     """
@@ -431,6 +445,12 @@ class CustomerProfile(models.Model):
     )
     preferred_language = models.CharField(max_length=5, default='en')
     newsletter_subscribed = models.BooleanField(default=True)
+
+    # Referral: is customer ka apna code (dost ko dene ke liye)
+    referral_code = models.CharField(
+        max_length=8, unique=True, null=True, blank=True, editable=False,
+        verbose_name="Referral Code"
+    )
     
     # ✅ NEW: Trust system
     is_trusted = models.BooleanField(
@@ -461,6 +481,22 @@ class CustomerProfile(models.Model):
     
     def __str__(self):
         return f"{self.customer.name} - Portal Profile"
+
+    def ensure_referral_code(self):
+        """Code na ho to bana kar save karo; code wapas do."""
+        if not self.referral_code:
+            self.referral_code = new_referral_code()
+            if self.pk:
+                CustomerProfile.objects.filter(pk=self.pk, referral_code__isnull=True).update(
+                    referral_code=self.referral_code)
+                self.refresh_from_db(fields=['referral_code'])
+        return self.referral_code
+
+    def save(self, *args, **kwargs):
+        # Naye profile ko save hote hi code mil jaye (update_fields wali save me chhed-chhad nahi)
+        if not self.referral_code and kwargs.get('update_fields') is None:
+            self.referral_code = new_referral_code()
+        super().save(*args, **kwargs)
     
     # ==========================================
     # TRUST SYSTEM METHODS

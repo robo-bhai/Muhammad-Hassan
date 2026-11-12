@@ -3,6 +3,8 @@
 WalletTransaction: customer ke wallet ka khata. amount + ho to jama, - ho to kharch.
     balance = sab transactions ka jod. Ek order par ek hi 'spend', 'refund' aur 'cashback' ban sakta hai
     (isi se signal dobara chalne par paisa do baar nahi lagta).
+    Referral: ek hi order par referrer ('referral') aur referee ('refbonus') dono ko reward milta hai,
+    isi liye do alag kind hain (warna (order, kind) unique constraint dusra insert rok deta).
 ProMembership: customer ki Pro request/membership. Admin payment mil jane par Activate karta hai.
 """
 from decimal import Decimal
@@ -22,6 +24,8 @@ class WalletTransaction(models.Model):
         ('points', 'Loyalty points se credit'),
         ('pro', 'Pro membership ki payment'),
         ('dispute', 'Dispute refund'),
+        ('referral', 'Referral reward (dost laaya)'),
+        ('refbonus', 'Referral welcome bonus'),
     ]
 
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='wallet_transactions')
@@ -121,3 +125,38 @@ class LoyaltyTransaction(models.Model):
 
     def __str__(self):
         return f"{self.customer_id}: {self.points} ({self.kind})"
+
+
+class Referral(models.Model):
+    """Customer referral: referrer ne referee ko bulaya.
+
+    Referee ke register hone par 'pending' banta hai. Reward (wallet credit, dono ko) tab milta hai jab
+    referee ka PEHLA order delivered ho aur minimum amount ka ho. Referee sirf ek dafa refer ho sakta hai (OneToOne).
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending (pehle order ka intezar)'),
+        ('rewarded', 'Rewarded'),
+        ('rejected', 'Rejected'),
+    ]
+
+    referrer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='referrals_made')
+    referee = models.OneToOneField('Customer', on_delete=models.CASCADE, related_name='referral_received')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    reject_reason = models.CharField(max_length=120, blank=True, default='')
+    device_hash = models.CharField(max_length=64, blank=True, default='', db_index=True,
+                                   help_text="Register ke waqt IP + browser ka hash (asal IP save nahi hota)")
+    reward_order = models.ForeignKey('SaleOrder', null=True, blank=True, on_delete=models.SET_NULL,
+                                     related_name='+', help_text="Jis order par reward mila")
+    referrer_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    referee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    created_at = models.DateTimeField(auto_now_add=True)
+    rewarded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        verbose_name = 'Referral'
+        verbose_name_plural = 'Referrals'
+        indexes = [models.Index(fields=['referrer', 'status', 'rewarded_at'], name='referral_ref_status_idx')]
+
+    def __str__(self):
+        return f"{self.referrer_id} -> {self.referee_id} ({self.status})"

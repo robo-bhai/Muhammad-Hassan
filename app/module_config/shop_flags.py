@@ -38,6 +38,7 @@ FLAGS = {
     'shop_wallet_enabled':           (True,  'Wallet is currently unavailable.'),
     'shop_pro_enabled':              (False, 'Pro membership is not available right now.'),
     'shop_loyalty_enabled':          (False, 'Loyalty points are not available right now.'),
+    'shop_referral_enabled':         (False, 'The referral program is not available right now.'),
     'shop_search_enabled':           (True,  ''),
     'shop_voice_search_enabled':     (True,  ''),
     'shop_chat_enabled':             (True,  'Chat is currently unavailable.'),

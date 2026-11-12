@@ -411,6 +411,26 @@
                     <div class="help-text">Mukammal pata - ghar number, gali, area</div>
                 </div>
                 
+                {% if referral_enabled %}
+                <!-- Referral code (optional) -->
+                <div class="form-group">
+                    <label for="referral_code">
+                        <i class="bi bi-gift-fill"></i> Referral Code
+                        <span class="help-text" style="display:inline">(optional)</span>
+                    </label>
+                    <input type="text"
+                           name="referral_code"
+                           id="referral_code"
+                           value="{{ referral_code }}"
+                           maxlength="8"
+                           placeholder="Friend's code"
+                           autocomplete="off"
+                           autocapitalize="characters"
+                           style="text-transform: uppercase;">
+                    <div class="help-text">Dost ka code ho to likhein</div>
+                </div>
+                {% endif %}
+                
                 <!-- ============================================ -->
                 <!-- SECURITY                                     -->
                 <!-- ============================================ -->

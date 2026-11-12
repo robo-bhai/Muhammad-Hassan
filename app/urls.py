@@ -1148,6 +1148,7 @@ urlpatterns = [
      path('shop/privacy/', views_info_pages.privacy, name='shop_privacy'),
      path('shop/returns/', views_info_pages.return_policy, name='shop_returns'),
      path('shop/register/', views_customer_auth.customer_register, name='customer_register'),
+     path('shop/r/<str:code>/', views_customer_auth.referral_landing, name='referral_landing'),
 
      # ---- Vendor portal (vendor apni products shop par list karta hai) ----
      path('shop/vendor/register/', views_vendor_portal.vendor_register, name='vendor_register'),
