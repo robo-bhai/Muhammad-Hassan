@@ -89,19 +89,43 @@ def seed_defaults():
     return len(new) + len(changed)
 
 
+def _defaults_map():
+    """Built-in dictionary {key: [ur, ar]} from i18n_default.py (used as fallback under the database)."""
+    from .i18n_default import DEFAULTS
+    out = {}
+    for en, ur, ar in DEFAULTS:
+        k = make_key(en)
+        if k and (ur or ar):
+            out[k] = [ur or '', ar or '']
+    return out
+
+
+def _defaults_signature():
+    """Changes whenever a built-in default is added/edited, so browsers re-download the dictionary."""
+    import zlib
+    from .i18n_default import DEFAULTS
+    return '%x' % (zlib.crc32(repr(DEFAULTS).encode('utf-8')) & 0xffffffff)
+
+
 def get_version():
     from ..models import Translation
     agg = Translation.objects.aggregate(m=Max('updated_at'), n=Count('id'))
     m = agg['m']
-    return '%s-%s' % (int(m.timestamp()) if m else 0, agg['n'])
+    return '%s-%s-%s' % (int(m.timestamp()) if m else 0, agg['n'], _defaults_signature())
 
 
 def build_dictionary_json():
+    """Built-in defaults first, then the database on top (admin edits always win).
+
+    Before: only the database was sent, and new defaults reached it only when the table was empty
+    or someone pressed "Add default words" - so most newer labels stayed English in Urdu mode.
+    """
     from ..models import Translation
     ensure_seeded()
-    out = {}
+    out = _defaults_map()
     for key, ur, ar in Translation.objects.exclude(ur='', ar='').values_list('key', 'ur', 'ar'):
-        out[key] = [ur, ar]
+        old = out.get(key, ['', ''])
+        out[key] = [ur or old[0], ar or old[1]]
     return json.dumps(out, ensure_ascii=False, separators=(',', ':'))
 
 

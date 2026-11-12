@@ -289,4 +289,8 @@ PORTAL_DEFAULTS_3 = [
     ('We do not deliver to your area', 'آپ کے علاقے میں ڈیلیوری نہیں ہے', ''),
     ('Item price or details are wrong', 'آئٹم کی قیمت یا تفصیل میں غلطی ہے', ''),
     ('Other reason', 'دوسری وجہ', ''),
+    ('(optional)', '(اختیاری)', ''),
+    ('e.g. Khan Traders', 'مثلاً: خان ٹریڈرز', ''),
+    ('Registering...', 'رجسٹر ہو رہا ہے...', ''),
+    ('Seller Registration', 'سیلر رجسٹریشن', ''),
 ]

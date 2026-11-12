@@ -1,7 +1,7 @@
 {% extends 'customer_portal/base_shop.html' %}
 {% load static %}
 
-{% block title %}Seller Registration - {{ company_name }}{% endblock %}
+{% block title %}{% if LANG_CODE == 'ur' %}سیلر رجسٹریشن{% else %}Seller Registration{% endif %} - {{ company_name }}{% endblock %}
 
 {% block content %}
 
@@ -297,6 +297,34 @@
     .register-header { border-radius: 0 0 30px 30px; }
     .form-group input, .form-group select, .form-group textarea { border-radius: 16px; }
     .btn-register { border-radius: 30px; }
+
+    /* ===== RTL (Urdu / Arabic) ===== */
+    html[dir="rtl"] .register-card { direction: rtl; text-align: right; }
+    html[dir="rtl"] .form-group label i { margin-right: 0; margin-left: 6px; }
+    html[dir="rtl"] .form-group label .required { margin-left: 0; margin-right: 3px; }
+    html[dir="rtl"] .form-group .help-text { text-align: right; }
+    html[dir="rtl"] .form-group input,
+    html[dir="rtl"] .form-group select,
+    html[dir="rtl"] .form-group textarea { text-align: right; direction: rtl; }
+    /* phone / email / password: typed value stays left-to-right, but the box keeps the right edge */
+    html[dir="rtl"] .form-group input[type="tel"],
+    html[dir="rtl"] .form-group input[type="email"],
+    html[dir="rtl"] .form-group input[type="password"],
+    html[dir="rtl"] .form-group input#password,
+    html[dir="rtl"] .form-group input#confirm_password { direction: ltr; text-align: right; }
+    html[dir="rtl"] .form-group input::placeholder,
+    html[dir="rtl"] .form-group textarea::placeholder { text-align: right; }
+    /* eye button goes to the left side so it never covers the text */
+    html[dir="rtl"] .password-toggle { right: auto; left: 15px; }
+    html[dir="rtl"] .password-wrapper input { padding-right: 16px; padding-left: 46px; }
+    html[dir="rtl"] .form-group select { padding-left: 36px; padding-right: 16px; }
+    html[dir="rtl"] .section-divider { letter-spacing: 0; text-transform: none; font-size: 14px; }
+    html[dir="rtl"] .btn-register { flex-direction: row-reverse; letter-spacing: 0; }
+    html[dir="rtl"] .register-header h3,
+    html[dir="rtl"] .register-header p { letter-spacing: 0; line-height: 1.9; }
+    html[dir="rtl"] .alert-message { flex-direction: row-reverse; text-align: right; }
+    html[dir="rtl"] .register-footer { direction: rtl; }
+    html[dir="rtl"] .register-body label[style*="inline-flex"] { flex-direction: row-reverse; }
 </style>
 
 <div class="register-container">
@@ -586,6 +614,28 @@ document.addEventListener('DOMContentLoaded', function() {
         this.value = this.value.replace(/[^0-9+\-\s]/g, '');
     });
     
+    // Messages (Urdu when the site language is Urdu)
+    const UR = {% if LANG_CODE == 'ur' %}true{% else %}false{% endif %};
+    const MSG = UR ? {
+        business: '❌ اپنے کاروبار کا نام لکھیں',
+        name:     '❌ اپنا پورا نام لکھیں (کم از کم 3 حروف)',
+        phone:    '❌ درست فون نمبر لکھیں (کم از کم 10 ہندسے)',
+        city:     '❌ اپنا شہر لکھیں',
+        address:  '❌ مکمل پتہ لکھیں (کم از کم 10 حروف)',
+        pass:     '❌ پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے',
+        match:    '❌ پاس ورڈ آپس میں نہیں ملتے!',
+        wait:     'رجسٹر ہو رہا ہے...'
+    } : {
+        business: '❌ Please enter your business name',
+        name:     '❌ Please enter your full name (min 3 characters)',
+        phone:    '❌ Please enter a valid phone number (min 10 digits)',
+        city:     '❌ Please enter your city',
+        address:  '❌ Please enter complete address (min 10 characters)',
+        pass:     '❌ Password must be at least 6 characters',
+        match:    '❌ Passwords do not match!',
+        wait:     'Registering...'
+    };
+
     // Form submit
     form.addEventListener('submit', function(e) {
         const businessName = document.getElementById('business_name').value.trim();
@@ -600,25 +650,25 @@ document.addEventListener('DOMContentLoaded', function() {
         let focusField = null;
         
         if (!businessName || businessName.length < 3) {
-            error = '❌ Please enter your business name';
+            error = MSG.business;
             focusField = document.getElementById('business_name');
         } else if (!fullName || fullName.length < 3) {
-            error = '❌ Please enter your full name (min 3 characters)';
+            error = MSG.name;
             focusField = document.getElementById('full_name');
         } else if (!phone || phone.replace(/[^0-9]/g, '').length < 10) {
-            error = '❌ Please enter a valid phone number (min 10 digits)';
+            error = MSG.phone;
             focusField = phoneInput;
         } else if (!city) {
-            error = '❌ Please enter your city';
+            error = MSG.city;
             focusField = document.getElementById('city');
         } else if (!address || address.length < 10) {
-            error = '❌ Please enter complete address (min 10 characters)';
+            error = MSG.address;
             focusField = document.getElementById('address');
         } else if (!password || password.length < 6) {
-            error = '❌ Password must be at least 6 characters';
+            error = MSG.pass;
             focusField = document.getElementById('password');
         } else if (password !== confirmPassword) {
-            error = '❌ Passwords do not match!';
+            error = MSG.match;
             focusField = document.getElementById('confirm_password');
         }
         
@@ -631,7 +681,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Disable button
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registering...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ' + MSG.wait;
     });
 });
 </script>
