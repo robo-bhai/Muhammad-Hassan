@@ -42,7 +42,10 @@ from django.views.decorators.http import require_POST
 
 from ..decorators import vendor_login_required
 from ..shop_flags import flag_required, shop_flag
-from ..vendor_commission import commission_percent, reprice_open_batches, vendor_earnings, vendor_share
+from ..vendor_commission import (
+    base_commission_percent, commission_percent, expire_promos, on_vendor_approved, promo_active, reprice_open_batches, vendor_earnings,
+    vendor_share,
+)
 from ..models import (
     Cuisine,
     Brand, Category, CompanyInfo, DeliveryArea, DeliveryInfo, Inventory, OrderReview, Product, RiderProfile, SaleOrder,
@@ -359,13 +362,15 @@ def vendor_register(request):
                     address=f"{address}, {city}",
                 )
                 approved = _auto_approve_accounts()
-                VendorProfile.objects.create(
+                new_profile = VendorProfile.objects.create(
                     vendor=vendor, user=user, business_name=business_name,
                     city=city, delivery_areas=delivery_areas, store_category=store_category,
                     is_approved=approved,
                     approved_at=now() if approved else None,
                     last_login_at=now(),
                 )
+                if approved:   # auto-approve: launch commission offer (agar admin ne on kiya ho)
+                    on_vendor_approved(new_profile, first_time=True)
                 safe_login(request, user)
                 request.session.save()
         except Exception:
@@ -459,6 +464,13 @@ def vendor_dashboard(request):
     profile = request.user.vendor_profile
     vendor = profile.vendor
 
+    # Launch promo ki date guzar gayi ho to batches abhi normal rate par aa jayen (cron na chale to bhi)
+    try:
+        if profile.commission_promo_until and expire_promos(profile):
+            profile.refresh_from_db()
+    except Exception:
+        logger.exception('expire_promos failed (vendor profile=%s)', profile.pk)
+
     products = list(
         Product.objects.filter(vendor=vendor)
         .select_related('category')
@@ -480,6 +492,10 @@ def vendor_dashboard(request):
         'recent_reviews': OrderReview.objects.filter(vendor=vendor, vendor_rating__isnull=False)
                           .select_related('sale_order')[:5],
         'commission_percent': commission_percent(profile),
+        'promo': ({'percent': commission_percent(profile), 'normal': base_commission_percent(profile),
+                   'until': profile.commission_promo_until}
+                  if promo_active(profile) and commission_percent(profile) < base_commission_percent(profile)
+                  else None),
         'new_orders': SaleOrder.objects.filter(vendor=vendor, status='pending').count(),
         'dispute_pending': _dispute_pending(vendor),
         'company_name': _company_name(),

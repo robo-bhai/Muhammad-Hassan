@@ -19,6 +19,7 @@ from app.customer import views_dispatch
 from app.customer import views_reviews
 from app.customer import views_disputes
 from app.customer import views_dispute_responses
+from app.customer import views_vendor_payouts
 from app.views_frontend.purchase import disputes as views_admin_disputes
 from app.customer import views_reorder
 from app.customer import views_schedule
@@ -1218,6 +1219,8 @@ urlpatterns = [
      path('shop/order/<int:order_id>/cancel/', views_customer_portal.cancel_order_customer, name='cancel_order_customer'),
      path('shop/order/<int:order_id>/rate/', views_reviews.rate_order, name='rate_order'),
      path('shop/order/<int:order_id>/dispute/', views_disputes.dispute_create, name='dispute_create'),
+     path('shop/vendor/payouts/', views_vendor_payouts.vendor_payouts, name='vendor_payouts'),
+     path('shop/vendor/payouts/<int:pk>/cancel/', views_vendor_payouts.vendor_payout_cancel, name='vendor_payout_cancel'),
      path('shop/vendor/disputes/', views_dispute_responses.vendor_disputes, name='vendor_disputes'),
      path('shop/vendor/disputes/<int:pk>/', views_dispute_responses.vendor_dispute_detail, name='vendor_dispute_detail'),
      path('shop/rider/disputes/', views_dispute_responses.rider_disputes, name='rider_disputes'),

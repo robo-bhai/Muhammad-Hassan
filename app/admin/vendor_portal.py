@@ -52,10 +52,31 @@ class VendorProfileAdmin(admin.ModelAdmin):
     readonly_fields = ('vendor', 'user', 'approved_at', 'last_login_at', 'created_at')
     actions = ['approve_accounts', 'suspend_accounts']
 
+    PROMO_FIELDS = {'commission_percent', 'commission_promo_percent', 'commission_promo_until'}
+
     @admin.action(description='Approve selected vendors')
     def approve_accounts(self, request, queryset):
-        n = queryset.filter(is_approved=False).update(is_approved=True, approved_at=now())
-        self.message_user(request, f'{n} vendor(s) approved.', messages.SUCCESS)
+        from ..customer.vendor_commission import on_vendor_approved
+        pending = queryset.filter(is_approved=False)
+        first_time = list(pending.filter(approved_at__isnull=True))   # pehli approval: launch offer ke qabil
+        n = pending.update(is_approved=True, approved_at=now())
+        promos = sum(1 for p in first_time if on_vendor_approved(p, first_time=True))
+        msg = f'{n} vendor(s) approved.'
+        if promos:
+            msg += f' {promos} ko launch commission offer mila.'
+        self.message_user(request, msg, messages.SUCCESS)
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        # Commission ya promo badla: batch ka cost naye rate par (commission batch me bake hota hai)
+        if change and self.PROMO_FIELDS & set(form.changed_data):
+            from ..customer.vendor_commission import commission_percent, reprice_vendor_batches
+            failed = reprice_vendor_batches(obj)
+            self.message_user(request, f'Commission ab {commission_percent(obj)}% hai; open batches update ho gaye.',
+                              messages.SUCCESS)
+            if failed:
+                self.message_user(request, 'In products ka cost update nahi ho saka (margin policy): '
+                                  + ' | '.join(failed[:5]), messages.WARNING)
 
     @admin.action(description='Suspend selected vendors (aur unke products shop se hatao)')
     def suspend_accounts(self, request, queryset):
@@ -180,6 +201,86 @@ class VendorPayoutAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class VendorPayoutRequestForm(forms.ModelForm):
+    """Admin ka faisla: Paid (reference ke sath) ya Reject (wajah ke sath). Baqi sab sirf dekhne ke liye."""
+    decision = forms.ChoiceField(
+        required=False, label='Faisla',
+        choices=[('', '-- Pending rehne den --'), ('paid', 'Paid mark karen (paise bhej diye)'),
+                 ('rejected', 'Reject karen')])
+    reference_no = forms.CharField(
+        required=False, max_length=100, label='Transaction ID / reference',
+        help_text='Paid mark karne ke liye zaroori. Bank/JazzCash/EasyPaisa ki transaction ID.')
+
+    class Meta:
+        model = VendorPayoutRequest
+        fields = ('reject_reason',)
+
+    def clean(self):
+        data = super().clean()
+        decision = data.get('decision')
+        if decision == 'paid' and not (data.get('reference_no') or '').strip():
+            self.add_error('reference_no', 'Transaction ID / reference number likhna zaroori hai.')
+        if decision == 'rejected' and not (data.get('reject_reason') or '').strip():
+            self.add_error('reject_reason', 'Reject karne ki wajah likhen (vendor ko dikhai jaye gi).')
+        return data
+
+
+@admin.register(VendorPayoutRequest, site=admin.site)
+class VendorPayoutRequestAdmin(admin.ModelAdmin):
+    """Vendor ki payout requests. Paid mark karne par VendorPayout khud ban jata hai."""
+    form = VendorPayoutRequestForm
+    list_display = ('requested_at', 'vendor', 'amount', 'method', 'status', 'vendor_withdrawable', 'reviewed_by')
+    list_filter = ('status', 'method')
+    search_fields = ('vendor__name', 'account_title', 'account_no')
+    date_hierarchy = 'requested_at'
+    readonly_fields = ('vendor', 'amount', 'method', 'account_title', 'account_no', 'note', 'status',
+                       'requested_at', 'reviewed_by', 'reviewed_at', 'payout', 'vendor_withdrawable')
+
+    def get_fields(self, request, obj=None):
+        base = ['vendor', 'amount', 'method', 'account_title', 'account_no', 'note', 'status',
+                'requested_at', 'vendor_withdrawable']
+        if obj is not None and obj.status == 'pending':
+            return base + ['decision', 'reference_no', 'reject_reason']
+        return base + ['reject_reason', 'reviewed_by', 'reviewed_at', 'payout']
+
+    def get_readonly_fields(self, request, obj=None):
+        ro = list(super().get_readonly_fields(request, obj))
+        if obj is None or obj.status != 'pending':
+            ro.append('reject_reason')
+        return ro
+
+    @admin.display(description='Vendor ka abhi nikalne ke qabil')
+    def vendor_withdrawable(self, obj):
+        from ..customer.payout_requests import withdrawable
+        w = withdrawable(obj.vendor)
+        return (f"Rs. {w['available']:,.2f} (baqi {w['balance']:,.2f}, ruki {w['held_recent']:,.2f}, "
+                f"rider cash {w['held_cash']:,.2f})")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('vendor', 'reviewed_by')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        from ..customer import payout_requests
+        decision = form.cleaned_data.get('decision')
+        if not change or not decision:
+            return
+        try:
+            if decision == 'paid':
+                payout_requests.mark_paid(obj.pk, request.user, form.cleaned_data.get('reference_no'))
+                self.message_user(request, f'Paid mark ho gayi: Rs. {obj.amount:,.2f} ({obj.vendor}).', messages.SUCCESS)
+            else:
+                payout_requests.reject(obj.pk, request.user, form.cleaned_data.get('reject_reason'))
+                self.message_user(request, 'Request reject kar di gayi.', messages.SUCCESS)
+        except payout_requests.PayoutError as exc:
+            self.message_user(request, f'Nahi hua: {exc}', messages.ERROR)
 
 
 @admin.register(StoreMenuSection, site=admin.site)

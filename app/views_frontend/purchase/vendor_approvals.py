@@ -19,7 +19,8 @@ from django.views.decorators.http import require_POST
 from ...models import CompanyInfo, Product, VendorProfile
 from ...security.permissions import perm_required
 from ...vendor_commission import (
-    MAX_COMMISSION, commission_percent, default_commission, reprice_open_batches, vendor_earnings,
+    MAX_COMMISSION, commission_percent, default_commission, on_vendor_approved, reprice_open_batches,
+    vendor_earnings,
 )
 
 DEFAULT_REJECT_REASON = 'Listing guidelines par poora nahi utarta. Edit karke dobara bhejein.'
@@ -115,8 +116,11 @@ def vendor_account_action(request, pk, action):
     profile = get_object_or_404(VendorProfile.objects.select_related('vendor'), pk=pk)
 
     if action == 'approve':
+        first_time = profile.approved_at is None and not profile.is_approved   # pehli approval
         VendorProfile.objects.filter(pk=pk).update(is_approved=True, approved_at=now())
-        messages.success(request, f'✅ "{profile.business_name}" approve ho gaya. Ab woh products list kar sakta hai.')
+        promo = on_vendor_approved(profile, first_time)
+        messages.success(request, f'✅ "{profile.business_name}" approve ho gaya. Ab woh products list kar sakta hai.'
+                                  + (' 🎁 Launch commission offer laga diya gaya.' if promo else ''))
     elif action == 'suspend':
         VendorProfile.objects.filter(pk=pk).update(is_approved=False)
         hidden = Product.objects.filter(vendor_id=profile.vendor_id, is_active=True).update(is_active=False)

@@ -103,8 +103,30 @@ class VendorProfile(models.Model):
         help_text="Shop is vendor ki har bikri par itna % rakhta hai. Khali = default "
                   "(settings.VENDOR_DEFAULT_COMMISSION_PERCENT, warna 10%)"
     )
+    commission_promo_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        verbose_name="Promo commission %",
+        help_text="Launch offer: promo ki muddat me shop itna % rakhta hai (0 = commission-free). "
+                  "Sirf tab lagta hai jab normal commission se kam ho aur 'Promo till' ki date na guzri ho."
+    )
+    commission_promo_until = models.DateField(
+        null=True, blank=True, verbose_name="Promo till",
+        help_text="Is date tak (is din samet) promo commission lagta hai. Date guzarne par normal rate "
+                  "wapas aata hai (python manage.py expire_commission_promos roz chalayen)."
+    )
+    launch_promo_granted_at = models.DateTimeField(
+        null=True, blank=True, editable=False,
+        help_text="Naye vendor ka launch offer ek hi dafa milta hai; ye us ka nishan hai."
+    )
     last_login_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # ---- Payout account (vendor payout request ke liye, ek dafa save hota hai) ----
+    PAYOUT_METHODS = [('bank', 'Bank Transfer'), ('jazzcash', 'JazzCash'), ('easypaisa', 'EasyPaisa')]
+    payout_method = models.CharField(max_length=12, choices=PAYOUT_METHODS, blank=True, default='')
+    payout_account_title = models.CharField(max_length=100, blank=True, default='',
+                                            help_text="Account holder ka naam")
+    payout_account_no = models.CharField(max_length=50, blank=True, default='',
+                                         help_text="IBAN / account number / mobile account number")
     cuisines = models.ManyToManyField(
         'Cuisine', blank=True, related_name='stores',
         help_text="Is store ka khana (zyada se zyada 3). Customer stores page par cuisine se filter karta hai.")
@@ -251,6 +273,45 @@ class VendorPayout(models.Model):
 
     def __str__(self):
         return f"{self.vendor} - Rs. {self.amount} - {self.paid_at:%d-%m-%Y}"
+
+
+class VendorPayoutRequest(models.Model):
+    """Vendor ki taraf se 'mujhe meri raqam do' ki darkhwast.
+    Raqam tab hi vendor ke hisab me 'paid' hoti hai jab admin request ko Paid mark kare
+    (is waqt ek VendorPayout ban kar yahan link hota hai). Ek vendor ki ek waqt me sirf ek pending request."""
+    STATUS = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled by vendor'),
+    ]
+    vendor = models.ForeignKey('Vendor', on_delete=models.PROTECT, related_name='payout_requests')
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    method = models.CharField(max_length=12, choices=VendorProfile.PAYOUT_METHODS, default='bank')
+    account_title = models.CharField(max_length=100, blank=True, default='')
+    account_no = models.CharField(max_length=50, blank=True, default='')
+    note = models.CharField(max_length=200, blank=True, default='', help_text="Vendor ka paigham")
+    status = models.CharField(max_length=10, choices=STATUS, default='pending', db_index=True)
+    reject_reason = models.CharField(max_length=200, blank=True, default='')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='+')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    payout = models.OneToOneField('VendorPayout', null=True, blank=True, on_delete=models.SET_NULL,
+                                  related_name='request')
+
+    class Meta:
+        verbose_name = 'Vendor Payout Request'
+        verbose_name_plural = '3.5 Vendor Payout Requests'
+        ordering = ['-requested_at', '-id']
+        constraints = [
+            # Database level par: ek vendor ki sirf ek pending request (double-click / race se bachav)
+            models.UniqueConstraint(fields=['vendor'], condition=models.Q(status='pending'),
+                                    name='one_pending_payout_request_per_vendor'),
+        ]
+
+    def __str__(self):
+        return f"{self.vendor} - Rs. {self.amount} - {self.get_status_display()}"
 
 
 class StoreMenuSection(models.Model):

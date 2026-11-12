@@ -20,6 +20,7 @@ FLAGS = {
     'vendor_auto_approve_products':  (None,  ''),   # None = fall back to settings.VENDOR_AUTO_APPROVE_PRODUCTS
     'vendor_can_add_products':       (True,  'Adding or editing products is currently disabled for vendors.'),
     'vendor_can_manage_orders':      (True,  'Vendor order management is currently disabled.'),
+    'vendor_payout_request_enabled': (True,  'Payout requests are currently disabled. Please contact the admin.'),
     'customer_register_enabled':     (True,  'New customer registration is currently closed.'),
     'customer_login_enabled':        (True,  'Customer login is currently disabled.'),
     'shop_ordering_enabled':         (True,  'Online ordering is paused right now. Please try again later.'),

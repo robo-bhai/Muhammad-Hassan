@@ -1,0 +1,134 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Payout Requests - {{ company_name }}{% endblock %}
+
+{% block content %}
+<style>
+  .vpo-wrap { max-width: 900px; margin: 24px auto; padding: 0 12px; }
+  .vpo-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .vpo-top h3 { margin: 0; font-weight: 700; }
+  .vpo-back { text-decoration: none; border: 1px solid #ddd; background: #fff; border-radius: 10px; padding: 6px 14px; color: #333; }
+  .vpo-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.06); padding: 16px; margin-bottom: 14px; }
+  .vpo-card h5 { margin: 0 0 10px; font-weight: 700; }
+  .vpo-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .vpo-stat { background: #f8fafc; border-radius: 12px; padding: 12px; font-size: 13px; color: #6b7280; }
+  .vpo-stat b { display: block; font-size: 20px; color: #111827; margin-bottom: 2px; }
+  .vpo-stat.main { background: #ecfdf5; }
+  .vpo-stat.main b { color: #059669; }
+  .vpo-note { font-size: 12.5px; color: #6b7280; margin-top: 10px; line-height: 1.5; }
+  .vpo-form { display: grid; gap: 10px; }
+  .vpo-form label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 3px; }
+  .vpo-form input, .vpo-form select { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; }
+  .vpo-btn { border: 0; background: #1f2937; color: #fff; font-weight: 600; padding: 10px 18px; border-radius: 10px; cursor: pointer; }
+  .vpo-btn.green { background: #059669; }
+  .vpo-btn.link { background: #fff; color: #b91c1c; border: 1px solid #fecaca; padding: 5px 12px; font-size: 13px; }
+  .vpo-btn[disabled] { opacity: .5; cursor: not-allowed; }
+  .vpo-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px dashed #e5e7eb; padding: 10px 0; }
+  .vpo-pill { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .vpo-pending { background: #fff3cd; color: #856404; }
+  .vpo-paid { background: #d4edda; color: #155724; }
+  .vpo-rejected { background: #f8d7da; color: #721c24; }
+  .vpo-cancelled { background: #e2e3e5; color: #383d41; }
+  .vpo-meta { font-size: 12.5px; color: #6b7280; }
+</style>
+<div class="vpo-wrap">
+  <div class="vpo-top">
+    <h3>💸 Payout Requests</h3>
+    <a class="vpo-back" href="{% url 'vendor_dashboard' %}">Dashboard</a>
+  </div>
+
+  <div class="vpo-card">
+    <h5>Aap ka hisaab</h5>
+    <div class="vpo-stats">
+      <div class="vpo-stat"><b>Rs. {{ w.balance|floatformat:2 }}</b>Total baqi (Balance)</div>
+      <div class="vpo-stat"><b>Rs. {{ w.held_recent|floatformat:2 }}</b>Abhi ruki hui ({{ w.hold_days }} din ki bikri)</div>
+      <div class="vpo-stat"><b>Rs. {{ w.held_cash|floatformat:2 }}</b>Rider ke paas COD cash</div>
+      <div class="vpo-stat"><b>Rs. {{ w.pending|floatformat:2 }}</b>Pending request</div>
+      <div class="vpo-stat main"><b>Rs. {{ w.available|floatformat:2 }}</b>Abhi nikalne ke qabil</div>
+    </div>
+    <div class="vpo-note">
+      Nayi bikri ki raqam {{ w.hold_days }} din tak ruki rehti hai (customer ke return/dispute ke liye), aur jab tak rider COD cash shop ko jama na karaye us order ki raqam bhi ruki rehti hai.
+      Kam az kam request: Rs. {{ w.min_amount|floatformat:0 }}.
+    </div>
+  </div>
+
+  <div class="vpo-card">
+    <h5>1. Payout account</h5>
+    <form method="post" class="vpo-form" autocomplete="off">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_account">
+      <div>
+        <label for="po-method">Tareeqa</label>
+        <select id="po-method" name="method" required>
+          <option value="">-- chunen --</option>
+          {% for key, label in methods %}
+          <option value="{{ key }}" {% if profile.payout_method == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="po-title">Account holder ka naam</label>
+        <input id="po-title" name="account_title" maxlength="100" value="{{ profile.payout_account_title }}" required>
+      </div>
+      <div>
+        <label for="po-no">IBAN / account number / mobile number</label>
+        <input id="po-no" name="account_no" maxlength="50" value="{{ profile.payout_account_no }}" required>
+      </div>
+      <div>
+        <label for="po-pw">Aap ka password (hifazat ke liye)</label>
+        <input id="po-pw" type="password" name="password" required autocomplete="current-password">
+      </div>
+      <div><button class="vpo-btn" type="submit">Account save karen</button></div>
+    </form>
+  </div>
+
+  <div class="vpo-card">
+    <h5>2. Raqam maangen</h5>
+    {% if not profile.payout_account_no %}
+      <div class="vpo-meta">Pehle upar payout account save karen.</div>
+    {% elif w.pending > 0 %}
+      <div class="vpo-meta">Aap ki ek request pending hai. Us ke nipatne ke baad nayi bhej sakte hain.</div>
+    {% else %}
+      <form method="post" class="vpo-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="request">
+        <div>
+          <label for="po-amount">Raqam (Rs.) &mdash; zyada se zyada {{ w.available|floatformat:2 }}</label>
+          <input id="po-amount" name="amount" inputmode="decimal" value="{{ w.available|floatformat:2 }}" required>
+        </div>
+        <div>
+          <label for="po-note">Paigham (zaroori nahi)</label>
+          <input id="po-note" name="note" maxlength="200">
+        </div>
+        <div class="vpo-meta">Paise is account par jayenge: {{ profile.get_payout_method_display }} &middot; {{ profile.payout_account_title }} &middot; {{ profile.payout_account_no }}</div>
+        <div><button class="vpo-btn green" type="submit" {% if w.available < w.min_amount %}disabled{% endif %}>Request bhejen</button></div>
+        {% if w.available < w.min_amount %}<div class="vpo-meta">Abhi nikalne ke qabil raqam kam az kam Rs. {{ w.min_amount|floatformat:0 }} se kam hai.</div>{% endif %}
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="vpo-card">
+    <h5>Meri requests</h5>
+    {% for r in requests %}
+      <div class="vpo-row">
+        <span>
+          <b>Rs. {{ r.amount|floatformat:2 }}</b>
+          <span class="vpo-meta">&middot; {{ r.get_method_display }} &middot; {{ r.requested_at|date:"d M Y, h:i A" }}</span>
+          {% if r.status == 'rejected' and r.reject_reason %}<div class="vpo-meta">Wajah: {{ r.reject_reason }}</div>{% endif %}
+          {% if r.status == 'paid' and r.payout %}<div class="vpo-meta">Reference: {{ r.payout.reference_no }}</div>{% endif %}
+        </span>
+        <span>
+          <span class="vpo-pill vpo-{{ r.status }}">{{ r.get_status_display }}</span>
+          {% if r.status == 'pending' %}
+          <form method="post" action="{% url 'vendor_payout_cancel' r.pk %}" style="display:inline;margin-left:6px;">
+            {% csrf_token %}
+            <button class="vpo-btn link" type="submit">Cancel</button>
+          </form>
+          {% endif %}
+        </span>
+      </div>
+    {% empty %}
+      <div class="vpo-meta">Abhi tak koi request nahi.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -126,6 +126,13 @@
         </div>
     {% endif %}
 
+    {% if promo %}
+    <div class="vd-card" style="padding:12px 14px;margin-bottom:14px;background:#ecfdf5;border:1px solid #a7f3d0;">
+        🎁 <b>Launch offer:</b> aap par abhi sirf <b>{{ promo.percent|floatformat:"-2" }}%</b> commission lag raha hai
+        ({{ promo.until|date:"d M Y" }} tak). Is ke baad normal rate ({{ promo.normal|floatformat:"-2" }}%) lagega.
+    </div>
+    {% endif %}
+
     <div class="vd-stats">
         <div class="vd-stat"><b>{{ products|length }}</b>Total Products</div>
         <div class="vd-stat"><b style="color:#28a745;">{{ counts.approved }}</b>Approved</div>
@@ -143,7 +150,12 @@
     </div>
 
     <div class="vd-card" style="padding:14px;margin-bottom:14px;">
-        <h5 style="margin:0 0 8px;">💸 Payments jo aap ko mil chuki hain</h5>
+        <h5 style="margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span>💸 Payments jo aap ko mil chuki hain</span>
+            {% if SHOP.vendor_payout_request_enabled %}
+            <a href="{% url 'vendor_payouts' %}" style="font-size:13px;text-decoration:none;background:#059669;color:#fff;padding:6px 14px;border-radius:10px;">Payout maangein</a>
+            {% endif %}
+        </h5>
         {% for po in payouts %}
             <div style="border-top:1px dashed #e5e7eb;padding:8px 0;display:flex;justify-content:space-between;gap:8px;">
                 <span>
