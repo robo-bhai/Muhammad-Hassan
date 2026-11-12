@@ -1,5 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
-
+{% load portal_i18n %}
 {% block title %}Sales report{% endblock %}
 
 {% block content %}
@@ -44,8 +44,8 @@
         <div class="vr-body">
             <div class="vr-pills">
                 <a class="vr-pill {% if range_key == 'today' %}on{% endif %}" href="?range=today">Aaj</a>
-                <a class="vr-pill {% if range_key == '7d' %}on{% endif %}" href="?range=7d">7 din</a>
-                <a class="vr-pill {% if range_key == '30d' %}on{% endif %}" href="?range=30d">30 din</a>
+                <a class="vr-pill {% if range_key == '7d' %}on{% endif %}" href="?range=7d">7 days</a>
+                <a class="vr-pill {% if range_key == '30d' %}on{% endif %}" href="?range=30d">30 days</a>
                 <a class="vr-pill {% if range_key == 'month' %}on{% endif %}" href="?range=month">Is mahine</a>
             </div>
             <form method="get" class="vr-custom">
@@ -67,7 +67,7 @@
             <div class="vr-kpi"><b>Rs {{ avg|floatformat:0 }}</b><span>Ek order ka average</span></div>
             <div class="vr-kpi green"><b>Rs {{ earn|floatformat:0 }}</b><span>Aap ka hissa (approx)</span></div>
         </div>
-        <div class="vr-note">Shop commission {{ pct }}% (approx Rs {{ commission|floatformat:0 }}). Sirf delivered orders ginay gaye{% if active %}; {{ active }} order abhi chal rahe hain{% endif %}. Asal payable "Dashboard" mein hai.</div>
+        <div class="vr-note">{% t "Shop commission {}% (approx Rs {})." pct commission|floatformat:0 %} {% t "Only delivered orders are counted" %}{% if active %}; {% t "{} orders are still in progress" active %}{% endif %}. {% t 'The actual payable amount is on the "Dashboard".' %}</div>
     </div></div>
 
     <div class="vr-card"><div class="vr-body">
@@ -87,7 +87,7 @@
     </div></div>
 
     <div class="vr-card"><div class="vr-body">
-        <div style="font-weight:800;margin-bottom:6px;">📅 {% if weekly %}Haftewar{% else %}Rozana{% endif %} bikri</div>
+        <div style="font-weight:800;margin-bottom:6px;">📅 {% if weekly %}Weekly{% else %}Daily{% endif %} sales</div>
         {% for r in series %}
         <div class="vr-row">
             <span class="vr-day">{{ r.day|date:"d M" }}</span>

@@ -28,5 +28,5 @@ def dispute_create(request, order_id):
     except disputes.DisputeError as exc:
         messages.error(request, f'❌ {exc}')
     else:
-        messages.success(request, '✅ Aap ka masla darj ho gaya. Hum jald jawab denge.')
+        messages.success(request, '✅ Your issue has been recorded. We will reply soon.')
     return redirect('order_detail_customer', order_id=order.id)

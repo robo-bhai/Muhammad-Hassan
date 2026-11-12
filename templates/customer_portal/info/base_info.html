@@ -27,22 +27,22 @@
     </div>
 
     <nav class="info-pills" aria-label="Support pages">
-        <a href="{% url 'shop_about' %}" class="{% if request.resolver_match.url_name == 'shop_about' %}active{% endif %}">About</a>
-        <a href="{% url 'shop_faq' %}" class="{% if request.resolver_match.url_name == 'shop_faq' %}active{% endif %}">FAQ</a>
-        <a href="{% url 'shop_help' %}" class="{% if request.resolver_match.url_name == 'shop_help' %}active{% endif %}">Help</a>
-        <a href="{% url 'shop_returns' %}" class="{% if request.resolver_match.url_name == 'shop_returns' %}active{% endif %}">Returns</a>
-        <a href="{% url 'shop_terms' %}" class="{% if request.resolver_match.url_name == 'shop_terms' %}active{% endif %}">Terms</a>
-        <a href="{% url 'shop_privacy' %}" class="{% if request.resolver_match.url_name == 'shop_privacy' %}active{% endif %}">Privacy</a>
+        <a href="{% url 'shop_about' %}" class="{% if request.resolver_match.url_name == 'shop_about' %}active{% endif %}">{% if LANG_CODE == 'ur' %}ہمارے بارے میں{% else %}About{% endif %}</a>
+        <a href="{% url 'shop_faq' %}" class="{% if request.resolver_match.url_name == 'shop_faq' %}active{% endif %}">{% if LANG_CODE == 'ur' %}سوالات{% else %}FAQ{% endif %}</a>
+        <a href="{% url 'shop_help' %}" class="{% if request.resolver_match.url_name == 'shop_help' %}active{% endif %}">{% if LANG_CODE == 'ur' %}مدد{% else %}Help{% endif %}</a>
+        <a href="{% url 'shop_returns' %}" class="{% if request.resolver_match.url_name == 'shop_returns' %}active{% endif %}">{% if LANG_CODE == 'ur' %}واپسی{% else %}Returns{% endif %}</a>
+        <a href="{% url 'shop_terms' %}" class="{% if request.resolver_match.url_name == 'shop_terms' %}active{% endif %}">{% if LANG_CODE == 'ur' %}شرائط{% else %}Terms{% endif %}</a>
+        <a href="{% url 'shop_privacy' %}" class="{% if request.resolver_match.url_name == 'shop_privacy' %}active{% endif %}">{% if LANG_CODE == 'ur' %}پرائیویسی{% else %}Privacy{% endif %}</a>
     </nav>
 
     {% block info_body %}{% endblock %}
 
     <div class="info-card text-center">
-        <h2>Aur madad chahiye?</h2>
-        <p class="mb-3">Hamari team se seedha baat karein.</p>
+        <h2>{% if LANG_CODE == 'ur' %}مزید مدد چاہیے؟{% else %}Need more help?{% endif %}</h2>
+        <p class="mb-3">{% if LANG_CODE == 'ur' %}ہماری ٹیم سے براہ راست بات کریں۔{% else %}Talk to our team directly.{% endif %}</p>
         {% if company_whatsapp_url %}
         <a href="{{ company_whatsapp_url }}?text=Hello%20{{ company_name|urlencode }}" target="_blank" rel="noopener" class="info-wa">
-            <i class="bi bi-whatsapp"></i> WhatsApp par chat karein
+            <i class="bi bi-whatsapp"></i> {% if LANG_CODE == 'ur' %}واٹس ایپ پر چیٹ کریں{% else %}Chat on WhatsApp{% endif %}
         </a>
         {% endif %}
         <div class="mt-3 small text-muted">

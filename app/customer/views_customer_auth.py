@@ -45,8 +45,8 @@ LOGIN_MAX_ATTEMPTS = 5            # ek phone + ek IP se ghalat koshishen
 LOGIN_MAX_ATTEMPTS_PER_IP = 40    # ek IP se saare phones milakar (phone-spraying)
 LOGIN_LOCK_SECONDS = 10 * 60
 REGISTER_MAX_PER_HOUR = 20        # ek IP se register koshishen (CGNAT/shared IP ke liye kholi rakhi)
-LOGIN_LOCKED_MSG = '🔒 Bohat zyada koshishen. 10 minute baad dobara try karein.'
-LOGIN_FAILED_MSG = '❌ Phone ya password ghalat hai'
+LOGIN_LOCKED_MSG = '🔒 Too many attempts. Please try again after 10 minutes.'
+LOGIN_FAILED_MSG = '❌ Phone or password is incorrect'
 
 
 def _count_login_failure(key, ip_key):
@@ -163,7 +163,7 @@ def auto_place_order(request, customer):
             if summary['coupon_code'] and summary['coupon_error']:
                 request.session.pop(coupon_logic.SESSION_KEY, None)
                 request.session.modified = True
-                return None, summary['coupon_error'] + ' Coupon hata diya gaya, total dobara dekhein.'
+                return None, summary['coupon_error'] + ' Coupon removed. Please check the total again.'
             delivery_charges = summary['delivery']
 
             # Step 6: Create order
@@ -294,7 +294,7 @@ def customer_register(request):
         try:
             reg_key = f"customer_register:{get_client_ip(request) or ''}"
             if cache.get(reg_key, 0) >= REGISTER_MAX_PER_HOUR:
-                messages.error(request, '🔒 Bohat zyada koshishen. Thori der baad dobara try karein.')
+                messages.error(request, '🔒 Too many attempts. Please try again later.')
                 return redirect('customer_register')
             cache.set(reg_key, cache.get(reg_key, 0) + 1, 3600)
             
@@ -407,7 +407,7 @@ def customer_register(request):
             # ✅ WELCOME MESSAGE WITH SHOP GREETING
             messages.success(
                 request, 
-                f'🎉 Welcome {customer.name}! Shop par khush aamdeed.'
+                f'🎉 Welcome {customer.name}! Glad to have you here.'
             )
             return redirect('shop_home')   # ✅ CHANGE: my_account → shop_home
             
@@ -488,7 +488,7 @@ def customer_login(request):
                 # ✅ WELCOME MESSAGE WITH SHOP GREETING
                 messages.success(
                     request, 
-                    f'🎉 Welcome back, {customer.name}! Shop par khush aamdeed.'
+                    f'🎉 Welcome back, {customer.name}!'
                 )
                 
                 if next_url and next_url.startswith('/'):

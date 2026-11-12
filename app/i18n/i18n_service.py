@@ -58,19 +58,35 @@ def ensure_seeded():
 
 
 def seed_defaults():
+    """Add new default words and refresh older 'default' rows (manual / auto / reviewed edits are never touched)."""
     from .i18n_default import DEFAULTS
     from ..models import Translation
-    existing = set(Translation.objects.values_list('key', flat=True))
-    new = []
+    existing = {t.key: t for t in Translation.objects.all()}
+    new, changed = [], []
+    now = timezone.now()
     for en, ur, ar in DEFAULTS:
         k = make_key(en)
-        if not k or k in existing:
+        if not k:
             continue
-        existing.add(k)
-        new.append(Translation(key=k, source=clean_source(en) or en, ur=ur, ar=ar,
-                               ur_status='default', ar_status='default'))
+        row = existing.get(k)
+        if row is None:
+            obj = Translation(key=k, source=clean_source(en) or en, ur=ur, ar=ar,
+                              ur_status='default', ar_status='default' if ar else '')
+            existing[k] = obj
+            new.append(obj)
+            continue
+        touched = False
+        if row.ur_status in ('default', '') and ur and row.ur != ur:
+            row.ur, row.ur_status, touched = ur, 'default', True
+        if row.ar_status in ('default', '') and ar and row.ar != ar:
+            row.ar, row.ar_status, touched = ar, 'default', True
+        if touched and row.pk:
+            row.updated_at = now
+            changed.append(row)
     Translation.objects.bulk_create(new, batch_size=200)
-    return len(new)
+    if changed:
+        Translation.objects.bulk_update(changed, ['ur', 'ar', 'ur_status', 'ar_status', 'updated_at'], batch_size=200)
+    return len(new) + len(changed)
 
 
 def get_version():

@@ -28,10 +28,10 @@ def _blockers(customer):
     reasons = []
     if SaleOrder.objects.filter(customer=customer, status__in=ACTIVE_SALE_STATUSES).exists() or \
             CustomerOrder.objects.filter(customer=customer, status__in=ACTIVE_PORTAL_STATUSES).exists():
-        reasons.append('Aap ka koi order abhi chal raha hai. Pehle us ke mukammal hone ka intezar karein.')
+        reasons.append('You have an order in progress. Please wait until it is complete.')
     try:
         if customer.adjusted_outstanding_balance() > 0:
-            reasons.append('Aap par bakaya raqam hai. Pehle hisab saaf karein.')
+            reasons.append('You have an unpaid balance. Please settle it first.')
     except Exception:
         logger.exception('outstanding balance check failed')
     return reasons
@@ -89,14 +89,14 @@ def delete_my_account(request):
 
     if request.method == 'POST' and not blockers:
         if request.POST.get('confirm') != 'DELETE':
-            messages.error(request, 'Confirm karne ke liye DELETE likhein.')
+            messages.error(request, 'Type DELETE to confirm.')
         elif not authenticate(request, username=request.user.get_username(), password=request.POST.get('password', '')):
-            messages.error(request, 'Password sahi nahi.')
+            messages.error(request, 'Incorrect password.')
         else:
             _anonymize(request, profile, customer)
             request.session.flush()
             logout(request)
-            messages.success(request, 'Aap ka account aur personal data delete kar diya gaya hai.')
+            messages.success(request, 'Your account and personal data have been deleted.')
             return redirect('shop_home')
 
     return render(request, 'customer_portal/account/delete_account.html', {'blockers': blockers})

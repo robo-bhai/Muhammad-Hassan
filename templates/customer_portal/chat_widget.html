@@ -1129,7 +1129,7 @@
                 startChatPolling();
             } else {
                 if (typeof showVoiceToast === 'function') {
-                    showVoiceToast('❌ ' + (data.message || 'Kuch masla hua'));
+                    showVoiceToast('❌ ' + (data.message || '{% if LANG_CODE == 'ur' %}کچھ مسئلہ ہو گیا{% else %}Something went wrong{% endif %}'));
                 }
             }
         })
@@ -1202,7 +1202,7 @@
                 if (tempEl) tempEl.remove();
                 
                 if (typeof showVoiceToast === 'function') {
-                    showVoiceToast(data.message || 'Message send nahi hua');
+                    showVoiceToast(data.message || '{% if LANG_CODE == 'ur' %}پیغام نہیں بھیجا جا سکا{% else %}Message could not be sent{% endif %}');
                 }
             }
         })

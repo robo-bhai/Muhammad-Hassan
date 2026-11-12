@@ -1,4 +1,5 @@
 {% extends 'customer_portal/rider/base.html' %}
+{% load portal_i18n %}
 {% block title %}Orders{% endblock %}
 {% block body %}
 <div class="stats">
@@ -30,8 +31,8 @@
     <div class="sep"></div>
     {% for it in r.items %}<div class="row"><span>{{ it.qty|floatformat:"-2" }} × {{ it.product.name }}</span></div>{% endfor %}
 
-    {% if r.is_cod %}<div class="cod">💵 Cash on Delivery — customer se Rs. {{ r.total|floatformat:0 }} lein</div>
-    {% else %}<div class="paid">✅ Payment ho chuki — cash nahi lena</div>{% endif %}
+    {% if r.is_cod %}<div class="cod">💵 Cash on Delivery — {% t "collect Rs. {} from the customer" r.total|floatformat:0 %}</div>
+    {% else %}<div class="paid">✅ Already paid — do not collect cash</div>{% endif %}
 
     <div class="acts">
       {% if r.di.status == 'assigned' %}
@@ -50,7 +51,7 @@
 
   <h3>🆕 Naye orders</h3>
   {% if not rider.is_online %}
-    <div class="card empty">Naye orders dekhne ke liye upar se <b>Online</b> hon.</div>
+    <div class="card empty">{% t "To see new orders, go <b>Online</b> using the switch above." %}</div>
   {% else %}
     {% for o in offers %}
     <div class="card">
@@ -64,7 +65,7 @@
       <form method="post" action="{% url 'rider_decline_order' o.order.id %}" class="acts" style="margin-top:6px">{% csrf_token %}<button class="btn" style="background:#6b7280">Reject</button></form>
     </div>
     {% empty %}
-      <div class="card empty">Abhi koi naya order nahi. Naya aate hi awaaz aayegi 🔔</div>
+      <div class="card empty">No new orders right now. You will hear a sound when one arrives 🔔</div>
     {% endfor %}
   {% endif %}
 </div>

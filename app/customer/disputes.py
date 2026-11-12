@@ -75,10 +75,10 @@ def open_dispute(order, reason, description='', photo=None):
     if not ok:
         raise DisputeError(why)
     if reason not in dict(OrderDispute.REASON_CHOICES):
-        raise DisputeError('Masle ki wajah chunein.')
+        raise DisputeError('Choose the reason for the issue.')
     description = (description or '').strip()[:2000]
     if reason == 'other' and not description:
-        raise DisputeError('"Other" chunne par masla likhna zaroori hai.')
+        raise DisputeError('If you choose "Other", please describe the issue.')
     check_photo(photo)
 
     di = DeliveryInfo.objects.filter(sale_order=order, rider__isnull=False).select_related('rider').first()
@@ -101,10 +101,10 @@ def open_dispute(order, reason, description='', photo=None):
 
 def mark_under_review(dispute, user):
     if dispute.status != 'open':
-        raise DisputeError('Sirf open dispute review mein ja sakta hai.')
+        raise DisputeError('Only an open dispute can be moved to review.')
     dispute.status = 'under_review'
     dispute.save(update_fields=['status', 'updated_at'])
-    store_orders._notify(store_orders._customer_user(dispute.sale_order), 'Dispute review mein hai',
+    store_orders._notify(store_orders._customer_user(dispute.sale_order), 'Dispute is under review',
                          f'Order #{dispute.sale_order.order_no} ka masla dekha ja raha hai.',
                          f'/shop/order/{dispute.sale_order_id}/', 'info')
     return dispute
@@ -131,15 +131,15 @@ def resolve_dispute(dispute, action, user, amount=None, note=''):
             try:
                 refund = Decimal(str(amount)).quantize(CENT, ROUND_HALF_UP)
             except Exception:
-                raise DisputeError('Refund ki raqam sahi likhein.')
+                raise DisputeError('Enter a valid refund amount.')
             if refund <= 0 or refund > cap:
                 raise DisputeError(f'Refund 0 se zyada aur {cap} se kam ya barabar honi chahiye.')
         elif not note:
-            raise DisputeError('Reject karne ki wajah likhna zaroori hai.')
+            raise DisputeError('A reason is required to reject.')
 
         if refund > 0:
             if cap <= 0:
-                raise DisputeError('Is order ki raqam zero hai, refund nahi ho sakta.')
+                raise DisputeError('This order amount is zero, so it cannot be refunded.')
             _, created = WalletTransaction.objects.get_or_create(
                 order=order, kind='dispute',
                 defaults={'customer_id': dispute.customer_id, 'amount': refund,
@@ -159,7 +159,7 @@ def resolve_dispute(dispute, action, user, amount=None, note=''):
         msg = f'Aap ke wallet mein {refund} wapas aa gaye hain.'
         title = 'Dispute resolve ho gaya'
     else:
-        msg = note or 'Dispute reject kar diya gaya.'
+        msg = note or 'The dispute was rejected.'
         title = 'Dispute par faisla'
     store_orders._notify(store_orders._customer_user(order), f'{title} (order #{order.order_no})', msg,
                          f'/shop/order/{order.id}/', 'success' if refund > 0 else 'info')
@@ -191,7 +191,7 @@ def submit_response(dispute, party, text, photo=None):
         raise DisputeError('Galat party.')
     text = (text or '').strip()
     if not text:
-        raise DisputeError('Jawab likhna zaroori hai.')
+        raise DisputeError('A reply is required.')
     if len(text) > RESPONSE_MAX_CHARS:
         raise DisputeError(f'Jawab {RESPONSE_MAX_CHARS} harf se chota likhein.')
     check_photo(photo)
@@ -199,9 +199,9 @@ def submit_response(dispute, party, text, photo=None):
     with transaction.atomic():
         dispute = OrderDispute.objects.select_for_update().select_related('sale_order').get(pk=dispute.pk)
         if not dispute.is_open:
-            raise DisputeError('Is dispute ka faisla ho chuka hai, ab jawab nahi diya ja sakta.')
+            raise DisputeError('This dispute is already decided, so a reply can no longer be given.')
         if getattr(dispute, f'{party}_responded_at'):
-            raise DisputeError('Aap pehle hi jawab de chuke hain.')
+            raise DisputeError('You have already replied.')
         setattr(dispute, f'{party}_response', text)
         if photo is not None:
             setattr(dispute, f'{party}_photo', photo)

@@ -83,7 +83,7 @@ def reorder(request, order_id):
             }
 
     if not cart:
-        messages.error(request, 'Is order ka koi item abhi available nahi.')
+        messages.error(request, 'None of the items in this order are available right now.')
         return redirect('order_detail_customer', order_id=order.id)
 
     for k in ('buy_now_mode', 'buy_now_product_id'):
@@ -92,7 +92,7 @@ def reorder(request, order_id):
     request.session.modified = True
 
     if skipped:
-        messages.warning(request, 'Ye items cart mein nahi aaye: ' + ', '.join(skipped))
+        messages.warning(request, 'These items could not be added to the cart: ' + ', '.join(skipped))
     else:
-        messages.success(request, 'Pichla order cart mein aa gaya. Check kar ke order karein.')
+        messages.success(request, 'Your previous order is in the cart. Please review it and place the order.')
     return redirect('cart_view')

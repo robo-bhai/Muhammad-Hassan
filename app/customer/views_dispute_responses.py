@@ -60,7 +60,7 @@ def vendor_dispute_detail(request, pk):
     if request.method == 'POST':
         try:
             logic.submit_response(d, 'vendor', request.POST.get('response', ''), request.FILES.get('photo'))
-            messages.success(request, '✅ Aap ka jawab bhej diya gaya.')
+            messages.success(request, '✅ Your reply has been sent.')
         except logic.DisputeError as exc:
             messages.error(request, f'❌ {exc}')
         return redirect('vendor_dispute_detail', pk=d.pk)
@@ -88,7 +88,7 @@ def rider_dispute_detail(request, pk):
     if request.method == 'POST':
         try:
             logic.submit_response(d, 'rider', request.POST.get('response', ''), request.FILES.get('photo'))
-            messages.success(request, '✅ Aap ka jawab bhej diya gaya.')
+            messages.success(request, '✅ Your reply has been sent.')
         except logic.DisputeError as exc:
             messages.error(request, f'❌ {exc}')
         return redirect('rider_dispute_detail', pk=d.pk)

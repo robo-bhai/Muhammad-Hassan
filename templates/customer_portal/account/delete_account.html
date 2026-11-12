@@ -3,28 +3,28 @@
 
 {% block content %}
 <div class="container py-4" style="max-width:560px;">
-  <h1 class="h3 fw-bold mb-3"><i class="bi bi-trash3 text-danger"></i> Account delete karein</h1>
+  <h1 class="h3 fw-bold mb-3"><i class="bi bi-trash3 text-danger"></i> {% if LANG_CODE == 'ur' %}اکاؤنٹ حذف کریں{% else %}Delete account{% endif %}</h1>
 
   {% if messages %}{% for m in messages %}<div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags }}{% endif %}">{{ m }}</div>{% endfor %}{% endif %}
 
   <div class="alert alert-warning">
-    Delete karne par aap ka naam, phone, email, saved addresses aur profile photo hata diye jate hain aur login band ho jata hai.
-    Ye wapas nahi ho sakta. Purane orders ki raqam hisab-kitab ke liye reh sakti hai, lekin un par aap ki personal maloomat nahi rehti.
+    {% if LANG_CODE == 'ur' %}حذف کرنے پر آپ کا نام، فون، ای میل، محفوظ پتے اور پروفائل فوٹو ہٹا دیے جاتے ہیں اور لاگ اِن بند ہو جاتا ہے۔{% else %}Deleting removes your name, phone, email, saved addresses and profile photo, and you can no longer log in.{% endif %}
+    {% if LANG_CODE == 'ur' %}یہ واپس نہیں ہو سکتا۔ پرانے آرڈرز کی رقم حساب کتاب کے لیے رہ سکتی ہے، لیکن ان پر آپ کی ذاتی معلومات نہیں رہتیں۔{% else %}This cannot be undone. The amounts of old orders may be kept for accounting, but without your personal information.{% endif %}
   </div>
 
   {% if blockers %}
-    <div class="alert alert-danger"><b>Abhi delete nahi ho sakta:</b>
+    <div class="alert alert-danger"><b>{% if LANG_CODE == 'ur' %}ابھی حذف نہیں ہو سکتا:{% else %}Cannot delete right now:{% endif %}</b>
       <ul class="mb-0">{% for b in blockers %}<li>{{ b }}</li>{% endfor %}</ul>
     </div>
-    <a href="{% url 'my_account' %}" class="btn btn-outline-secondary">Wapas</a>
+    <a href="{% url 'my_account' %}" class="btn btn-outline-secondary"{% if LANG_CODE == 'ur' %}>واپس<{% else %}>Back<{% endif %}/a>
   {% else %}
     <form method="post" autocomplete="off">
       {% csrf_token %}
-      <div class="mb-3"><label class="form-label">Apna password likhein</label>
+      <div class="mb-3"><label class="form-label">{% if LANG_CODE == 'ur' %}اپنا پاس ورڈ لکھیں{% else %}Enter your password{% endif %}</label>
         <input type="password" name="password" class="form-control" required autocomplete="current-password"></div>
-      <div class="mb-3"><label class="form-label">Confirm karne ke liye <b>DELETE</b> likhein</label>
+      <div class="mb-3"><label class="form-label">{% if LANG_CODE == 'ur' %}تصدیق کے لیے <b>DELETE</b> لکھیں{% else %}Type <b>DELETE</b> to confirm{% endif %}</label>
         <input type="text" name="confirm" class="form-control" required></div>
-      <button type="submit" class="btn btn-danger">Mera account delete karein</button>
+      <button type="submit" class="btn btn-danger">{% if LANG_CODE == 'ur' %}میرا اکاؤنٹ حذف کریں{% else %}Delete my account{% endif %}</button>
       <a href="{% url 'my_account' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
     </form>
   {% endif %}

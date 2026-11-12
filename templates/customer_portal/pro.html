@@ -1,5 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
-
+{% load portal_i18n %}
 {% block title %}Pro{% endblock %}
 
 {% block content %}
@@ -20,24 +20,24 @@
   {% for m in messages %}<div class="pr-alert">{{ m }}</div>{% endfor %}
   <div class="pr-hero">
     <h1>⭐ Pro</h1>
-    <div>Free delivery{% if cfg.min_order > 0 %} (Rs. {{ cfg.min_order|floatformat:0 }} se upar ke orders par){% endif %}</div>
+    <div>Free delivery{% if cfg.min_order > 0 %} {% t "(on orders above Rs. {})" cfg.min_order|floatformat:0 %}{% endif %}</div>
     <div class="pr-price">Rs. {{ cfg.price|floatformat:0 }} <small style="font-size:15px;font-weight:600;">/ {{ cfg.days }} din</small></div>
   </div>
 
   <div class="pr-card">
     {% if active %}
-      <div class="pr-status pr-ok">✅ Aap Pro member hain, {{ active.ends_on|date:"d M Y" }} tak.</div>
+      <div class="pr-status pr-ok">✅ {% t "You are a Pro member until {}." active.ends_on|date:"d M Y" %}</div>
     {% elif pending %}
-      <div class="pr-status pr-wait">⏳ Aap ki request mil gayi ({{ pending.requested_at|date:"d M" }}). Payment dene par shop Pro activate kar dega.</div>
+      <div class="pr-status pr-wait">⏳ {% t "Your request was received ({}). The shop will activate Pro once you pay." pending.requested_at|date:"d M" %}</div>
     {% else %}
       <ul style="padding:0;margin:0 0 14px;">
         <li>🚚 Har eligible order par delivery fee maaf</li>
-        <li>📆 {{ cfg.days }} din tak chalta hai</li>
-        <li>💵 Payment shop ko cash / bank / JazzCash se dein; online payment abhi nahi</li>
+        <li>📆 {% t "Valid for {} days" cfg.days %}</li>
+        <li>💵 Pay the shop by cash, bank or JazzCash; online payment is not available yet</li>
       </ul>
       {% if can_pay_wallet %}
       <form method="post" action="{% url 'pro_buy_wallet' %}" style="margin-bottom:10px;">{% csrf_token %}
-        <button class="pr-btn" type="submit">Wallet se Rs. {{ cfg.price|floatformat:0 }} ada karke abhi Pro lein</button>
+        <button class="pr-btn" type="submit">{% t "Pay Rs. {} from wallet and get Pro now" cfg.price|floatformat:0 %}</button>
         <div style="font-size:12.5px;color:#6b7280;margin-top:4px;">Wallet balance: Rs. {{ wallet_balance|floatformat:0 }}</div>
       </form>
       {% endif %}

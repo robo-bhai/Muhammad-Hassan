@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}Checkout - {{ company_name }}{% endblock %}
@@ -813,8 +814,8 @@
             <div class="alert alert-danger mb-3">🔒 {{ store.closed_message }}</div>
             {% elif not store.min_ok %}
             <div class="alert alert-warning mb-3">
-                ⚠️ Minimum order Rs. {{ store.min_order|floatformat:0 }} hai. Aur <b>Rs. {{ store.short_by|floatformat:0 }}</b> ka maal add karein.
-                <a href="{% url 'cart_view' %}" class="alert-link">Cart par wapas jayein</a>
+                ⚠️ {% if LANG_CODE == 'ur' %}کم از کم آرڈر Rs. {{ store.min_order|floatformat:0 }} ہے۔ مزید <b>Rs. {{ store.short_by|floatformat:0 }}</b> کا سامان شامل کریں۔{% else %}Minimum order is Rs. {{ store.min_order|floatformat:0 }}. Add <b>Rs. {{ store.short_by|floatformat:0 }}</b> more.{% endif %}
+                <a href="{% url 'cart_view' %}" class="alert-link">{% if LANG_CODE == 'ur' %}کارٹ پر واپس جائیں{% else %}Back to cart{% endif %}</a>
             </div>
             {% endif %}
             {% endif %}
@@ -833,7 +834,7 @@
                         <div class="free-progress-box">
                             <h6>
                                 <i class="bi bi-gift-fill"></i>
-                                Aur Rs. {{ free_delivery_progress.remaining|floatformat:0 }} add karein → FREE Delivery!
+                                {% if LANG_CODE == 'ur' %}مزید Rs. {{ free_delivery_progress.remaining|floatformat:0 }} شامل کریں → مفت ڈیلیوری!{% else %}Add Rs. {{ free_delivery_progress.remaining|floatformat:0 }} more → FREE Delivery!{% endif %}
                             </h6>
                             <div class="free-progress-bar">
                                 <div class="free-progress-fill" style="width: {{ free_delivery_progress.percent }}%;"></div>
@@ -910,11 +911,11 @@
                     </div>
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="radio" name="sched_mode" id="schedLater" value="later" {% if sched %}checked{% endif %}>
-                        <label class="form-check-label" for="schedLater">Baad ke liye schedule karein</label>
+                        <label class="form-check-label" for="schedLater">{% if LANG_CODE == 'ur' %}بعد کے لیے شیڈول کریں{% else %}Schedule for later{% endif %}</label>
                     </div>
                     <div id="schedPicker" style="{% if not sched %}display:none{% endif %}">
                         <input type="datetime-local" id="scheduleAt" class="form-control" value="{{ sched|default:'' }}">
-                        <small class="text-muted">Kam az kam 30 minute baad se 7 din tak.</small>
+                        <small class="text-muted">{% if LANG_CODE == 'ur' %}کم از کم 30 منٹ بعد سے 7 دن تک۔{% else %}From 30 minutes up to 7 days ahead.{% endif %}</small>
                     </div>
                     <div id="schedMsg" class="small mt-2"></div>
                 </div>
@@ -1001,7 +1002,7 @@
                 <div class="place-order-wrap">
                     <div class="place-order-hint">
                         <i class="bi bi-hand-index-thumb-fill"></i>
-                        <span>Order confirm karne ke liye yahan click karein</span>
+                        <span>{% if LANG_CODE == 'ur' %}آرڈر کی تصدیق کے لیے یہاں دبائیں{% else %}Click here to confirm your order{% endif %}</span>
                     </div>
                     <button type="button" 
                             class="place-order-btn"
@@ -1021,7 +1022,7 @@
                     </button>
                     <div class="po-trust">
                         <span><i class="bi bi-cash-coin"></i> Delivery par payment</span>
-                        <span><i class="bi bi-x-circle"></i> Advance nahi dena</span>
+                        <span><i class="bi bi-x-circle"></i> {% if LANG_CODE == 'ur' %}ایڈوانس نہیں دینا{% else %}No advance payment{% endif %}</span>
                         <span><i class="bi bi-shield-lock-fill"></i> 100% Secure</span>
                     </div>
                 </div>
@@ -1042,7 +1043,7 @@
                 <div class="place-order-wrap">
                     <div class="place-order-hint">
                         <i class="bi bi-hand-index-thumb-fill"></i>
-                        <span>Order confirm karne ke liye yahan click karein</span>
+                        <span>{% if LANG_CODE == 'ur' %}آرڈر کی تصدیق کے لیے یہاں دبائیں{% else %}Click here to confirm your order{% endif %}</span>
                     </div>
                     <button type="button" 
                             class="place-order-btn"
@@ -1062,7 +1063,7 @@
                     </button>
                     <div class="po-trust">
                         <span><i class="bi bi-cash-coin"></i> Delivery par payment</span>
-                        <span><i class="bi bi-x-circle"></i> Advance nahi dena</span>
+                        <span><i class="bi bi-x-circle"></i> {% if LANG_CODE == 'ur' %}ایڈوانس نہیں دینا{% else %}No advance payment{% endif %}</span>
                         <span><i class="bi bi-shield-lock-fill"></i> 100% Secure</span>
                     </div>
                 </div>
@@ -1244,15 +1245,15 @@
 <!-- Order confirm popup -->
 <div class="po-overlay" id="poConfirm" role="dialog" aria-modal="true" aria-labelledby="poConfirmTitle">
     <div class="po-sheet">
-        <h5 id="poConfirmTitle"><i class="bi bi-bag-check-fill text-success"></i> Order confirm karein</h5>
-        <div class="po-sub">Neeche ki tafseel check kar lein, phir confirm karein.</div>
+        <h5 id="poConfirmTitle"><i class="bi bi-bag-check-fill text-success"></i> {% if LANG_CODE == 'ur' %}آرڈر کی تصدیق کریں</h5>{% else %}Confirm order</h5>{% endif %}
+        <div class="po-sub">{% if LANG_CODE == 'ur' %}نیچے کی تفصیل دیکھ لیں، پھر تصدیق کریں۔{% else %}Review the details below, then confirm.{% endif %}</div>
         <div class="po-row"><i class="bi bi-person-fill"></i><div><small>Naam</small><b id="poName">-</b></div></div>
         <div class="po-row"><i class="bi bi-geo-alt-fill"></i><div><small>Delivery address</small><b id="poAddr">-</b></div></div>
         <div class="po-row"><i class="bi bi-cash-coin"></i><div><small>Payment</small><b>Cash on Delivery</b></div></div>
         <div class="po-total"><span>Total</span><span>Rs. <span id="poTotal">0</span></span></div>
         <div class="po-actions">
-            <button type="button" class="po-btn-no" id="poNo">Wapas</button>
-            <button type="button" class="po-btn-yes" id="poYes"><i class="bi bi-check-circle-fill"></i> Haan, Order Karein</button>
+            <button type="button" class="po-btn-no" id="poNo"{% if LANG_CODE == 'ur' %}>واپس<{% else %}>Back<{% endif %}/button>
+            <button type="button" class="po-btn-yes" id="poYes"><i class="bi bi-check-circle-fill"></i> {% if LANG_CODE == 'ur' %}ہاں، آرڈر کریں{% else %}Yes, place order{% endif %}</button>
         </div>
     </div>
 </div>
@@ -1263,7 +1264,7 @@
             
             <div class="modal-header address-modal-header">
                 <h5 id="changeAddressModalLabel">
-                    <i class="bi bi-geo-alt-fill"></i> Delivery Address Update Karein
+                    <i class="bi bi-geo-alt-fill"></i> {% if LANG_CODE == 'ur' %}ڈیلیوری کا پتہ اپڈیٹ کریں{% else %}Update delivery address{% endif %}
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -1290,9 +1291,7 @@
                                readonly
                                disabled>
                         <small class="text-muted d-block mt-1">
-                            <i class="bi bi-info-circle"></i> To change the name 
-                            <a href="{% url 'my_account' %}" style="color: #2563eb; font-weight: 700; text-decoration: none;">Profile</a> 
-                            page par jayein
+                            <i class="bi bi-info-circle"></i> {% t "To change the name, go to the" %} <a href="{% url 'my_account' %}" style="color: #2563eb; font-weight: 700; text-decoration: none;">Profile</a> {% t "page." %}
                         </small>
                     </div>
                     
@@ -1399,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!STORE_BLOCKED) return;
     ['trustedPlaceOrderBtn', 'verifiedPlaceOrderBtn'].forEach(function (id) {
         var b = document.getElementById(id);
-        if (b) { b.disabled = true; b.style.opacity = '.55'; b.title = 'Store ki shart poori nahi hui'; }
+        if (b) { b.disabled = true; b.style.opacity = '.55'; b.title = '{% if LANG_CODE == 'ur' %}اسٹور کی شرط پوری نہیں ہوئی{% else %}Store requirement not met{% endif %}'; }
     });
 });
 
@@ -1578,7 +1577,7 @@ function saveAddress() {
     const landmark = document.getElementById('inputLandmark').value.trim();
     
     if (!address) {
-        showAddressError('❌ Complete address zaroori hai');
+        showAddressError('❌ {% if LANG_CODE == 'ur' %}پورا پتہ ضروری ہے{% else %}Complete address is required{% endif %}');
         document.getElementById('inputAddress').focus();
         return;
     }
@@ -1590,7 +1589,7 @@ function saveAddress() {
     }
     
     if (!city) {
-        showAddressError('❌ City zaroori hai');
+        showAddressError('❌ {% if LANG_CODE == 'ur' %}شہر ضروری ہے{% else %}City is required{% endif %}');
         document.getElementById('inputCity').focus();
         return;
     }
@@ -1736,7 +1735,7 @@ function submitPlaceOrder(btn) {
                 window.location.href = data.redirect_url;
             }, 500);
         } else {
-            alert('❌ ' + (data.message || 'Order place nahi hua'));
+            alert('❌ ' + (data.message || '{% if LANG_CODE == 'ur' %}آرڈر نہیں ہو سکا{% else %}Order could not be placed{% endif %}'));
             btn.innerHTML = originalText;
             btn.disabled = false;
         }

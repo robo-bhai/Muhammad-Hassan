@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load img_tools %}
 {% load static %}
 
@@ -363,8 +364,7 @@
                         <div>
                             <h5 class="mb-1"><strong>Trusted Customer</strong></h5>
                             <div class="small">
-                                You are a trusted customer. <strong>OTP is not required</strong> — 
-                                direct order place karein!
+                                {% t "You are a trusted customer. <strong>OTP is not required</strong> — you can place your order directly!" %}
                             </div>
                         </div>
                     </div>
@@ -379,8 +379,8 @@
                             <h5>✅ OTP Verified!</h5>
                             <small>
                                 Your phone number has been verified. 
-                                Ab <strong>Place Order</strong> button dabayein.
-                            </small>
+                                {% t "Now tap the <strong>Place Order</strong> button." %}
+                </small>
                         </div>
                     </div>
 
@@ -837,7 +837,7 @@ function verifyOTP() {
                 '<div class="alert alert-success text-center mb-0">' +
                 '<i class="bi bi-check-circle-fill fs-1"></i>' +
                 '<h5 class="mt-2 mb-1"><strong>OTP Verified!</strong></h5>' +
-                '<p class="mb-0">Ab <strong>Place Order</strong> button dabayein.</p>' +
+                '<p class="mb-0">{% t "Now tap the <strong>Place Order</strong> button." %}</p>' +
                 '</div>';
             
         } else {

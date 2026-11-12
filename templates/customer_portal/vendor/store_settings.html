@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load img_tools %}
 {% load static %}
 
@@ -49,7 +50,7 @@
   <div class="ss-card">
     <div class="ss-head">
       <h3><i class="bi bi-shop"></i> Store Settings</h3>
-      <p>Ye aap ke store ki wo page ha jo customer dekhte hain.</p>
+      <p>This is your store page that customers see.</p>
     </div>
     <div class="ss-body">
       {% include 'customer_portal/vendor/_store_location.html' %}
@@ -63,16 +64,16 @@
             <option value="">-- Select --</option>
             {% for c in store_categories %}<option value="{{ c.id }}" {% if profile.store_category_id == c.id %}selected{% endif %}>{{ c.icon }} {{ c.name }}</option>{% endfor %}
           </select>
-          <div class="ss-help">Customer stores page par isi type se aap ko dhoondhta hai.</div>
+          <div class="ss-help">Customers find you by this type on the stores page.</div>
         </div>
 
         {% if cuisines and cuisines_on %}
         <div class="ss-group">
-          <label>Cuisines (zyada se zyada 3)</label>
+          <label>Cuisines (maximum 3)</label>
           <div style="display:flex;flex-wrap:wrap;gap:6px 14px">
             {% for c in cuisines %}<label style="font-weight:500"><input type="checkbox" name="cuisines" value="{{ c.id }}" {% if c.id in my_cuisine_ids %}checked{% endif %}> {{ c.icon }} {{ c.name }}</label>{% endfor %}
           </div>
-          <div class="ss-help">Jaise Pizza, Burger, Biryani. Customer stores page par cuisine se filter karta hai.</div>
+          <div class="ss-help">e.g. Pizza, Burger, Biryani. Customers filter stores by cuisine.</div>
         </div>
         {% elif cuisines %}
         {% for c in cuisines %}{% if c.id in my_cuisine_ids %}<input type="hidden" name="cuisines" value="{{ c.id }}">{% endif %}{% endfor %}
@@ -84,15 +85,14 @@
           <label><input type="radio" name="store_status" value="busy" {% if profile.store_status == 'busy' %}checked{% endif %}><span>🟠 Busy</span></label>
           <label><input type="radio" name="store_status" value="closed" {% if profile.store_status == 'closed' %}checked{% endif %}><span>🔴 Closed</span></label>
         </div>
-        <div class="ss-help">Closed: customer order nahi de sakta. Busy: order milte hain, par der ho sakti ha.
-          Abhi customer ko aap ka store <b>{% if profile.is_open_now %}khula{% else %}band{% endif %}</b> nazar aa raha ha.</div>
+        <div class="ss-help">{% t "Closed: customers cannot order. Busy: orders are accepted but may be delayed." %} {% if profile.is_open_now %}{% t "Right now customers see your store as <b>open</b>." %}{% else %}{% t "Right now customers see your store as <b>closed</b>." %}{% endif %}</div>
 
         <div class="ss-sec">Timings</div>
         <div class="ss-row">
           <div class="ss-group"><label>Opens at</label><input type="time" name="opens_at" value="{{ profile.opens_at|time:'H:i' }}"></div>
           <div class="ss-group"><label>Closes at</label><input type="time" name="closes_at" value="{{ profile.closes_at|time:'H:i' }}"></div>
         </div>
-        <div class="ss-help" style="margin-top:-8px;">Dono khali = status ke mutabiq hamesha khula. Raat ka time bhi chalta ha (jaise 18:00 se 02:00).</div>
+        <div class="ss-help" style="margin-top:-8px;">If both are empty, the store is always open according to its status. Overnight hours also work (e.g. 18:00 to 02:00).</div>
 
         <div class="ss-sec">Delivery</div>
         <div class="ss-row">
@@ -104,8 +104,8 @@
           <div class="ss-group"><label>Fee per km (Rs.)</label><input type="number" name="fee_per_km" min="0" step="0.01" value="{{ profile.fee_per_km|stringformat:'s' }}"></div>
           <div class="ss-group"><label>Free radius (km)</label><input type="number" name="free_radius_km" min="0" step="0.1" value="{{ profile.free_radius_km|stringformat:'s' }}"></div>
         </div>
-        <div class="ss-group"><label>Max delivery distance (km)</label><input type="number" name="max_delivery_km" min="0" step="0.1" value="{{ profile.max_delivery_km|default_if_none:''|stringformat:'s' }}" placeholder="Khali = koi had nahi">
-          <div class="ss-help">Fee = upar wali delivery fee + (free radius ke baad har km par per-km fee). Doori customer ke map pin se store ki location tak nikalti hai, is liye store ki location set honi chahiye{% if not profile.lat %} <b>(abhi set nahi)</b>{% endif %}. Per-km 0 ho to sirf fixed fee lagti hai.</div></div>
+        <div class="ss-group"><label>Max delivery distance (km)</label><input type="number" name="max_delivery_km" min="0" step="0.1" value="{{ profile.max_delivery_km|default_if_none:''|stringformat:'s' }}" placeholder="Empty = no limit">
+          <div class="ss-help">{% t "Fee = the delivery fee above + the per-km fee for every km beyond the free radius. Distance is measured from the customer’s map pin to your store location, so your store location must be set." %}{% if not profile.lat %} <b>{% t "(not set yet)" %}</b>{% endif %} {% t "If per-km is 0, only the fixed fee applies." %}</div></div>
         {% else %}
         <input type="hidden" name="fee_per_km" value="{{ profile.fee_per_km|stringformat:'s' }}">
         <input type="hidden" name="free_radius_km" value="{{ profile.free_radius_km|stringformat:'s' }}">
@@ -129,12 +129,11 @@
           </div>
           {% endfor %}
           <label style="margin-top:10px">Aur areas (list mein nahi hain to)</label>
-          <textarea name="delivery_areas_extra" rows="2" maxlength="500" placeholder="Jaise: Chak 45, Basti Maluk">{{ area_extra }}</textarea>
-          <div class="ss-help">Apne deliver karne wale areas par tick lagayein. Customer ka "Deliver to" area in mein ho to aap ka store usay nazar aata hai.</div>
+          <textarea name="delivery_areas_extra" rows="2" maxlength="500" placeholder="e.g. Chak 45, Basti Maluk">{{ area_extra }}</textarea>
+          <div class="ss-help">Tick the areas where you deliver. If the customer’s “Deliver to” area is in the list, they can see your store.</div>
           {% else %}
-          <textarea name="delivery_areas" rows="2" maxlength="1000" placeholder="Jaise: Gulberg, DHA, Johar Town">{{ profile.delivery_areas }}</textarea>
-          <div class="ss-help">Wo areas jahan aap deliver karte hain, comma se alag. Customer ka "Deliver to" area in mein ho to aap ka store usay nazar aata hai.
-            Khali chhoden to store sirf aap ke shehar ({{ profile.city|default:"-" }}) ke customers ko nazar aayega.</div>
+          <textarea name="delivery_areas" rows="2" maxlength="1000" placeholder="e.g. Gulberg, DHA, Johar Town">{{ profile.delivery_areas }}</textarea>
+          <div class="ss-help">{% t "Areas where you deliver, separated by commas. If the customer’s “Deliver to” area is in this list, they can see your store." %} {% t "If left empty, only customers in your city ({}) will see your store." profile.city|default:"-" %}</div>
           {% endif %}
         </div>
 
@@ -157,12 +156,12 @@
             <input type="file" name="cover_image" accept="image/*">
           </div>
         </div>
-        <div class="ss-help">JPG/PNG/WEBP, 5 MB tak.</div>
+        <div class="ss-help">JPG/PNG/WEBP, up to 5 MB.</div>
 
         <button type="submit" class="ss-btn">Save Store Settings</button>
       </form>
       <div class="ss-links">
-        {% if profile.is_approved %}<a href="{% url 'store_detail' profile.pk %}"><i class="bi bi-eye"></i> Customer ko meri store kaisi dikhti ha</a>{% endif %}
+        {% if profile.is_approved %}<a href="{% url 'store_detail' profile.pk %}"><i class="bi bi-eye"></i> How customers see my store</a>{% endif %}
         <a href="{% url 'vendor_dashboard' %}"><i class="bi bi-arrow-left"></i> Back to dashboard</a>
       </div>
     </div>

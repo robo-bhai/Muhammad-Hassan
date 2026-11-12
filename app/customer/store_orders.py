@@ -33,12 +33,12 @@ ZERO = Decimal('0.00')
 
 # Vendor reject karte waqt in mein se wajah chunta hai
 REJECT_REASONS = [
-    ('out_of_stock', 'Item abhi stock mein nahi'),
-    ('store_busy', 'Store abhi bohat busy hai'),
-    ('store_closed', 'Store band ho raha hai'),
-    ('out_of_area', 'Aap ke area mein delivery nahi'),
-    ('price_issue', 'Item ki price/detail mein ghalti'),
-    ('other', 'Doosri wajah'),
+    ('out_of_stock', 'Item is out of stock'),
+    ('store_busy', 'Store is very busy right now'),
+    ('store_closed', 'Store is closing'),
+    ('out_of_area', 'We do not deliver to your area'),
+    ('price_issue', 'Item price or details are wrong'),
+    ('other', 'Other reason'),
 ]
 REJECT_REASON_LABELS = dict(REJECT_REASONS)
 
@@ -237,7 +237,7 @@ def validate_cart_for_order(cart, subtotal, scheduled_for=None):
     scheduled_for dein to store ke abhi khule hone ki shart nahi, schedule ke waqt ki jaanch hoti hai."""
     rules = cart_store_rules(cart, subtotal)
     if rules['mixed']:
-        return 'Cart mein alag alag stores ka maal hai. Cart khali karke ek hi store se order karein.'
+        return 'Your cart has items from different stores. Empty the cart and order from one store.'
     if scheduled_for is not None:
         err = schedule_error(cart, scheduled_for, subtotal)
         if err:
@@ -428,9 +428,9 @@ def suggest_other_stores(order, limit=3):
 def refund_note(order):
     """Reject par paisa ka message. COD mein kuch kata hi nahi hota."""
     if (order.payment_method or 'cod') == 'cod':
-        return 'Cash on Delivery tha, is liye aap se koi paisa nahi liya gaya.'
+        return 'It was Cash on Delivery, so no money was taken from you.'
     return ('Aap ne online payment ki thi to poori raqam wapas ki jayegi. '
-            'Refund mein masla ho to humse rabta karein.')
+            'If there is a problem with the refund, please contact us.')
 
 
 class OrderActionError(Exception):
@@ -443,10 +443,10 @@ def clean_reject_reason(code, note):
     label = REJECT_REASON_LABELS.get(code)
     note = (note or '').strip()
     if not label:
-        raise OrderActionError('Reject karne ki wajah chunein.')
+        raise OrderActionError('Choose a reason for rejecting.')
     if code == 'other':
         if not note:
-            raise OrderActionError('"Doosri wajah" chunne par wajah likhna zaroori hai.')
+            raise OrderActionError('If you choose "Other reason", please write the reason.')
         return note[:200]
     return (f'{label}. {note}' if note else label)[:200]
 
@@ -457,7 +457,7 @@ def apply_vendor_action(order, action, *, user, prep_minutes=None, reason_code='
     Nakaam hone par OrderActionError.
     """
     if action not in ACTIONS:
-        raise OrderActionError('Ghalat action.')
+        raise OrderActionError('Invalid action.')
     allowed_from, new_status = ACTIONS[action]
     if order.status not in allowed_from:
         raise OrderActionError(

@@ -2,7 +2,7 @@
 <!-- Push notifications: login wale user ko "Notifications on karein" button -->
 <div id="pushPrompt" style="display:none;position:fixed;left:12px;bottom:84px;z-index:1050;">
     <button type="button" id="pushEnableBtn" class="btn btn-sm btn-dark shadow"
-            style="border-radius:20px;padding:6px 14px;">🔔 Notifications on karein</button>
+            style="border-radius:20px;padding:6px 14px;">{% if LANG_CODE == 'ur' %}🔔 نوٹیفکیشنز آن کریں{% else %}🔔 Turn on notifications{% endif %}</button>
     <button type="button" id="pushDismissBtn" class="btn btn-sm btn-link text-muted" aria-label="Close">✕</button>
 </div>
 <script>

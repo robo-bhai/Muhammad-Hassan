@@ -1,5 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
-
+{% load portal_i18n %}
 {% block title %}Disputes - {{ company_name }}{% endblock %}
 
 {% block content %}
@@ -28,7 +28,7 @@
   </div>
   <div class="vdp-tabs">
     {% for key, label in tabs.items %}
-    <a class="vdp-tab {% if tab == key %}active{% endif %}" href="?tab={{ key }}">{{ label }}{% if key == 'open' and pending %} ({{ pending }} jawab baqi){% endif %}</a>
+    <a class="vdp-tab {% if tab == key %}active{% endif %}" href="?tab={{ key }}">{{ label }}{% if key == 'open' and pending %} ({% t "{} replies pending" pending %}){% endif %}</a>
     {% endfor %}
   </div>
 

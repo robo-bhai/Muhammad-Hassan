@@ -538,7 +538,7 @@
                     {% if product.available_stock > 0 %}
                     <div class="po-note">
                         <style>.po-note textarea{width:100%;border:2px solid #e5e7eb;border-radius:14px;padding:10px 12px;font-size:15px;resize:none}.po-note small{color:#6b7280}</style>
-                        <label for="pdInstr" style="font-weight:700;font-size:15px;">Special instructions <small>(marzi)</small></label>
+                        <label for="pdInstr" style="font-weight:700;font-size:15px;">Special instructions <small>(optional)</small></label>
                         <textarea id="pdInstr" rows="2" maxlength="200" placeholder="Jaise: pyaaz na daalein, kam mirch"></textarea>
                     </div>
                     {% endif %}
@@ -551,9 +551,9 @@
                         </div>
                         <div class="pd-actions">
                             <div class="pd-qty">
-                                <button type="button" id="pdMinus" aria-label="Kam karein">&minus;</button>
+                                <button type="button" id="pdMinus" aria-label="Decrease">&minus;</button>
                                 <span id="pdQty">1</span>
-                                <button type="button" id="pdPlus" aria-label="Zyada karein">+</button>
+                                <button type="button" id="pdPlus" aria-label="Increase">+</button>
                             </div>
                             <button type="button" class="pd-add" id="pdAdd">
                                 <span id="pdAddText"><i class="bi bi-cart-plus"></i> Add to Cart</span>

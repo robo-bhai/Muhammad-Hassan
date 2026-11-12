@@ -1,5 +1,5 @@
 {% extends 'customer_portal/rider/base.html' %}
-{% block title %}Masla #{{ order.order_no }}{% endblock %}
+{% block title %}Issue #{{ order.order_no }}{% endblock %}
 {% block header %}<div class="top"><div class="nm">⚠️ Order #{{ order.order_no }}</div><div class="hi">{{ d.get_reason_display }}</div></div>{% endblock %}
 {% block body %}
 <div class="wrap">
@@ -19,18 +19,18 @@
   <div class="card" style="margin-top:12px">
     <b>Aap ka jawab</b>
     {% if responded %}
-      <div class="paid">Aap ka jawab admin tak pahunch gaya hai.</div>
+      <div class="paid">Your reply has reached the admin.</div>
       <p>{{ my_response|linebreaksbr }}</p>
       {% if my_photo %}<img src="{{ my_photo.url }}" alt="Aap ki photo" style="max-width:100%;border-radius:12px">{% endif %}
     {% elif d.is_open %}
       <form method="post" enctype="multipart/form-data" style="margin-top:8px">{% csrf_token %}
-        <textarea name="response" rows="4" maxlength="1000" required placeholder="Kya hua tha? (jaise: customer ne darwaze par receive kiya)" style="width:100%;border:1px solid #d1d5db;border-radius:12px;padding:10px;font:inherit;margin-bottom:10px"></textarea>
+        <textarea name="response" rows="4" maxlength="1000" required placeholder="What happened? (e.g. the customer received it at the door)" style="width:100%;border:1px solid #d1d5db;border-radius:12px;padding:10px;font:inherit;margin-bottom:10px"></textarea>
         <input type="file" name="photo" accept="image/*" style="width:100%;margin-bottom:10px">
         <button class="btn o">Jawab bhejein</button>
       </form>
-      <small style="color:#6b7280">Jawab sirf ek dafa diya ja sakta hai.</small>
+      <small style="color:#6b7280">You can reply only once.</small>
     {% else %}
-      <p style="color:#6b7280">Dispute band ho chuka hai, aap ne jawab nahi diya.</p>
+      <p style="color:#6b7280">The dispute is closed; you did not reply.</p>
     {% endif %}
   </div>
 </div>

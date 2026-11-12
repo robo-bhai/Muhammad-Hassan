@@ -65,11 +65,11 @@
     <div class="alert alert-light border mb-3">
         <b><i class="bi bi-shop"></i> {{ store_name }}</b>
         {% if order.status == 'confirmed' and order.prep_minutes %}
-            <span class="d-block small text-muted">Store ne order qubool kar liya &middot; tayyar hone mein ~{{ order.prep_minutes }} minute</span>
+            <span class="d-block small text-muted">{% if LANG_CODE == 'ur' %}اسٹور نے آرڈر قبول کر لیا &middot; تیار ہونے میں ~{{ order.prep_minutes }} منٹ{% else %}Store accepted the order &middot; ready in ~{{ order.prep_minutes }} minutes{% endif %}</span>
         {% elif order.status == 'ready' %}
-            <span class="d-block small text-success">Aap ka maal tayyar hai 📦</span>
+            <span class="d-block small text-success">Your order is ready 📦</span>
         {% elif order.status == 'pending' %}
-            <span class="d-block small text-muted">Store ke jawab ka intezar hai...
+            <span class="d-block small text-muted">{% if LANG_CODE == 'ur' %}اسٹور کے جواب کا انتظار ہے...{% else %}Waiting for the store to respond...{% endif %}
                 {% if accept_deadline %}<b id="acceptCountdown" data-deadline="{{ accept_deadline|date:'c' }}" data-order="{{ order.id }}"></b>{% endif %}
             </span>
         {% endif %}
@@ -79,12 +79,12 @@
     {% if store_rejected %}
     <div class="card border-danger shadow-sm mb-4">
         <div class="card-body">
-            <h6 class="fw-bold text-danger mb-2">❌ {{ store_name }} ne order qubool nahi kiya</h6>
+            <h6 class="fw-bold text-danger mb-2">❌ {% if LANG_CODE == 'ur' %}{{ store_name }} نے آرڈر قبول نہیں کیا{% else %}{{ store_name }} did not accept the order{% endif %}</h6>
             <p class="mb-2"><b>Wajah:</b> {{ order.reject_reason }}</p>
             <p class="mb-0 small text-muted">💰 {{ refund_note }}</p>
             {% if suggested_stores %}
             <hr>
-            <div class="fw-bold mb-2">Aap in stores se order kar sakte hain:</div>
+            <div class="fw-bold mb-2">You can order from these stores:</div>
             <div class="d-flex flex-column gap-2">
                 {% for st in suggested_stores %}
                 <a href="{% url 'store_detail' st.pk %}" class="btn btn-outline-primary text-start">
@@ -94,7 +94,7 @@
                 {% endfor %}
             </div>
             {% endif %}
-            <a href="{% url 'store_list' %}" class="btn btn-link px-0 mt-2">Saare stores dekhein</a>
+            <a href="{% url 'store_list' %}" class="btn btn-link px-0 mt-2">{% if LANG_CODE == 'ur' %}تمام اسٹورز دیکھیں{% else %}View all stores{% endif %}</a>
         </div>
     </div>
     {% endif %}
@@ -116,28 +116,28 @@
       .rv-stars input:checked ~ label,.rv-stars label:hover,.rv-stars label:hover ~ label{color:#f59e0b}
     </style>
     <div class="card border-0 shadow-sm mb-4"><div class="card-body">
-      <h5 class="mb-3">⭐ Apna tajurba bataein</h5>
+      <h5 class="mb-3">⭐ {% if LANG_CODE == 'ur' %}اپنا تجربہ بتائیں{% else %}Tell us about your experience{% endif %}</h5>
       <form method="post" action="{% url 'rate_order' order.id %}">{% csrf_token %}
         {% if is_store_order %}
         <div class="mb-3">
           <div class="fw-semibold mb-1">🏪 {{ store_name }}</div>
           <div class="rv-stars">{% for i in "54321" %}<input type="radio" id="vr{{ i }}" name="vendor_rating" value="{{ i }}"><label for="vr{{ i }}">★</label>{% endfor %}</div>
-          <input class="form-control mt-2" name="vendor_comment" maxlength="300" placeholder="Maal/store ke bare mein likhein (optional)">
+          <input class="form-control mt-2" name="vendor_comment" maxlength="300" placeholder="{% if LANG_CODE == 'ur' %}سامان/اسٹور کے بارے میں لکھیں (اختیاری){% else %}Write about the goods/store (optional){% endif %}">
         </div>
         {% endif %}
         {% if review_rider %}
         <div class="mb-3">
           <div class="fw-semibold mb-1">🏍️ Rider: {{ review_rider.name }}</div>
           <div class="rv-stars">{% for i in "54321" %}<input type="radio" id="rr{{ i }}" name="rider_rating" value="{{ i }}"><label for="rr{{ i }}">★</label>{% endfor %}</div>
-          <input class="form-control mt-2" name="rider_comment" maxlength="300" placeholder="Delivery ke bare mein likhein (optional)">
+          <input class="form-control mt-2" name="rider_comment" maxlength="300" placeholder="{% if LANG_CODE == 'ur' %}ڈیلیوری کے بارے میں لکھیں (اختیاری){% else %}Write about the delivery (optional){% endif %}">
         </div>
         {% endif %}
-        <button class="btn btn-primary w-100">Rating bhejein</button>
+        <button class="btn btn-primary w-100">{% if LANG_CODE == 'ur' %}ریٹنگ بھیجیں{% else %}Submit rating{% endif %}</button>
       </form>
     </div></div>
     {% elif review %}
     <div class="card border-0 shadow-sm mb-4"><div class="card-body">
-      <h6 class="mb-2">⭐ Aap ki rating</h6>
+      <h6 class="mb-2">⭐ {% if LANG_CODE == 'ur' %}آپ کی ریٹنگ{% else %}Your rating{% endif %}</h6>
       {% if review.vendor_rating %}<div>🏪 {{ store_name }}: <b style="color:#f59e0b">{{ review.vendor_rating }}/5 ★</b>{% if review.vendor_comment %} — {{ review.vendor_comment }}{% endif %}</div>{% endif %}
       {% if review.rider_rating %}<div>🏍️ Rider: <b style="color:#f59e0b">{{ review.rider_rating }}/5 ★</b>{% if review.rider_comment %} — {{ review.rider_comment }}{% endif %}</div>{% endif %}
     </div></div>
@@ -146,30 +146,30 @@
     {% if dispute %}
     <div class="card border-0 shadow-sm mb-4"><div class="card-body">
       <div class="d-flex justify-content-between align-items-start mb-2">
-        <h6 class="mb-0">⚠️ Aap ka masla: {{ dispute.get_reason_display }}</h6>
+        <h6 class="mb-0">⚠️ {% if LANG_CODE == 'ur' %}آپ کا مسئلہ:{% else %}Your issue:{% endif %} {{ dispute.get_reason_display }}</h6>
         <span class="badge {% if dispute.status == 'resolved' %}bg-success{% elif dispute.status == 'rejected' %}bg-secondary{% elif dispute.status == 'under_review' %}bg-info{% else %}bg-warning text-dark{% endif %}">{{ dispute.get_status_display }}</span>
       </div>
       {% if dispute.description %}<p class="text-muted small mb-2">{{ dispute.description }}</p>{% endif %}
       {% if dispute.status == 'resolved' %}
-        <div class="alert alert-success mb-0 py-2">Aap ke wallet mein <b>{{ dispute.refund_amount }}</b> wapas aa gaye hain.{% if dispute.admin_note %} {{ dispute.admin_note }}{% endif %}</div>
+        <div class="alert alert-success mb-0 py-2">{% if LANG_CODE == 'ur' %}آپ کے والٹ میں <b>{{ dispute.refund_amount }}</b> واپس آ گئے ہیں۔{% else %}<b>{{ dispute.refund_amount }}</b> has been returned to your wallet.{% endif %}{% if dispute.admin_note %} {{ dispute.admin_note }}{% endif %}</div>
       {% elif dispute.status == 'rejected' %}
-        <div class="alert alert-secondary mb-0 py-2">{{ dispute.admin_note|default:"Dispute reject kar diya gaya." }}</div>
+        <div class="alert alert-secondary mb-0 py-2">{{ dispute.admin_note|default:"{% if LANG_CODE == 'ur' %}تنازع مسترد کر دیا گیا۔{% else %}The dispute was rejected.{% endif %}" }}</div>
       {% else %}
-        <div class="text-muted small">Hum aap ka masla dekh rahe hain. Jawab milte hi aap ko khabar mil jaye gi.</div>
+        <div class="text-muted small">{% if LANG_CODE == 'ur' %}ہم آپ کا مسئلہ دیکھ رہے ہیں۔ جواب ملتے ہی آپ کو اطلاع مل جائے گی۔{% else %}We are looking into your issue. You will be told as soon as we have a reply.{% endif %}</div>
       {% endif %}
     </div></div>
     {% elif can_dispute %}
     <div class="card border-0 shadow-sm mb-4"><div class="card-body">
-      <h6 class="mb-1">⚠️ Koi masla hua?</h6>
-      <div class="text-muted small mb-3">Deliver hone ke {{ dispute_window_hours }} ghante tak aap masla report kar sakte hain.</div>
+      <h6 class="mb-1">⚠️ {% if LANG_CODE == 'ur' %}کوئی مسئلہ ہوا؟{% else %}Had a problem?{% endif %}</h6>
+      <div class="text-muted small mb-3">{% if LANG_CODE == 'ur' %}ڈیلیوری کے بعد {{ dispute_window_hours }} گھنٹے تک آپ مسئلہ رپورٹ کر سکتے ہیں۔{% else %}You can report a problem up to {{ dispute_window_hours }} hours after delivery.{% endif %}</div>
       <form method="post" action="{% url 'dispute_create' order.id %}" enctype="multipart/form-data">{% csrf_token %}
         <select class="form-select mb-2" name="reason" required>
-          <option value="">Masle ki wajah chunein</option>
+          <option value="">{% if LANG_CODE == 'ur' %}مسئلے کی وجہ چنیں{% else %}Choose the reason{% endif %}</option>
           {% for code, label in dispute_reasons %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
         </select>
-        <textarea class="form-control mb-2" name="description" rows="3" maxlength="2000" placeholder="Kya hua? (thori tafseel likhein)"></textarea>
+        <textarea class="form-control mb-2" name="description" rows="3" maxlength="2000" placeholder="{% if LANG_CODE == 'ur' %}کیا ہوا؟ (تھوڑی تفصیل لکھیں){% else %}What happened? (write a few details){% endif %}"></textarea>
         <input class="form-control mb-3" type="file" name="photo" accept="image/*">
-        <button class="btn btn-outline-danger w-100">Masla report karein</button>
+        <button class="btn btn-outline-danger w-100">{% if LANG_CODE == 'ur' %}مسئلہ رپورٹ کریں{% else %}Report problem{% endif %}</button>
       </form>
     </div></div>
     {% endif %}
@@ -262,7 +262,7 @@
                                 {% endif %}
                                 {% if order.pro_delivery_waived > 0 %}
                                 <tr>
-                                    <td colspan="3" class="text-end" style="color:#7c3aed;">⭐ Pro: delivery maaf:</td>
+                                    <td colspan="3" class="text-end" style="color:#7c3aed;">⭐ {% if LANG_CODE == 'ur' %}پرو: ڈیلیوری فیس معاف:{% else %}Pro: delivery fee waived:{% endif %}</td>
                                     <td class="text-end" style="color:#7c3aed;">Rs. {{ order.pro_delivery_waived|floatformat:0 }}</td>
                                 </tr>
                                 {% endif %}

@@ -18,7 +18,7 @@ def rider_decline_order(request, pk):
     order = SaleOrder.objects.filter(pk=pk, status='ready').first()
     if order and dispatch.can_take(order, rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES):
         dispatch.decline(order, rider)
-        messages.info(request, 'Order reject kar diya. Ye aap ko dobara nahi dikhega.')
+        messages.info(request, 'Order rejected. You will not see it again.')
     return redirect('rider_home')
 
 

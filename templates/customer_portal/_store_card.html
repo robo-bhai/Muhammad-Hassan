@@ -20,9 +20,9 @@
             {% else %}
               <button class="sd-add" type="button" onclick="cartAdd({{ p.id }})"><i class="bi bi-plus-lg"></i> Add</button>
               <div class="sd-step">
-                <button type="button" onclick="cartSet({{ p.id }}, -1)" aria-label="Kam karein">&minus;</button>
+                <button type="button" onclick="cartSet({{ p.id }}, -1)" aria-label="Decrease">&minus;</button>
                 <span class="q">{{ p.cart_qty }}</span>
-                <button type="button" class="plus" onclick="cartSet({{ p.id }}, 1)" aria-label="Zyada karein">+</button>
+                <button type="button" class="plus" onclick="cartSet({{ p.id }}, 1)" aria-label="Increase">+</button>
               </div>
             {% endif %}
           </div>

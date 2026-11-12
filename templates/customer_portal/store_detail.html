@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}{{ store.business_name }} - {{ company_name }}{% endblock %}
@@ -121,7 +122,7 @@
 <div class="sd-wrap">
 
   <div class="sd-hero" {% if store.cover_image %}style="background-image:url('{{ store.cover_image.url }}')"{% endif %}>
-    <a class="sd-back" href="{% url 'store_list' %}" aria-label="Sab stores"><i class="bi bi-arrow-left"></i></a>
+    <a class="sd-back" href="{% url 'store_list' %}" aria-label="All stores"><i class="bi bi-arrow-left"></i></a>
     {% if status == 'closed' %}<div class="sd-closed-veil">CLOSED</div>{% endif %}
   </div>
 
@@ -153,10 +154,10 @@
 
     {% if store.delivery_areas %}<div class="sd-desc"><i class="bi bi-geo-alt-fill" style="color:#2563eb"></i> <b>Delivers to:</b> {{ store.delivery_areas }}</div>{% endif %}
     {% if store.store_description %}<div class="sd-desc">{{ store.store_description|linebreaksbr }}</div>{% endif %}
-    {% if store_offer %}<div class="sd-alert" style="background:#f3e8ff;color:#6b21a8;"><i class="bi bi-ticket-perforated-fill"></i> {{ store_offer.badge }}: cart mein code <b>{{ store_offer.code }}</b> lagayein{% if store_offer.min_order %} (kam az kam Rs. {{ store_offer.min_order|floatformat:0 }}){% endif %}.</div>{% endif %}
-    {% if store.is_paused %}<div class="sd-alert"><i class="bi bi-hourglass-split"></i> Ye store abhi bohat busy hai aur naye orders nahi le raha. {{ store.paused_until_text }} ke baad dobara koshish karein.</div>
-    {% elif status == 'closed' %}<div class="sd-alert"><i class="bi bi-moon"></i> Ye store abhi band hai. Aap products dekh sakte hain, order store khulne par hoga.</div>
-    {% elif status == 'busy' %}<div class="sd-alert busy"><i class="bi bi-hourglass-split"></i> Store abhi busy hai, delivery mein kuch der lag sakti hai.</div>{% endif %}
+    {% if store_offer %}<div class="sd-alert" style="background:#f3e8ff;color:#6b21a8;"><i class="bi bi-ticket-perforated-fill"></i> {{ store_offer.badge }}: {% t "Use code <b>{}</b> in your cart" store_offer.code %}{% if store_offer.min_order %} {% t "(minimum Rs. {})" store_offer.min_order|floatformat:0 %}{% endif %}.</div>{% endif %}
+    {% if store.is_paused %}<div class="sd-alert"><i class="bi bi-hourglass-split"></i> {% t "This store is very busy and not taking new orders right now. Please try again after {}." store.paused_until_text %}</div>
+    {% elif status == 'closed' %}<div class="sd-alert"><i class="bi bi-moon"></i> This store is closed right now. You can browse products; you can order when it opens.</div>
+    {% elif status == 'busy' %}<div class="sd-alert busy"><i class="bi bi-hourglass-split"></i> This store is busy right now, so delivery may take a little longer.</div>{% endif %}
   </div>
 
   <form class="sd-search" method="get">
@@ -193,9 +194,9 @@
 
     {% if page_obj.has_other_pages %}
     <div class="sd-pager">
-      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&q={{ search|urlencode }}{% endif %}">&laquo; Pehle</a>{% endif %}
+      {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&q={{ search|urlencode }}{% endif %}">&laquo; Previous</a>{% endif %}
       Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&q={{ search|urlencode }}{% endif %}">Agle &raquo;</a>{% endif %}
+      {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&q={{ search|urlencode }}{% endif %}">Next &raquo;</a>{% endif %}
     </div>
     {% endif %}
   {% else %}
@@ -231,7 +232,7 @@
       {% endif %}
     {% endfor %}
     {% else %}
-    <p style="color:#6b7280;margin:0;">Abhi koi rating nahi. Pehla order dein aur rating likhein!</p>
+    <p style="color:#6b7280;margin:0;">No ratings yet. Place the first order and leave a rating!</p>
     {% endif %}
   </div>
 </div>
