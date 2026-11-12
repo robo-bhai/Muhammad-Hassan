@@ -101,7 +101,7 @@
     <div class="vr-card"><div class="vr-body">
         <div style="font-weight:800;margin-bottom:6px;">⏰ Sab se busy waqt</div>
         {% for h in busy_hours %}
-        <div class="vr-row"><span class="n">{{ h.label }}</span><span class="v">{{ h.n }} order{{ h.n|pluralize }}</span></div>
+        <div class="vr-row"><span class="n">{{ h.label }}</span><span class="v">{% if h.n == 1 %}{% t "{} order" h.n %}{% else %}{% t "{} orders" h.n %}{% endif %}</span></div>
         {% empty %}
         <div class="vr-empty">Abhi koi order nahi.</div>
         {% endfor %}

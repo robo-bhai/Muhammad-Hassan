@@ -31,7 +31,7 @@
   {% if loyalty %}
   <div class="wl-card" style="padding:14px 16px;margin-bottom:14px;">
     <div style="font-weight:800;">⭐ Loyalty points</div>
-    <div style="font-size:26px;font-weight:800;margin:2px 0;">{{ loyalty.balance }} <small style="font-size:14px;font-weight:600;color:#6b7280;">points ≈ Rs. {{ loyalty.worth|floatformat:0 }}</small></div>
+    <div style="font-size:26px;font-weight:800;margin:2px 0;">{{ loyalty.balance }} <small style="font-size:14px;font-weight:600;color:#6b7280;">{% t "points ≈ Rs. {}" loyalty.worth|floatformat:0 %}</small></div>
     <div style="font-size:13px;color:#6b7280;margin-bottom:8px;">{% t "Every Rs. 100 of a delivered order earns {} point(s). At least {} points can be converted; 1 point = Rs. {}." loyalty.per_100|floatformat:"-2" loyalty.min_redeem loyalty.value|floatformat:"-2" %}</div>
     {% if loyalty.can_redeem %}
     <form method="post" action="{% url 'loyalty_redeem' %}" style="display:flex;gap:8px;flex-wrap:wrap;">{% csrf_token %}

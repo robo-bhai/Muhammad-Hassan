@@ -136,7 +136,7 @@
     <div class="vd-stats">
         <div class="vd-stat"><b>{{ earnings.units|floatformat:"-2" }}</b>Units Sold</div>
         <div class="vd-stat"><b>Rs. {{ earnings.sales|floatformat:0 }}</b>Total Sales</div>
-        <div class="vd-stat"><b style="color:#dc3545;">Rs. {{ earnings.commission|floatformat:0 }}</b>Shop Commission ({{ commission_percent|floatformat:"-2" }}%)</div>
+        <div class="vd-stat"><b style="color:#dc3545;">Rs. {{ earnings.commission|floatformat:0 }}</b>{% t "Shop Commission ({}%)" commission_percent|floatformat:"-2" %}</div>
         <div class="vd-stat"><b style="color:#28a745;">Rs. {{ earnings.payable|floatformat:0 }}</b>Aap ka Hissa</div>
         <div class="vd-stat"><b style="color:#2563eb;">Rs. {{ earnings.paid|floatformat:0 }}</b>Mil Chuka (Paid)</div>
         <div class="vd-stat"><b style="color:#d97706;">Rs. {{ earnings.balance|floatformat:0 }}</b>Baqi (Balance)</div>
@@ -159,7 +159,7 @@
 
     <div class="vd-card">
         <h5 style="margin:0 0 8px;">⭐ Customer ki rating:
-            {% if rating.avg %}<b style="color:#f59e0b;">{{ rating.avg }}/5</b> <small>({{ rating.count }} reviews)</small>
+            {% if rating.avg %}<b style="color:#f59e0b;">{{ rating.avg }}/5</b> <small>({% t "{} reviews" rating.count %})</small>
             {% else %}<small>No ratings yet</small>{% endif %}</h5>
         {% for rv in recent_reviews %}
             <div style="border-top:1px dashed #e5e7eb;padding:8px 0;">
@@ -184,7 +184,7 @@
                         <b>{{ p.name }}</b><br>
                         <small class="text-muted">{{ p.category.name|default:"-" }}</small>
                         {% if p.approval_status == 'rejected' and p.rejection_reason %}
-                            <div class="vd-note">Reason: {{ p.rejection_reason }}</div>
+                            <div class="vd-note">{% t "Reason: {}" p.rejection_reason %}</div>
                         {% endif %}
                     </td>
                     <td data-label="Price (Rs.)">

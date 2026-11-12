@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}Order Placed - {{ company_name }}{% endblock %}
@@ -243,13 +244,13 @@
             
             <div class="items-section">
                 <div class="items-title">
-                    <i class="bi bi-box-seam"></i> Order Items ({{ items|length }})
+                    <i class="bi bi-box-seam"></i> {% t "Order Items ({})" items|length %}
                 </div>
                 {% for item in items %}
                 <div class="item-row">
                     <div class="item-name">
                         {{ item.product.name }}
-                        <div class="item-qty">Qty: {{ item.qty }} × Rs. {{ item.price|floatformat:0 }}</div>
+                        <div class="item-qty">{% t "Qty: {} × Rs. {}" item.qty item.price|floatformat:0 %}</div>
                     </div>
                     <div class="item-price">
                         Rs. {{ item.total_amt|floatformat:0 }}

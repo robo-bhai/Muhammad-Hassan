@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}My Orders - {{ company_name }}{% endblock %}
@@ -68,19 +69,19 @@
             <div class="d-flex gap-2 flex-wrap">
                 <a href="{% url 'my_orders' %}" 
                    class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                    All ({{ stats.total }})
+                    {% t "All ({})" stats.total %}
                 </a>
                 <a href="{% url 'my_orders' %}?status=pending" 
                    class="btn btn-sm {% if status_filter == 'pending' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                    ⏳ Pending ({{ stats.pending }})
+                    ⏳ {% t "Pending ({})" stats.pending %}
                 </a>
                 <a href="{% url 'my_orders' %}?status=delivered" 
                    class="btn btn-sm {% if status_filter == 'delivered' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                    ✅ Delivered ({{ stats.delivered }})
+                    ✅ {% t "Delivered ({})" stats.delivered %}
                 </a>
                 <a href="{% url 'my_orders' %}?status=cancelled" 
                    class="btn btn-sm {% if status_filter == 'cancelled' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                    ❌ Cancelled ({{ stats.cancelled }})
+                    ❌ {% t "Cancelled ({})" stats.cancelled %}
                 </a>
             </div>
         </div>
@@ -106,7 +107,7 @@
                     <!-- Items Info -->
                     <div class="col-md-3">
                         <div class="text-muted small">Items</div>
-                        <div class="fw-bold">{{ order.items.count }} items</div>
+                        <div class="fw-bold">{% t "{} items" order.items.count %}</div>
                     </div>
                     
                     <!-- Amount -->
@@ -176,7 +177,7 @@
             
             <li class="page-item active">
                 <span class="page-link">
-                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    {% t "Page {} of {}" page_obj.number page_obj.paginator.num_pages %}
                 </span>
             </li>
             

@@ -1,6 +1,7 @@
 {% extends 'customer_portal/rider/base.html' %}
+{% load portal_i18n %}
 {% block title %}Issue #{{ order.order_no }}{% endblock %}
-{% block header %}<div class="top"><div class="nm">⚠️ Order #{{ order.order_no }}</div><div class="hi">{{ d.get_reason_display }}</div></div>{% endblock %}
+{% block header %}<div class="top"><div class="nm">⚠️ {% t "Order #{}" order.order_no %}</div><div class="hi">{{ d.get_reason_display }}</div></div>{% endblock %}
 {% block body %}
 <div class="wrap">
   <a class="btn l s" href="{% url 'rider_disputes' %}" style="width:auto;display:inline-block;margin-bottom:12px">&larr; Wapas</a>

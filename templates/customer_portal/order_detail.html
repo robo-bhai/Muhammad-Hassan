@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load img_tools %}
 {% load static %}
 
@@ -33,9 +34,9 @@
     <!-- Hero -->
     <div class="so-hero">
         <div>
-            <h2><i class="bi bi-receipt"></i> Order #{{ order.order_no }}</h2>
+            <h2><i class="bi bi-receipt"></i> {% t "Order #{}" order.order_no %}</h2>
             <p><i class="bi bi-calendar"></i> {{ order.order_date|date:"d M, Y - h:i A" }}</p>
-            {% if order.scheduled_for %}<p><i class="bi bi-clock"></i> Schedule: <strong>{{ order.scheduled_for|date:"d M, Y - h:i A" }}</strong></p>{% endif %}
+            {% if order.scheduled_for %}<p><i class="bi bi-clock"></i> {% t "Schedule:" %} <strong>{{ order.scheduled_for|date:"d M, Y - h:i A" }}</strong></p>{% endif %}
             <div class="mt-2">
             {% if order.status == 'pending' %}
                 <span class="badge bg-warning text-dark">⏳ Pending</span>
@@ -89,7 +90,7 @@
                 {% for st in suggested_stores %}
                 <a href="{% url 'store_detail' st.pk %}" class="btn btn-outline-primary text-start">
                     <i class="bi bi-shop"></i> {{ st.business_name }}
-                    <span class="small text-muted">&middot; {{ st.delivery_time_min }}-{{ st.delivery_time_max }} min{% if st.min_order_amount > 0 %} &middot; Min Rs. {{ st.min_order_amount|floatformat:0 }}{% endif %}</span>
+                    <span class="small text-muted">&middot; {% t "{}-{} min" st.delivery_time_min st.delivery_time_max %}{% if st.min_order_amount > 0 %} &middot; {% t "Min Rs. {}" st.min_order_amount|floatformat:0 %}{% endif %}</span>
                 </a>
                 {% endfor %}
             </div>
@@ -127,7 +128,7 @@
         {% endif %}
         {% if review_rider %}
         <div class="mb-3">
-          <div class="fw-semibold mb-1">🏍️ Rider: {{ review_rider.name }}</div>
+          <div class="fw-semibold mb-1">🏍️ {% t "Rider: {}" review_rider.name %}</div>
           <div class="rv-stars">{% for i in "54321" %}<input type="radio" id="rr{{ i }}" name="rider_rating" value="{{ i }}"><label for="rr{{ i }}">★</label>{% endfor %}</div>
           <input class="form-control mt-2" name="rider_comment" maxlength="300" placeholder="{% if LANG_CODE == 'ur' %}ڈیلیوری کے بارے میں لکھیں (اختیاری){% else %}Write about the delivery (optional){% endif %}">
         </div>
@@ -139,7 +140,7 @@
     <div class="card border-0 shadow-sm mb-4"><div class="card-body">
       <h6 class="mb-2">⭐ {% if LANG_CODE == 'ur' %}آپ کی ریٹنگ{% else %}Your rating{% endif %}</h6>
       {% if review.vendor_rating %}<div>🏪 {{ store_name }}: <b style="color:#f59e0b">{{ review.vendor_rating }}/5 ★</b>{% if review.vendor_comment %} — {{ review.vendor_comment }}{% endif %}</div>{% endif %}
-      {% if review.rider_rating %}<div>🏍️ Rider: <b style="color:#f59e0b">{{ review.rider_rating }}/5 ★</b>{% if review.rider_comment %} — {{ review.rider_comment }}{% endif %}</div>{% endif %}
+      {% if review.rider_rating %}<div>🏍️ {% t "Rider:" %} <b style="color:#f59e0b">{{ review.rider_rating }}/5 ★</b>{% if review.rider_comment %} — {{ review.rider_comment }}{% endif %}</div>{% endif %}
     </div></div>
     {% endif %}
 
@@ -209,7 +210,7 @@
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-bag"></i> Order Items ({{ items.count }})</h5>
+                    <h5 class="mb-0"><i class="bi bi-bag"></i> {% t "Order Items ({})" items.count %}</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">

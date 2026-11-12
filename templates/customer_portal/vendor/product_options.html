@@ -1,5 +1,6 @@
 {% extends 'customer_portal/base_shop.html' %}
 
+{% load portal_i18n %}
 {% block title %}Options - {{ product.name }}{% endblock %}
 
 {% block content %}
@@ -45,7 +46,7 @@
 
     <div class="po-card">
         <div class="po-head">
-            <h3>Options: {{ product.name }}</h3>
+            <h3>{% t "Options: {}" product.name %}</h3>
             <p>Add size, flavour or extras. The customer chooses when opening the product.</p>
         </div>
         <div class="po-body">
@@ -59,7 +60,7 @@
 
     <div class="po-card">
         <div class="po-body">
-            <div class="po-group-title">Naya group ({{ groups|length }}/{{ max_groups }})</div>
+            <div class="po-group-title">{% t "Naya group ({}/{})" groups|length max_groups %}</div>
             <form method="post" class="po-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="add_group">

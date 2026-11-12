@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load img_tools %}
 {% load static %}
 
@@ -1160,7 +1161,7 @@
         {% if not search and not selected_category and not selected_brand %}
         <div class="hero-copy">
             <span class="hero-eyebrow"><i class="bi bi-stars"></i> Premium Shopping</span>
-            <h1>Welcome to {{ company_name }}</h1>
+            <h1>{% t "Welcome to {}" company_name %}</h1>
             <p>{% if company_tagline %}{{ company_tagline }}{% else %}Quality products, best prices and fast delivery.{% endif %}</p>
         </div>
         {% endif %}
@@ -1208,7 +1209,7 @@
         {% else %}
         <a href="#products-section" class="promo-card promo-a">
             <h3>{% if delivery_settings.free_enabled %}Free delivery{% else %}Fast delivery{% endif %}</h3>
-            <p>{% if delivery_settings.free_enabled %}On orders over Rs {{ delivery_settings.free_threshold|floatformat:0 }}{% else %}Right to your door{% endif %}</p>
+            <p>{% if delivery_settings.free_enabled %}{% t "On orders over Rs {}" delivery_settings.free_threshold|floatformat:0 %}{% else %}{% t "Right to your door" %}{% endif %}</p>
             <span class="promo-cta">Shop now</span>
             <span class="promo-emoji"><i class="bi bi-truck"></i></span>
         </a>
@@ -1416,7 +1417,7 @@
                 
                 {% if product.in_cart %}
                 <span class="strip-badge badge-cart">
-                    <i class="bi bi-cart-check-fill"></i> In Cart ({{ product.cart_quantity }})
+                    <i class="bi bi-cart-check-fill"></i> {% t "In Cart ({})" product.cart_quantity %}
                 </span>
                 {% endif %}
             </div>
@@ -1463,7 +1464,7 @@
                     <div class="product-action-container" data-product-id="{{ product.id }}">
                         {% if product.in_cart %}
                             <a href="{% url 'cart_view' %}" class="btn btn-cart-view btn-sm w-100">
-                                <i class="bi bi-cart-check-fill"></i> View Cart ({{ product.cart_quantity }})
+                                <i class="bi bi-cart-check-fill"></i> {% t "View Cart ({})" product.cart_quantity %}
                             </a>
                         {% else %}
                             <div class="product-action-buttons">

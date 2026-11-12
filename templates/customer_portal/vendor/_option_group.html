@@ -5,7 +5,7 @@
         <div>
             <div class="po-group-title">{% if g.parent_option_id %}↳ {% endif %}{{ g.name }}</div>
             <div class="po-tags">
-                {% if g.kind == 'single' %}Ek chunein{% else %}Kai chunein{% if g.max_select %} (max {{ g.max_select }}){% endif %}{% endif %}
+                {% if g.kind == 'single' %}{% t "Ek chunein" %}{% else %}{% t "Kai chunein" %}{% if g.max_select %} ({% t "max {}" g.max_select %}){% endif %}{% endif %}
                 · {% if g.is_required %}Lazmi{% else %}Marzi{% endif %}
             </div>
         </div>

@@ -9,7 +9,7 @@
 </div>
 <div class="wrap">
 
-  <h3>🛵 Meri deliveries ({{ mine|length }}/{{ max_active }})</h3>
+  <h3>🛵 {% t "Meri deliveries ({}/{})" mine|length max_active %}</h3>
   {% for r in mine %}
   <div class="card">
     <div class="row"><span class="no">#{{ r.order.order_no }}</span>
@@ -58,8 +58,8 @@
       <div class="row"><span class="no">#{{ o.order.order_no }}</span><span class="fee">Rs. {{ o.fee|floatformat:0 }}</span></div>
       <div class="row"><span>📍 <b>{{ o.store }}</b>{% if o.store_addr %}<br><small>{{ o.store_addr }}</small>{% endif %}</span></div>
       <div class="row"><span>🏠 {{ o.cust_addr|default:"—" }}</span></div>
-      <div class="row"><small>{{ o.items_count }} item(s)</small>{% if o.dist_km is not None %}<small>📏 Store se {{ o.dist_km }} km</small>{% endif %}
-        {% if o.is_cod %}<span class="pill">💵 COD Rs. {{ o.total|floatformat:0 }}</span>{% else %}<span class="pill g">✅ Paid</span>{% endif %}</div>
+      <div class="row"><small>{% t "{} item(s)" o.items_count %}</small>{% if o.dist_km is not None %}<small>📏 {% t "Store se {} km" o.dist_km %}</small>{% endif %}
+        {% if o.is_cod %}<span class="pill">💵 {% t "COD Rs. {}" o.total|floatformat:0 %}</span>{% else %}<span class="pill g">✅ Paid</span>{% endif %}</div>
       <form method="post" action="{% url 'rider_accept_order' o.order.id %}" class="acts">{% csrf_token %}
         <button class="btn">✅ Accept karein</button></form>
       <form method="post" action="{% url 'rider_decline_order' o.order.id %}" class="acts" style="margin-top:6px">{% csrf_token %}<button class="btn" style="background:#6b7280">Reject</button></form>

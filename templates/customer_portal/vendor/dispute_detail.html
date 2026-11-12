@@ -22,8 +22,8 @@
   <a class="vdd-back" href="{% url 'vendor_disputes' %}">&larr; Disputes</a>
 
   <div class="vdd-card">
-    <h5>Order #{{ order.order_no }}: {{ d.get_reason_display }}</h5>
-    <div class="vdd-meta">Customer: {{ customer }} &middot; {{ d.created_at|date:"d M Y, h:i A" }}</div>
+    <h5>{% t "Order #{}: {}" order.order_no d.get_reason_display %}</h5>
+    <div class="vdd-meta">{% t "Customer: {}" customer %} &middot; {{ d.created_at|date:"d M Y, h:i A" }}</div>
     {% if d.description %}<p>{{ d.description|linebreaksbr }}</p>{% else %}<p class="text-muted">Customer ne tafseel nahi likhi.</p>{% endif %}
     {% if d.photo %}<a href="{{ d.photo.url }}" target="_blank" rel="noopener"><img class="vdd-photo" src="{{ d.photo.url }}" alt="Customer ki photo"></a>{% endif %}
   </div>

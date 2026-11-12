@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}Riders{% endblock %}
@@ -18,7 +19,7 @@
     <div class="fw-bold mb-1">🔑 Password reset requests (tell the rider the code by phone)</div>
     {% for p in pending_resets %}
       <div>{{ p.rider.name }} ({{ p.rider.phone }}) &mdash; code: <b class="fs-5">{{ p.code }}</b>
-        <span class="text-muted small">(valid {{ p.expires_at|time:"H:i" }} tak)</span></div>
+        <span class="text-muted small">({% t "valid {} tak" p.expires_at|time:"H:i" %})</span></div>
     {% endfor %}
   </div>
   {% endif %}
@@ -44,7 +45,7 @@
 
     <div class="col-lg-8">
       <div class="card shadow-sm">
-        <div class="card-header fw-bold">Riders ({{ riders|length }})</div>
+        <div class="card-header fw-bold">{% t "Riders ({})" riders|length %}</div>
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="table-light">

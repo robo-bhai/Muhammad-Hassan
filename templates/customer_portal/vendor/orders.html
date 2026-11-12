@@ -84,7 +84,7 @@
     <form method="post" action="{% url 'vendor_pause' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
         {% csrf_token %}<input type="hidden" name="next" value="orders">
         {% if profile.is_paused %}
-            <span style="font-weight:700;color:#b45309;">⏸️ Busy mode ON ({{ profile.paused_until_text }} tak)</span>
+            <span style="font-weight:700;color:#b45309;">⏸️ {% t "Busy mode ON ({} tak)" profile.paused_until_text %}</span>
             <button type="submit" name="minutes" value="0" style="border:0;border-radius:10px;padding:7px 14px;font-weight:700;color:#fff;background:#198754;">▶ Kholein</button>
         {% else %}
             <span style="font-weight:700;">⏸️ Busy:</span>
@@ -107,7 +107,7 @@
         <div class="vo-head">
             <div>
                 <div class="vo-no">#{{ o.order_no }}</div>
-                {% if o.scheduled_for %}<div><span class="badge bg-info text-dark">⏰ Schedule: {{ o.scheduled_for|date:"d M, h:i A" }}</span></div>{% endif %}
+                {% if o.scheduled_for %}<div><span class="badge bg-info text-dark">⏰ {% t "Schedule: {}" o.scheduled_for|date:"d M, h:i A" %}</span></div>{% endif %}
                 <div class="vo-time">{{ o.order_date|date:"d M, h:i A" }}</div>
             </div>
             <span class="vo-badge vo-{{ o.status }}">{{ o.get_status_display }}</span>
@@ -148,7 +148,7 @@
             <div class="vo-note rej">⏳ Time left to respond: <b class="vo-cd" data-deadline="{{ row.accept_deadline|date:'c' }}"></b> &mdash; otherwise the order will be cancelled automatically.</div>
         {% endif %}
         {% if o.status == 'cancelled' and o.reject_reason %}
-            <div class="vo-note rej">Reject wajah: {{ o.reject_reason }}</div>
+            <div class="vo-note rej">{% t "Reject wajah: {}" o.reject_reason %}</div>
         {% endif %}
 
         <div class="vo-acts">

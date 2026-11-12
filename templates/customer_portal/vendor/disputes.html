@@ -35,7 +35,7 @@
   {% for r in rows %}
   <a class="vdp-card" href="{% url 'vendor_dispute_detail' r.d.pk %}">
     <div class="vdp-row">
-      <span class="vdp-no">Order #{{ r.d.sale_order.order_no }}</span>
+      <span class="vdp-no">{% t "Order #{}" r.d.sale_order.order_no %}</span>
       {% if r.d.is_open %}
         {% if r.responded %}<span class="vdp-pill vdp-done">Jawab de diya</span>{% else %}<span class="vdp-pill vdp-need">Jawab chahiye</span>{% endif %}
       {% else %}

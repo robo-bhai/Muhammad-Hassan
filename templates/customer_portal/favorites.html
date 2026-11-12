@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load img_tools %}
 
 {% block title %}Favourites{% endblock %}
@@ -28,8 +29,8 @@
 <div class="fv-wrap">
   <div class="fv-head"><h1>❤️ Favourites</h1></div>
   <div class="fv-tabs">
-    <a class="fv-tab {% if tab == 'stores' %}on{% endif %}" href="?tab=stores">Stores ({{ store_count }})</a>
-    <a class="fv-tab {% if tab == 'items' %}on{% endif %}" href="?tab=items">Items ({{ item_count }})</a>
+    <a class="fv-tab {% if tab == 'stores' %}on{% endif %}" href="?tab=stores">{% t "Stores ({})" store_count %}</a>
+    <a class="fv-tab {% if tab == 'items' %}on{% endif %}" href="?tab=items">{% t "Items ({})" item_count %}</a>
   </div>
 
   {% if tab == 'stores' %}

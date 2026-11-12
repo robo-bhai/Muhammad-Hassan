@@ -61,7 +61,7 @@
     <div style="text-align:right;margin:-4px 0 10px"><a href="{% url 'rider_forgot_password' %}" style="font-size:13.5px;font-weight:700;color:var(--primary);text-decoration:none">Password bhool gaye?</a></div>
     <button type="submit" class="btn">Login</button>
   </form>
-  {% if SHOP.rider_register_enabled %}<p class="alt">Naye rider? <a href="{% url 'rider_register' %}">Register as a Rider</a></p>{% endif %}
+  {% if SHOP.rider_register_enabled %}<p class="alt">{% t "Naye rider?" %} <a href="{% url 'rider_register' %}">Register as a Rider</a></p>{% endif %}
   <p class="back"><a href="{% url 'shop_home' %}">&larr; Back to shop</a></p>
 </div>
 <script>

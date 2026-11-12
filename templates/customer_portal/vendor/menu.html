@@ -1,5 +1,6 @@
 {% extends 'customer_portal/base_shop.html' %}
 
+{% load portal_i18n %}
 {% block title %}Menu{% endblock %}
 
 {% block content %}
@@ -46,7 +47,7 @@
     </div>
 
     <div class="vm-card">
-        <div class="vm-head"><h3>⭐ Popular items ({{ popular_count }}/{{ max_popular }})</h3><p>These items appear at the top of your store page under "Popular".</p></div>
+        <div class="vm-head"><h3>⭐ {% t "Popular items ({}/{})" popular_count max_popular %}</h3><p>These items appear at the top of your store page under "Popular".</p></div>
         <div class="vm-body">
             {% for p in products %}
             <div class="vm-row">

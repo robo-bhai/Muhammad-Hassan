@@ -168,7 +168,7 @@
 
   <div class="sd-sticky">
     <div class="sd-tabs">
-      <a class="sd-tab {% if not selected_category %}on{% endif %}" href="?{% if search %}q={{ search|urlencode }}{% endif %}">All ({{ menu_total }})</a>
+      <a class="sd-tab {% if not selected_category %}on{% endif %}" href="?{% if search %}q={{ search|urlencode }}{% endif %}">{% t "All ({})" menu_total %}</a>
       {% for m in menu %}
         <a class="sd-tab {% if selected_category == m.category_id %}on{% endif %}" href="?category={{ m.category_id|default_if_none:'' }}{% if search %}&q={{ search|urlencode }}{% endif %}">{{ m.category__name|default:"Other" }} ({{ m.n }})</a>
       {% endfor %}
@@ -177,14 +177,14 @@
 
   {% if products %}
     {% if popular %}
-    <div class="sd-sec">⭐ Popular<small>{{ popular|length }} item{{ popular|length|pluralize }}</small></div>
+    <div class="sd-sec">⭐ Popular<small>{% if popular|length == 1 %}{% t "{} item" popular|length %}{% else %}{% t "{} items" popular|length %}{% endif %}</small></div>
     <div class="sd-grid">
       {% for p in popular %}{% include 'customer_portal/_store_card.html' with idp='pp' %}{% endfor %}
     </div>
     {% endif %}
     {% regroup products by category.name as groups %}
     {% for g in groups %}
-    <div class="sd-sec">{{ g.grouper|default:"Other" }}<small>{{ g.list|length }} item{{ g.list|length|pluralize }}</small></div>
+    <div class="sd-sec">{{ g.grouper|default:"Other" }}<small>{% if g.list|length == 1 %}{% t "{} item" g.list|length %}{% else %}{% t "{} items" g.list|length %}{% endif %}</small></div>
     <div class="sd-grid">
       {% for p in g.list %}
       {% include 'customer_portal/_store_card.html' %}
@@ -195,7 +195,7 @@
     {% if page_obj.has_other_pages %}
     <div class="sd-pager">
       {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&q={{ search|urlencode }}{% endif %}">&laquo; Previous</a>{% endif %}
-      Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+      {% t "Page {} / {}" page_obj.number page_obj.paginator.num_pages %}
       {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if search %}&q={{ search|urlencode }}{% endif %}">Next &raquo;</a>{% endif %}
     </div>
     {% endif %}
@@ -210,7 +210,7 @@
       <div style="text-align:center;min-width:90px;">
         <div style="font-size:42px;font-weight:900;line-height:1;">{{ reviews.summary.avg }}</div>
         <div style="color:#f59e0b;font-size:18px;">★★★★★</div>
-        <small style="color:#6b7280;">{{ reviews.summary.count }} rating{{ reviews.summary.count|pluralize }}</small>
+        <small style="color:#6b7280;">{% if reviews.summary.count == 1 %}{% t "{} rating" reviews.summary.count %}{% else %}{% t "{} ratings" reviews.summary.count %}{% endif %}</small>
       </div>
       <div style="flex:1;min-width:200px;">
         {% for b in reviews.bars %}

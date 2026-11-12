@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}My Account - {{ company_name }}{% endblock %}
@@ -382,7 +383,7 @@
             {% for order in recent_orders %}
             <a href="{% url 'order_detail_customer' order.id %}" class="order-item">
                 <div class="order-info">
-                    <div class="order-no">Order #{{ order.order_no }}</div>
+                    <div class="order-no">{% t "Order #{}" order.order_no %}</div>
                     <div class="order-date">
                         <i class="bi bi-calendar"></i> 
                         {{ order.order_date|date:"d M, Y" }}

@@ -1,3 +1,4 @@
+{% load portal_i18n %}
 {% comment %}Promo code box. Context: coupons_on, coupon, coupon_error, coupon_code, discount. Include with next="cart" or next="checkout".{% endcomment %}
 {% if coupons_on %}
 <div class="coupon-box" style="background:#f5f3ff;border:1.5px dashed #7c3aed;border-radius:14px;padding:12px 14px;margin:12px 0;">
@@ -5,7 +6,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
       <div>
         <div style="font-weight:800;color:#5b21b6;"><i class="bi bi-tag-fill"></i> {{ coupon.code }} <span style="font-weight:600;color:#16a34a;">applied</span></div>
-        <small class="text-muted">You save Rs. {{ discount|floatformat:2 }}</small>
+        <small class="text-muted">{% t "You save Rs. {}" discount|floatformat:2 %}</small>
       </div>
       <form method="post" action="{% url 'remove_coupon' %}" style="margin:0;">{% csrf_token %}
         <input type="hidden" name="next" value="{{ next|default:'cart' }}">

@@ -806,8 +806,8 @@
             <div class="alert alert-light border mb-3">
                 <b><i class="bi bi-shop"></i> {{ store.name }}</b>
                 <span class="text-muted small d-block">
-                    Delivery Rs. {{ store.delivery_fee|floatformat:0 }}{% if store.time_text %} &middot; {{ store.time_text }}{% endif %}
-                    {% if store.min_order > 0 %} &middot; Minimum order Rs. {{ store.min_order|floatformat:0 }}{% endif %}
+                    {% t "Delivery Rs. {}" store.delivery_fee|floatformat:0 %}{% if store.time_text %} &middot; {{ store.time_text }}{% endif %}
+                    {% if store.min_order > 0 %} &middot; {% t "Minimum order Rs. {}" store.min_order|floatformat:0 %}{% endif %}
                 </span>
             </div>
             {% if not store.is_open %}
@@ -1169,7 +1169,7 @@
                                 {% if item.options_text %}<div style="font-size:12px;color:#6b7280;">{{ item.options_text }}</div>{% endif %}
                                 {% if item.note %}<div style="font-size:12px;color:#6b7280;">📝 {{ item.note }}</div>{% endif %}
                                 <div class="cart-product-meta">
-                                    Qty: {{ item.quantity }} × Rs. {{ item.price|floatformat:0 }}
+                                    {% t "Qty: {} × Rs. {}" item.quantity item.price|floatformat:0 %}
                                 </div>
                             </div>
                             <div class="cart-product-price">

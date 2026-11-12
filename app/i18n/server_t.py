@@ -16,6 +16,10 @@ from django.core.cache import cache
 
 from .i18n_lang import get_language
 from .portal_messages import CATALOG
+try:
+    from .portal_messages import TAG_ONLY          # texts used only by the {% t %} template tag
+except ImportError:
+    TAG_ONLY = []
 
 _PLACEHOLDER = re.compile(r'\{[^{}]*\}')
 _TAIL = ' .!?\u06d4\u2026'
@@ -47,6 +51,7 @@ def _compile():
 _EXACT, _PATTERNS = _compile()
 # every catalog text (also those with {}) keyed by its template form, used by the {% t %} template tag
 _TEMPLATES = {_split(en)[1].lower(): ur for en, ur in CATALOG}
+_TEMPLATES.update({_split(en)[1].lower(): ur for en, ur in TAG_ONLY})
 
 
 def _db_exact():

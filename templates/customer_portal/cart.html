@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}Cart - {{ company_name }}{% endblock %}
@@ -15,7 +16,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h1 class="mb-0 cart-title">
             🛒 Your Cart
-            <span class="badge bg-primary cart-badge">{{ cart_items|length }} items</span>
+            <span class="badge bg-primary cart-badge">{% t "{} items" cart_items|length %}</span>
         </h1>
         <a href="{% url 'shop_home' %}" class="btn btn-outline-primary btn-sm">
             <i class="bi bi-plus-circle"></i> Add More Items
@@ -29,8 +30,8 @@
         <div>
             <b><i class="bi bi-shop"></i> {{ store.name }}</b>
             <span class="text-muted small d-block">
-                Delivery Rs. {{ store.delivery_fee|floatformat:0 }}{% if store.time_text %} &middot; {{ store.time_text }}{% endif %}
-                {% if store.min_order > 0 %} &middot; Minimum order Rs. {{ store.min_order|floatformat:0 }}{% endif %}
+                {% t "Delivery Rs. {}" store.delivery_fee|floatformat:0 %}{% if store.time_text %} &middot; {{ store.time_text }}{% endif %}
+                {% if store.min_order > 0 %} &middot; {% t "Minimum order Rs. {}" store.min_order|floatformat:0 %}{% endif %}
             </span>
         </div>
     </div>
@@ -143,7 +144,7 @@
 {% include 'customer_portal/_offer_box.html' with next_page='cart' %}
                     <div class="summary-row">
                         <span class="text-muted">
-                            <i class="bi bi-box-seam"></i> Subtotal ({{ cart_items|length }} items):
+                            <i class="bi bi-box-seam"></i> {% t "Subtotal ({} items):" cart_items|length %}
                         </span>
                         <strong>Rs. {{ subtotal|floatformat:0 }}</strong>
                     </div>
@@ -180,7 +181,7 @@
                     
                     {% if store and store.is_vendor_store and not store.is_open or store and store.is_vendor_store and not store.min_ok %}
                     <button type="button" class="btn btn-checkout w-100 btn-lg mb-2" disabled style="opacity:.55;">
-                        <i class="bi bi-lock-fill"></i> {% if not store.is_open %}Store band hai{% else %}Min. order Rs. {{ store.min_order|floatformat:0 }}{% endif %}
+                        <i class="bi bi-lock-fill"></i> {% if not store.is_open %}{% t "Store band hai" %}{% else %}{% t "Min. order Rs. {}" store.min_order|floatformat:0 %}{% endif %}
                     </button>
                     {% else %}
                     {% if SHOP.shop_ordering_enabled %}
@@ -238,7 +239,7 @@
         </div>
         {% if store and store.is_vendor_store and not store.is_open or store and store.is_vendor_store and not store.min_ok %}
         <button type="button" class="btn btn-checkout-mobile" disabled style="opacity:.55;">
-            <i class="bi bi-lock-fill"></i> {% if not store.is_open %}Band{% else %}Min Rs. {{ store.min_order|floatformat:0 }}{% endif %}
+            <i class="bi bi-lock-fill"></i> {% if not store.is_open %}{% t "Band" %}{% else %}{% t "Min Rs. {}" store.min_order|floatformat:0 %}{% endif %}
         </button>
         {% else %}
         {% if SHOP.shop_ordering_enabled %}

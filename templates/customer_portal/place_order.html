@@ -489,7 +489,7 @@
                                 <div class="cart-product-info">
                                     <div class="cart-product-name">{{ item.product.name }}</div>
                                     <div class="cart-product-meta">
-                                        Qty: {{ item.quantity }} × Rs. {{ item.price|floatformat:0 }}
+                                        {% t "Qty: {} × Rs. {}" item.quantity item.price|floatformat:0 %}
                                     </div>
                                 </div>
                                 <div class="cart-product-price">

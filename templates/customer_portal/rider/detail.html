@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load portal_i18n %}
 {% load static %}
 
 {% block title %}Rider - {{ r.name }}{% endblock %}
@@ -23,7 +24,7 @@
         <div class="card-body">
           <form method="post">{% csrf_token %}
             <input type="hidden" name="action" value="cash_in">
-            <input class="form-control mb-2" name="amount" placeholder="Raqam (max Rs. {{ b.cash_in_hand|floatformat:0 }})" required>
+            <input class="form-control mb-2" name="amount" placeholder="{% t "Raqam (max Rs. {})" b.cash_in_hand|floatformat:0 %}" required>
             <input class="form-control mb-2" name="note" placeholder="Note (optional)">
             <button class="btn btn-danger w-100">Cash jama karein</button>
           </form>
@@ -34,7 +35,7 @@
         <div class="card-body">
           <form method="post">{% csrf_token %}
             <input type="hidden" name="action" value="payout">
-            <input class="form-control mb-2" name="amount" placeholder="Raqam (max Rs. {{ b.due|floatformat:0 }})" required>
+            <input class="form-control mb-2" name="amount" placeholder="{% t "Raqam (max Rs. {})" b.due|floatformat:0 %}" required>
             <input class="form-control mb-2" name="note" placeholder="Note (optional)">
             <button class="btn btn-primary w-100">Kamai ada karein</button>
           </form>

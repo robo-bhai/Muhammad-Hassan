@@ -1,4 +1,5 @@
 {% extends 'customer_portal/base_shop.html' %}
+{% load portal_i18n %}
 {% load img_tools %}
 {% load static %}
 
@@ -188,7 +189,7 @@
     <div class="st-types">
       <label class="st-type"><input type="radio" name="type" value="" {% if not selected_type %}checked{% endif %} onchange="this.form.submit()"><span><b>🏬</b>All</span></label>
       {% for t in store_types %}
-      <label class="st-type"><input type="radio" name="type" value="{{ t.id }}" {% if selected_type == t.id %}checked{% endif %} onchange="this.form.submit()"><span><b>{{ t.icon }}</b>{{ t.name }}<small>{{ t.store_count }} store{{ t.store_count|pluralize }}</small></span></label>
+      <label class="st-type"><input type="radio" name="type" value="{{ t.id }}" {% if selected_type == t.id %}checked{% endif %} onchange="this.form.submit()"><span><b>{{ t.icon }}</b>{{ t.name }}<small>{% if t.store_count == 1 %}{% t "{} store" t.store_count %}{% else %}{% t "{} stores" t.store_count %}{% endif %}</small></span></label>
       {% endfor %}
     </div>
     {% endif %}
@@ -229,7 +230,7 @@
   {% if area_filter_on %}
   <div class="st-note">
     <span><i class="bi bi-geo-alt-fill"></i> Showing stores that deliver to <b>{{ delivery_area }}</b></span>
-    {% if outside_count %}<a href="?all=1">Show all stores (+{{ outside_count }})</a>{% endif %}
+    {% if outside_count %}<a href="?all=1">{% t "Show all stores (+{})" outside_count %}</a>{% endif %}
   </div>
   {% elif delivery_area %}
   <div class="st-note">
@@ -239,7 +240,7 @@
   {% endif %}
 
   <div class="st-count">
-    <b>{{ store_total }}</b> store{{ store_total|pluralize }} found
+    <b>{{ store_total }}</b> {% if store_total == 1 %}{% t "store found" %}{% else %}{% t "stores found" %}{% endif %}
     {% if search or selected_category or selected_type or selected_cuisine or open_only or free_only or deals_only or rating_min or fav_only %}<a class="st-clear" href="{% url 'store_list' %}">Clear filters</a>{% endif %}
   </div>
 
@@ -259,7 +260,7 @@
         <div class="st-name">{{ s.business_name }}</div>
         <div class="st-tags">{% if s.store_category %}<span class="st-ctype">{{ s.store_category.icon }} {{ s.store_category.name }}</span> &middot; {% endif %}{% if s.cuisine_list %}{% for c in s.cuisine_list %}{{ c.icon }} {{ c.name }}{% if not forloop.last %} &bull; {% endif %}{% endfor %}{% elif s.tags %}{{ s.tags|join:" &bull; " }}{% else %}{{ s.product_count }} product{{ s.product_count|pluralize }}{% endif %}{% if s.city %} &middot; {{ s.city }}{% endif %}</div>
         {% if s.matched_items %}<div style="font-size:12.5px;color:#4338ca;margin-top:4px;"><i class="bi bi-search"></i> {{ s.matched_items|join:", " }}</div>{% endif %}
-        {% if s.max_discount %}<div style="font-size:12.5px;color:#e11d48;font-weight:700;margin-top:3px;"><i class="bi bi-tag-fill"></i> Up to {{ s.max_discount|floatformat:0 }}% off</div>{% endif %}
+        {% if s.max_discount %}<div style="font-size:12.5px;color:#e11d48;font-weight:700;margin-top:3px;"><i class="bi bi-tag-fill"></i> {% t "Up to {}% off" s.max_discount|floatformat:0 %}</div>{% endif %}
         {% if s.offer %}<div style="font-size:12.5px;color:#7c3aed;font-weight:700;margin-top:3px;"><i class="bi bi-ticket-perforated-fill"></i> {{ s.offer.badge }} &middot; code {{ s.offer.code }}</div>{% endif %}
         <div class="st-meta">
           {% if s.rating_avg %}<span style="background:#fff7e6;color:#b45309;font-weight:700;padding:1px 8px;border-radius:10px;"><i class="bi bi-star-fill" style="color:#f59e0b;"></i> {{ s.rating_avg }} <small style="font-weight:500;">({{ s.rating_count }})</small></span>
@@ -267,7 +268,7 @@
           <span><i class="bi bi-clock"></i> {{ s.delivery_time_min }}-{{ s.delivery_time_max }} min</span>
           <span><i class="bi bi-bicycle"></i> {% if s.is_free_delivery %}<span class="free">Free</span>{% else %}{{ currency }} {{ s.fee_now|floatformat:0 }}{% endif %}{% if s.distance_km is not None %} <small style="color:#777">&middot; {{ s.distance_km }} km</small>{% endif %}</span>
           {% if s.too_far %}<span style="color:#b91c1c;font-weight:700"><i class="bi bi-geo-alt"></i> Too far</span>{% endif %}
-          {% if s.min_order_amount > 0 %}<span><i class="bi bi-basket"></i> Min {{ currency }} {{ s.min_order_amount|floatformat:0 }}</span>{% endif %}
+          {% if s.min_order_amount > 0 %}<span><i class="bi bi-basket"></i> {% t "Min {} {}" currency s.min_order_amount|floatformat:0 %}</span>{% endif %}
         </div>
       </div>
     </a>
@@ -278,7 +279,7 @@
     <i class="bi bi-shop" style="font-size:44px;"></i>
     <p class="mt-2 mb-1"><b>No stores found</b></p>
     <p>Try another search or <a href="{% url 'store_list' %}">clear the filters</a>.</p>
-    {% if area_filter_on and outside_count %}<p><a href="?all=1">Show stores outside {{ delivery_area }} ({{ outside_count }})</a></p>{% endif %}
+    {% if area_filter_on and outside_count %}<p><a href="?all=1">{% t "Show stores outside {} ({})" delivery_area outside_count %}</a></p>{% endif %}
   </div>
   {% endif %}
 </div>
