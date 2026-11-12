@@ -25,7 +25,7 @@ class Command(BaseCommand):
         parser.add_argument('action', choices=['on', 'off', 'status'])
         parser.add_argument('--also', nargs='*', default=[], metavar='MODULE',
                             help='extra modules to keep ON (%s)' % ' '.join(LITE_OPTIONAL))
-        parser.add_argument('--lang', default=LITE_DEFAULT_LANG, choices=['ur', 'en', 'ar'],
+        parser.add_argument('--lang', default=LITE_DEFAULT_LANG, choices=['ur', 'en'],
                             help='default language while Lite is ON (default: ur)')
 
     def handle(self, *args, **opts):

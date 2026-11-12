@@ -4,7 +4,7 @@ from app.i18n import i18n_service as svc
 
 
 class Command(BaseCommand):
-    help = "Machine-translate English UI text that has no Urdu/Arabic yet (never overwrites manual/reviewed text)."
+    help = "Machine-translate English UI text that has no Urdu yet (never overwrites manual/reviewed text)."
 
     def add_arguments(self, parser):
         parser.add_argument('--limit', type=int, default=40)

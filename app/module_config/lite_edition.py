@@ -117,7 +117,7 @@ def enable_lite(also=(), lang=LITE_DEFAULT_LANG):
     unknown = [k for k in also if k not in all_keys]
     if unknown:
         raise ValueError('Unknown module(s): %s' % ', '.join(unknown))
-    if lang not in ('ur', 'en', 'ar'):
+    if lang not in ('ur', 'en'):
         raise ValueError('Unknown language: %s' % lang)
     if SystemSetting.objects.filter(setting_key=LITE_MARKER).exists():
         raise ValueError('Lite is already ON.')
@@ -328,7 +328,7 @@ def apply_edition_post(post, user=None):
 
     if edition == 'lite':
         if lite_on:
-            if post.get('lang') in ('ur', 'en', 'ar'):
+            if post.get('lang') in ('ur', 'en'):
                 SystemSetting.set_value(LITE_LANG_KEY, post['lang'], user)
                 clear_cache()
             return False, 'success', ''

@@ -1,4 +1,4 @@
-"""Translation Manager: English UI text -> Urdu / Arabic (hand-written or auto-translated)."""
+"""Translation Manager: English UI text -> Urdu (hand-written or auto-translated)."""
 from django.db import models
 
 
@@ -14,9 +14,7 @@ class Translation(models.Model):
     key = models.CharField(max_length=300, unique=True)            # lower-case lookup key
     source = models.CharField(max_length=300)                      # English text as shown to people
     ur = models.TextField(blank=True, default='')
-    ar = models.TextField(blank=True, default='')
     ur_status = models.CharField(max_length=10, blank=True, default='', choices=STATUS)
-    ar_status = models.CharField(max_length=10, blank=True, default='', choices=STATUS)
     seen_count = models.PositiveIntegerField(default=0)            # how often a page showed it untranslated
     last_seen = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1,4 +1,4 @@
-"""Language selection (English / Urdu / Arabic): cookie + session, RTL info for templates."""
+"""Language selection (English / Urdu): cookie + session, RTL info for templates."""
 
 COOKIE_NAME = 'erp_lang'
 DEFAULT_LANG = 'en'
@@ -6,7 +6,6 @@ DEFAULT_LANG = 'en'
 LANGUAGES = [
     {'code': 'en', 'native': 'English', 'dir': 'ltr'},
     {'code': 'ur', 'native': '\u0627\u0631\u062f\u0648', 'dir': 'rtl'},
-    {'code': 'ar', 'native': '\u0627\u0644\u0639\u0631\u0628\u064a\u0629', 'dir': 'rtl'},
 ]
 LANGUAGE_CODES = {l['code'] for l in LANGUAGES}
 

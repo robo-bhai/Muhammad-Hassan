@@ -1,9 +1,9 @@
-{# Language: RTL styles, Urdu/Arabic font and the text translator (loads only when the language is not English). #}
+{# Language: RTL styles, Urdu font and the text translator (loads only when the language is not English). #}
 {% load static %}{% if LANG_CODE and LANG_CODE != 'en' %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ===== RTL (Urdu / Arabic) ===== */
+/* ===== RTL (Urdu) ===== */
 @font-face { font-family: "Jameel Noori Nastaleeq"; src: url("{% static 'fonts/JameelNooriNastaleeq.woff' %}") format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
 html[dir="rtl"] { --erp-rtl-font: "Noto Naskh Arabic", "Segoe UI", Tahoma, Arial, sans-serif; }
 html[lang="ur"] { --erp-rtl-font: "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif; }
@@ -90,7 +90,6 @@ html[dir="rtl"] .dropdown-menu { text-align: right; }
 (function () {
   var L = window.ERP_LANG || 'en';
   if (L === 'en') return;
-  var IDX = (L === 'ur') ? 0 : 1;
   var D = window.ERP_I18N || {};
   var RE = /^([^\p{L}\p{N}]*)([\s\S]*?)([^\p{L}\p{N}]*)$/u;
   var SKIP = {SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, CODE: 1, PRE: 1};
@@ -110,9 +109,9 @@ html[dir="rtl"] .dropdown-menu { text-align: right; }
     if (!m) return null;
     var lead = m[1], core = m[2], trail = m[3];
     var v = D[(core + trail).toLowerCase()];
-    if (v && v[IDX]) return {lead: lead, out: v[IDX], trail: ''};
+    if (v) return {lead: lead, out: v, trail: ''};
     v = D[core.toLowerCase()];
-    if (v && v[IDX]) return {lead: lead, out: v[IDX], trail: trail};
+    if (v) return {lead: lead, out: v, trail: trail};
     return null;
   }
 

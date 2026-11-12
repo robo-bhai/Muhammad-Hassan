@@ -1,4 +1,4 @@
-"""Translation Manager (Settings): edit Urdu/Arabic text, review auto-translations, import/export."""
+"""Translation Manager (Settings): edit Urdu text, review auto-translations, import/export."""
 import csv
 import io
 import json
@@ -40,15 +40,15 @@ def translation_manager(request):
     flt = request.GET.get('f', 'all')
     qs = Translation.objects.all()
     if q:
-        qs = qs.filter(Q(source__icontains=q) | Q(ur__icontains=q) | Q(ar__icontains=q))
+        qs = qs.filter(Q(source__icontains=q) | Q(ur__icontains=q))
     if flt == 'missing':
-        qs = qs.filter(Q(ur='') | Q(ar=''))
+        qs = qs.filter(ur='')
     elif flt == 'auto':
-        qs = qs.filter(Q(ur_status='auto') | Q(ar_status='auto'))
+        qs = qs.filter(ur_status='auto')
     elif flt == 'manual':
-        qs = qs.filter(Q(ur_status='manual') | Q(ar_status='manual'))
+        qs = qs.filter(ur_status='manual')
     elif flt == 'reviewed':
-        qs = qs.filter(Q(ur_status='reviewed') | Q(ar_status='reviewed'))
+        qs = qs.filter(ur_status='reviewed')
     page = Paginator(qs, 40).get_page(request.GET.get('page'))
     base = Translation.objects
     provider = svc.active_provider()
@@ -56,9 +56,9 @@ def translation_manager(request):
         'page_obj': page, 'q': q, 'flt': flt,
         'stats': {
             'total': base.count(),
-            'missing': base.filter(Q(ur='') | Q(ar='')).count(),
-            'auto': base.filter(Q(ur_status='auto') | Q(ar_status='auto')).count(),
-            'reviewed': base.filter(Q(ur_status='reviewed') | Q(ar_status='reviewed')).count(),
+            'missing': base.filter(ur='').count(),
+            'auto': base.filter(ur_status='auto').count(),
+            'reviewed': base.filter(ur_status='reviewed').count(),
         },
         'provider': provider, 'provider_label': svc.PROVIDER_LABELS.get(provider, provider),
         'auto_on': svc.auto_enabled(),
@@ -84,14 +84,14 @@ def translation_save(request):
     obj = Translation.objects.filter(pk=data.get('id')).first()
     if not obj:
         return JsonResponse({'ok': False, 'error': 'Not found'}, status=404)
-    for lang in ('ur', 'ar'):
+    for lang in ('ur',):
         if lang in data:
             new = _clean(data.get(lang))
             if new != getattr(obj, lang):
                 setattr(obj, lang, new)
                 setattr(obj, lang + '_status', 'manual' if new else '')
     obj.save()
-    return JsonResponse({'ok': True, 'ur_status': obj.ur_status, 'ar_status': obj.ar_status})
+    return JsonResponse({'ok': True, 'ur_status': obj.ur_status})
 
 
 @require_POST
@@ -102,7 +102,7 @@ def translation_review(request):
     now = timezone.now()
     if data.get('all'):
         n = 0
-        for lang in ('ur', 'ar'):
+        for lang in ('ur',):
             n += Translation.objects.filter(**{lang + '_status': 'auto'}).exclude(**{lang: ''}).update(
                 **{lang + '_status': 'reviewed', 'updated_at': now})
         messages.success(request, 'Auto translations marked as reviewed: %d' % n)
@@ -110,11 +110,11 @@ def translation_review(request):
     obj = Translation.objects.filter(pk=data.get('id')).first()
     if not obj:
         return JsonResponse({'ok': False}, status=404)
-    for lang in ('ur', 'ar'):
+    for lang in ('ur',):
         if getattr(obj, lang) and getattr(obj, lang + '_status') in ('auto', 'default'):
             setattr(obj, lang + '_status', 'reviewed')
     obj.save()
-    return JsonResponse({'ok': True, 'ur_status': obj.ur_status, 'ar_status': obj.ar_status})
+    return JsonResponse({'ok': True, 'ur_status': obj.ur_status})
 
 
 @require_POST
@@ -126,7 +126,7 @@ def translation_add(request):
         messages.error(request, 'English text required.')
         return redirect('translation_manager')
     obj, _ = Translation.objects.get_or_create(key=svc.make_key(source), defaults={'source': source})
-    for lang in ('ur', 'ar'):
+    for lang in ('ur',):
         val = _clean(request.POST.get(lang))
         if val:
             setattr(obj, lang, val)
@@ -173,9 +173,9 @@ def translation_export(request):
     from ...models import Translation
     out = io.StringIO()
     w = csv.writer(out)
-    w.writerow(['source', 'ur', 'ar', 'ur_status', 'ar_status'])
+    w.writerow(['source', 'ur', 'ur_status'])
     for t in Translation.objects.all():
-        w.writerow([t.source, t.ur, t.ar, t.ur_status, t.ar_status])
+        w.writerow([t.source, t.ur, t.ur_status])
     resp = HttpResponse('\ufeff' + out.getvalue(), content_type='text/csv; charset=utf-8')
     resp['Content-Disposition'] = 'attachment; filename="translations.csv"'
     return resp
@@ -197,7 +197,7 @@ def translation_import(request):
             continue
         obj, _ = Translation.objects.get_or_create(key=svc.make_key(source), defaults={'source': source})
         touched = False
-        for lang in ('ur', 'ar'):
+        for lang in ('ur',):
             val = _clean(row.get(lang))
             if val and val != getattr(obj, lang):
                 setattr(obj, lang, val)
@@ -212,7 +212,7 @@ def translation_import(request):
 
 def i18n_dictionary(request, code):
     """window.ERP_I18N = {...}  (public: the login page can use it too)."""
-    if code in ('ur', 'ar'):
+    if code == 'ur':
         try:
             ver = svc.get_version()
             data = cache.get_or_set('i18n_dict:' + ver, svc.build_dictionary_json, 3600)

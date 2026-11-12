@@ -12,7 +12,7 @@ from django.core.cache import cache
 from django.db.models import Count, F, Max, Q
 from django.utils import timezone
 
-LANG_NAMES = {'ur': 'Urdu', 'ar': 'Arabic'}
+LANG_NAMES = {'ur': 'Urdu'}
 PROVIDER_LABELS = {
     'anthropic': 'Claude (Anthropic)',
     'google': 'Google Cloud Translation',
@@ -64,39 +64,36 @@ def seed_defaults():
     existing = {t.key: t for t in Translation.objects.all()}
     new, changed = [], []
     now = timezone.now()
-    for en, ur, ar in DEFAULTS:
+    for en, ur in DEFAULTS:
         k = make_key(en)
         if not k:
             continue
         row = existing.get(k)
         if row is None:
-            obj = Translation(key=k, source=clean_source(en) or en, ur=ur, ar=ar,
-                              ur_status='default', ar_status='default' if ar else '')
+            obj = Translation(key=k, source=clean_source(en) or en, ur=ur, ur_status='default')
             existing[k] = obj
             new.append(obj)
             continue
         touched = False
         if row.ur_status in ('default', '') and ur and row.ur != ur:
             row.ur, row.ur_status, touched = ur, 'default', True
-        if row.ar_status in ('default', '') and ar and row.ar != ar:
-            row.ar, row.ar_status, touched = ar, 'default', True
         if touched and row.pk:
             row.updated_at = now
             changed.append(row)
     Translation.objects.bulk_create(new, batch_size=200)
     if changed:
-        Translation.objects.bulk_update(changed, ['ur', 'ar', 'ur_status', 'ar_status', 'updated_at'], batch_size=200)
+        Translation.objects.bulk_update(changed, ['ur', 'ur_status', 'updated_at'], batch_size=200)
     return len(new) + len(changed)
 
 
 def _defaults_map():
-    """Built-in dictionary {key: [ur, ar]} from i18n_default.py (used as fallback under the database)."""
+    """Built-in dictionary {key: urdu text} from i18n_default.py (used as fallback under the database)."""
     from .i18n_default import DEFAULTS
     out = {}
-    for en, ur, ar in DEFAULTS:
+    for en, ur in DEFAULTS:
         k = make_key(en)
-        if k and (ur or ar):
-            out[k] = [ur or '', ar or '']
+        if k and ur:
+            out[k] = ur
     return out
 
 
@@ -123,9 +120,8 @@ def build_dictionary_json():
     from ..models import Translation
     ensure_seeded()
     out = _defaults_map()
-    for key, ur, ar in Translation.objects.exclude(ur='', ar='').values_list('key', 'ur', 'ar'):
-        old = out.get(key, ['', ''])
-        out[key] = [ur or old[0], ar or old[1]]
+    for key, ur in Translation.objects.exclude(ur='').values_list('key', 'ur'):
+        out[key] = ur
     return json.dumps(out, ensure_ascii=False, separators=(',', ':'))
 
 
@@ -149,7 +145,7 @@ def record_missing(items):
 
 def pending_count():
     from ..models import Translation
-    return Translation.objects.filter(Q(ur='') | Q(ar='')).count()
+    return Translation.objects.filter(ur='').count()
 
 
 # ---------------------------------------------------------------- providers
@@ -236,12 +232,12 @@ def translate_batch(provider, texts, lang):
 
 
 def translate_pending(limit=40):
-    """Fill empty Urdu/Arabic cells with machine translation (status 'auto'). Never touches filled cells."""
+    """Fill empty Urdu cells with machine translation (status 'auto'). Never touches filled cells."""
     from ..models import Translation
     provider = active_provider()
-    rows = list(Translation.objects.filter(Q(ur='') | Q(ar='')).order_by('-seen_count', 'id')[:limit])
+    rows = list(Translation.objects.filter(ur='').order_by('-seen_count', 'id')[:limit])
     done, error = 0, ''
-    for lang in ('ur', 'ar'):
+    for lang in ('ur',):
         todo = [r for r in rows if not getattr(r, lang)]
         for i in range(0, len(todo), 40):
             chunk = todo[i:i + 40]

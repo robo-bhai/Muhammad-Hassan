@@ -51,7 +51,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <form method="get" class="row g-2 align-items-center">
-                <div class="col-12 col-md-5"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search English / Urdu / Arabic"></div>
+                <div class="col-12 col-md-5"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search English / Urdu"></div>
                 <div class="col-8 col-md-3">
                     <select name="f" class="form-select">
                         <option value="all" {% if flt == 'all' %}selected{% endif %}>All</option>
@@ -76,15 +76,14 @@
             <div class="collapse mt-3" id="tmAdd">
                 <form method="post" action="{% url 'translation_add' %}" class="row g-2">{% csrf_token %}
                     <div class="col-12 col-md-4"><input name="source" class="form-control" placeholder="English text" required></div>
-                    <div class="col-12 col-md-3"><input name="ur" class="form-control" dir="rtl" placeholder="اردو"></div>
-                    <div class="col-12 col-md-3"><input name="ar" class="form-control" dir="rtl" placeholder="العربية"></div>
+                    <div class="col-12 col-md-6"><input name="ur" class="form-control" dir="rtl" placeholder="اردو"></div>
                     <div class="col-12 col-md-2"><button class="btn btn-primary w-100">Save</button></div>
                 </form>
             </div>
             <div class="collapse mt-3" id="tmImport">
                 <form method="post" action="{% url 'translation_import' %}" enctype="multipart/form-data" class="row g-2">{% csrf_token %}
                     <div class="col-12 col-md-8"><input type="file" name="file" accept=".csv" class="form-control" required>
-                        <small class="text-muted">Columns: source, ur, ar (same as the Export file). Empty cells are left untouched.</small></div>
+                        <small class="text-muted">Columns: source, ur (same as the Export file). Empty cells are left untouched.</small></div>
                     <div class="col-12 col-md-4"><button class="btn btn-primary w-100">Import</button></div>
                 </form>
             </div>
@@ -101,13 +100,9 @@
                     <button class="btn btn-sm btn-outline-danger tm-del" type="button" title="Delete"><i class="bi bi-trash"></i></button>
                 </div>
                 <div class="row g-2">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12">
                         <small class="text-muted">اردو <span class="tm-badge st-{{ t.ur_status|default:'none' }}" data-lang="ur">{{ t.get_ur_status_display }}</span></small>
                         <textarea class="form-control tm-ur" dir="rtl" lang="ur" rows="1">{{ t.ur }}</textarea>
-                    </div>
-                    <div class="col-12 col-md-6">
-                        <small class="text-muted">العربية <span class="tm-badge st-{{ t.ar_status|default:'none' }}" data-lang="ar">{{ t.get_ar_status_display }}</span></small>
-                        <textarea class="form-control tm-ar" dir="rtl" lang="ar" rows="1">{{ t.ar }}</textarea>
                     </div>
                 </div>
                 <div class="mt-2 d-flex gap-2 align-items-center">
@@ -150,13 +145,13 @@
     }
     function after(row, j) {
         if (!j.ok) return flash(row, 'Error', false);
-        setBadge(row, 'ur', j.ur_status); setBadge(row, 'ar', j.ar_status); flash(row, 'Saved ✓', true);
+        setBadge(row, 'ur', j.ur_status); flash(row, 'Saved ✓', true);
     }
     document.getElementById('tmRows').addEventListener('click', function (e) {
         var row = e.target.closest('.tm-row'); if (!row) return;
         var id = row.dataset.id;
         if (e.target.closest('.tm-save')) {
-            post('{% url "translation_save" %}', {id: id, ur: row.querySelector('.tm-ur').value, ar: row.querySelector('.tm-ar').value})
+            post('{% url "translation_save" %}', {id: id, ur: row.querySelector('.tm-ur').value})
                 .then(function (j) { after(row, j); }).catch(function () { flash(row, 'Network error', false); });
         } else if (e.target.closest('.tm-ok')) {
             post('{% url "translation_review" %}', {id: id}).then(function (j) { after(row, j); });
