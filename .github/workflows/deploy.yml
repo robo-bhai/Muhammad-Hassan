@@ -6,6 +6,9 @@ name: Django CI/CD Pipeline
 #   every 30 min : local snapshot only (cache can only be saved at the end of the job)
 #   end of run   : stop server, final snapshot -> save as new cache entry, keep latest 3
 # Note: GitHub deletes cache entries not used for 7 days, so keep the workflow running at least weekly.
+# AUTO-RESTART: GitHub kills any job at 6 hours. After ~5h10m this run starts a NEW run of itself
+#   (workflow_dispatch). The new run waits for this one, this one sees the newer run, stops the server,
+#   takes the final snapshot, and the new run restores it and goes live again (a few minutes gap only).
 
 on:
   push:
@@ -79,6 +82,9 @@ jobs:
       RUNNING_IN_TERMUX: "false"
 
     steps:
+      - name: Record job start time
+        run: echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -412,8 +418,20 @@ jobs:
           REPO="${{ github.repository }}"
           BRANCH="${{ github.ref_name }}"
 
+          RELAUNCHED=""
           for i in {1..65}; do
             for s in {1..60}; do
+              # ---- AUTO-RESTART before GitHub's 6 hour limit (18600 s = 5h10m after job start) ----
+              ELAPSED=$(( $(date +%s) - JOB_START ))
+              if [ -z "$RELAUNCHED" ] && [ "$ELAPSED" -ge 18600 ]; then
+                if gh workflow run deploy.yml --ref "$BRANCH" -R "$REPO"; then
+                  echo "Auto-restart: new run requested after ${ELAPSED}s. This run will hand over now."
+                  RELAUNCHED="yes"
+                else
+                  echo "Auto-restart request FAILED, will retry..."
+                  curl -s -H "Title: Auto-restart FAILED (retrying)" -H "Tags: warning" -d "run=$CURRENT_RUN_ID" ntfy.sh/hassan_shops_db || true
+                fi
+              fi
               LATEST_RUN_ID=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=1" --jq '.workflow_runs[0].id' 2>/dev/null || echo "$CURRENT_RUN_ID")
               if [ "$LATEST_RUN_ID" -gt "$CURRENT_RUN_ID" ]; then
                 echo "Newer run ($LATEST_RUN_ID) detected. Ending log stream -> final snapshot."
@@ -464,3 +482,20 @@ jobs:
             --jq '.[3:][] | .id' | while read -r ID; do
               [ -n "$ID" ] && gh cache delete "$ID" -R "${{ github.repository }}" && echo "rotated out cache id $ID"
             done || true
+
+      - name: Safety net - start next run if none was started
+        # Runs also if the log stream ended early. Not on cancel (cancelled() = you stopped it on purpose),
+        # and only if this run lived 3h+ (so a crashing run cannot restart itself in an endless loop).
+        if: ${{ !cancelled() && env.DB_READY == 'true' && env.STOP_AFTER_MIGRATE != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ELAPSED=$(( $(date +%s) - JOB_START ))
+          LATEST_RUN_ID=$(gh api "repos/${{ github.repository }}/actions/runs?branch=${{ github.ref_name }}&per_page=1" --jq '.workflow_runs[0].id' 2>/dev/null || echo "0")
+          if [ "$ELAPSED" -lt 10800 ]; then
+            echo "Run lasted only ${ELAPSED}s (< 3h) -> not auto-restarting."
+          elif [ "$LATEST_RUN_ID" -gt "${{ github.run_id }}" ]; then
+            echo "A newer run ($LATEST_RUN_ID) already exists -> nothing to do."
+          else
+            gh workflow run deploy.yml --ref "${{ github.ref_name }}" -R "${{ github.repository }}" && echo "Next run started."
+          fi
