@@ -217,8 +217,14 @@ def store_list(request):
         outside_count = sum(1 for s in stores if not s.in_area)
         stores = [s for s in stores if s.in_area]
 
+    # Sponsored (paid) stores: 'Recommended' sort mein khule stores ke andar sab se upar
+    from .sponsored import sponsored_profile_ids
+    spons_ids = sponsored_profile_ids()
+    for st in stores:
+        st.sponsored = st.pk in spons_ids
+
     sort_keys = {
-        'recommended': lambda s: (STATUS_ORDER[s.status], s.business_name.lower()),
+        'recommended': lambda s: (STATUS_ORDER[s.status], 0 if s.sponsored else 1, s.business_name.lower()),
         'rating': lambda s: (STATUS_ORDER[s.status], -(s.rating_avg or 0), -s.rating_count, s.business_name.lower()),
         'fastest': lambda s: (STATUS_ORDER[s.status], s.delivery_time_min, s.delivery_time_max),
         'fee': lambda s: (STATUS_ORDER[s.status], s.fee_now or 0),

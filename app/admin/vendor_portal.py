@@ -463,6 +463,32 @@ class ProMembershipAdmin(admin.ModelAdmin):
         self.message_user(request, f'{n} membership cancel ho gayi.', messages.WARNING)
 
 
+@admin.register(StoreSponsorship, site=admin.site)
+class StoreSponsorshipAdmin(admin.ModelAdmin):
+    list_display = ('profile', 'status', 'requested_at', 'starts_on', 'ends_on', 'amount')
+    list_filter = ('status',)
+    search_fields = ('profile__business_name', 'profile__vendor__vendor_code')
+    raw_id_fields = ('profile',)
+    actions = ['activate_selected', 'cancel_selected']
+
+    @admin.action(description='✅ Activate (payment mil gayi) - Settings ki mudat ke liye')
+    def activate_selected(self, request, queryset):
+        from ..customer import sponsored
+        cfg = sponsored.sponsored_settings()
+        done = 0
+        for sp in queryset.exclude(status='active'):
+            if not sp.amount:
+                sp.amount = cfg['price']
+            sp.activate(cfg['days'])
+            done += 1
+        self.message_user(request, f'{done} sponsorship activate ho gayi ({cfg["days"]} din).', messages.SUCCESS)
+
+    @admin.action(description='❌ Cancel')
+    def cancel_selected(self, request, queryset):
+        n = queryset.update(status='cancelled')
+        self.message_user(request, f'{n} sponsorship cancel ho gayi.', messages.WARNING)
+
+
 class LoyaltyAdjustForm(forms.ModelForm):
     """Haath se sirf Adjustment (points dena / katna); 'earn' aur 'redeem' system banata hai."""
 

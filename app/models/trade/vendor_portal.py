@@ -330,3 +330,48 @@ class StoreMenuSection(models.Model):
     def __str__(self):
         return f"{self.store.business_name}: {self.category.name} ({self.sort_order})"
 
+
+class StoreSponsorship(models.Model):
+    """Sponsored / Featured store: vendor paise de kar store list aur homepage par upar aaye.
+    Vendor request bhejta hai (pending), payment milne par admin Activate karta hai (Pro jaisa)."""
+    STATUS_CHOICES = [
+        ('pending', 'Pending (payment ka intezar)'),
+        ('active', 'Active'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    profile = models.ForeignKey('VendorProfile', on_delete=models.CASCADE, related_name='sponsorships')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    starts_on = models.DateField(null=True, blank=True)
+    ends_on = models.DateField(null=True, blank=True, help_text="Is din tak (wo din samet) store upar rahega")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                 help_text="Vendor se li gayi raqam (aap ki income ka record)")
+    note = models.CharField(max_length=200, blank=True, default='')
+
+    class Meta:
+        ordering = ['-requested_at']
+        verbose_name = 'Store Sponsorship'
+        verbose_name_plural = 'Store Sponsorships'
+
+    def __str__(self):
+        return f"{self.profile_id} sponsored ({self.status})"
+
+    @property
+    def is_running(self):
+        return self.status == 'active' and bool(self.ends_on) and self.ends_on >= timezone.localdate()
+
+    def activate(self, days):
+        """Aaj se `days` din ke liye chalu karo (is store ki pehle se chalti sponsorship ho to us ke baad se)."""
+        from datetime import timedelta
+        today = timezone.localdate()
+        base = today
+        running = (StoreSponsorship.objects.filter(profile=self.profile, status='active', ends_on__gte=today)
+                   .exclude(pk=self.pk).order_by('-ends_on').first())
+        if running:
+            base = running.ends_on + timedelta(days=1)
+        self.starts_on = base
+        self.ends_on = base + timedelta(days=max(int(days), 1) - 1)
+        self.status = 'active'
+        self.save()
+

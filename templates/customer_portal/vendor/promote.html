@@ -1,0 +1,69 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Promote my store{% endblock %}
+
+{% block content %}
+<style>
+    .vp-wrap { max-width: 620px; margin: 26px auto; padding: 0 14px; }
+    .vp-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .vp-card { background: #fff; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 16px; }
+    .vp-head { background: linear-gradient(135deg, #92400e 0%, #f59e0b 100%); color: #fff; padding: 20px 22px; }
+    .vp-head h3 { margin: 0; font-size: 21px; font-weight: 800; }
+    .vp-head p { margin: 4px 0 0; opacity: .95; font-size: 13.5px; }
+    .vp-body { padding: 16px 22px 20px; font-size: 15px; line-height: 1.6; }
+    .vp-price { font-size: 30px; font-weight: 800; color: #b45309; }
+    .vp-price small { font-size: 14px; color: #6b7280; font-weight: 600; }
+    .vp-list { margin: 10px 0 14px; padding-left: 20px; color: #374151; }
+    .vp-btn { border: 0; border-radius: 12px; padding: 13px 18px; font-weight: 800; color: #fff; cursor: pointer;
+              background: linear-gradient(135deg,#d97706,#f59e0b); font-size: 15.5px; width: 100%; }
+    .vp-status { padding: 12px 15px; border-radius: 12px; margin-bottom: 12px; font-weight: 600; }
+    .vp-ok { background: #ecfdf5; color: #065f46; }
+    .vp-wait { background: #fffbeb; color: #92400e; }
+    .vp-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .vp-alert.error { background: #f8d7da; color: #721c24; }
+    .vp-row { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #f1f1f1; font-size: 14px; }
+</style>
+
+<div class="vp-wrap">
+    <a class="vp-back" href="{% url 'vendor_dashboard' %}">&larr; Dashboard</a>
+    {% for m in messages %}<div class="vp-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="vp-card">
+        <div class="vp-head"><h3>&#128226; Promote my store</h3><p>Show your store first to every customer.</p></div>
+        <div class="vp-body">
+            {% if running %}
+            <div class="vp-status vp-ok">&#9989; Your store is sponsored until <b>{{ running.ends_on|date:"d M Y" }}</b>.</div>
+            {% endif %}
+            {% if pending %}
+            <div class="vp-status vp-wait">&#9203; Request sent on {{ pending.requested_at|date:"d M Y" }}. Waiting for payment confirmation.</div>
+            {% endif %}
+
+            <div class="vp-price">
+                {% if cfg.price > 0 %}Rs {{ cfg.price|floatformat:0 }}{% else %}Ask the shop{% endif %}
+                <small>for {{ cfg.days }} days</small>
+            </div>
+            <ul class="vp-list">
+                <li>Your store appears at the top of the store list and on the home page.</li>
+                <li>A &quot;Sponsored&quot; tag makes it stand out.</li>
+                <li>A closed store never goes above open ones.</li>
+                {% if cfg.max_slots %}<li>Only {{ cfg.max_slots }} stores can be sponsored at one time.</li>{% endif %}
+            </ul>
+
+            {% if not pending %}
+            <form method="post">{% csrf_token %}
+                <button type="submit" class="vp-btn">{% if running %}Extend sponsorship{% else %}Request sponsorship{% endif %}</button>
+            </form>
+            <div style="font-size:12.5px;color:#6b7280;margin-top:8px;">You pay the shop directly (cash / bank / JazzCash). It starts after the shop confirms your payment.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if history %}
+    <div class="vp-card"><div class="vp-body">
+        <b>Earlier sponsorships</b>
+        {% for h in history %}
+        <div class="vp-row"><span>{{ h.starts_on|date:"d M Y" }} &ndash; {{ h.ends_on|date:"d M Y" }}</span><span>{{ h.get_status_display }}</span></div>
+        {% endfor %}
+    </div></div>
+    {% endif %}
+</div>
+{% endblock %}

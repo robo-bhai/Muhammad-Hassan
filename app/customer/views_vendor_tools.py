@@ -300,3 +300,54 @@ def _offers_post(request, vendor, pct):
             messages.success(request, f'🏷️ {discount.normalize()}% discount applied to {len(products)} product(s).')
         else:
             messages.success(request, f'✅ Offer ended for {len(products)} product(s).')
+
+
+# ============================================================
+# Promote my store (Sponsored / Featured store)
+# ============================================================
+
+@vendor_login_required
+def vendor_promote(request):
+    """Vendor sponsorship ki request bhejta hai; payment milne par admin activate karta hai."""
+    from ..models import StoreSponsorship
+    from . import sponsored
+    from .store_orders import _notify
+
+    profile = request.user.vendor_profile
+    cfg = sponsored.sponsored_settings()
+    if not profile.is_approved:
+        messages.warning(request, '⏳ Your account has not been approved yet.')
+        return redirect('vendor_dashboard')
+    if not cfg['enabled']:
+        messages.info(request, 'ℹ️ Sponsored stores are not available right now.')
+        return redirect('vendor_dashboard')
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                st = sponsored.vendor_status(profile)
+                if st['pending']:
+                    messages.info(request, 'Your request is already with us. We will activate it once payment is received.')
+                else:
+                    StoreSponsorship.objects.create(profile=profile, amount=cfg['price'])
+                    from django.contrib.auth.models import User
+                    for admin in User.objects.filter(is_superuser=True, is_active=True):
+                        _notify(admin, f'📣 Sponsored store request: {profile.business_name}',
+                                f'Rs. {cfg["price"]:,.0f} for {cfg["days"]} days. Collect payment, then Activate in '
+                                'Admin > Store Sponsorships.', '/admin/app/storesponsorship/', 'info')
+                    messages.success(request, '✅ Request sent. Please send the payment to the shop; your store goes '
+                                              'to the top as soon as it is confirmed.')
+        except Exception:
+            logger.exception('Vendor promote error')
+            messages.error(request, '❌ Something went wrong. Please try again')
+        return redirect('vendor_promote')
+
+    st = sponsored.vendor_status(profile)
+    return render(request, 'customer_portal/vendor/promote.html', {
+        'profile': profile,
+        'cfg': cfg,
+        'running': st['running'],
+        'pending': st['pending'],
+        'history': list(profile.sponsorships.exclude(status='pending')[:10]),
+    })
+

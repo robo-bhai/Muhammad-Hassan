@@ -64,6 +64,9 @@ jobs:
       SUPERUSER_NAME: ${{ secrets.SUPERUSER_NAME }}
       SUPERUSER_EMAIL: ${{ secrets.SUPERUSER_EMAIL }}
       SUPERUSER_PASSWORD: ${{ secrets.SUPERUSER_PASSWORD }}
+      # WhatsApp automatic order updates (Meta Cloud API); khali ho to kuch nahi jata
+      WHATSAPP_CLOUD_TOKEN: ${{ secrets.WHATSAPP_CLOUD_TOKEN }}
+      WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
       # Fixed Cloudflare tunnel domain
       CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
       SITE_DOMAIN: "kwl.uqn88.store"
@@ -313,6 +316,9 @@ jobs:
           else:
               print('Skipping superuser (credentials not set).')
           "
+
+      - name: Expire finished vendor launch offers
+        run: python manage.py expire_commission_promos || true
 
       - name: Email setup check (secrets ki qeemat nahi dikhata)
         run: python manage.py check_email || true

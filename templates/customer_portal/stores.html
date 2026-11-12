@@ -82,6 +82,7 @@
     .st-cover-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.45); color: #fff; display: flex; align-items: center;
                         justify-content: center; font-weight: 800; letter-spacing: .5px; }
     .st-badge { position: absolute; top: 10px; right: 10px; padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 700; z-index: 2; }
+    .st-spons { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 999px; padding: 1px 8px; margin-bottom: 4px; }
     .st-free { position: absolute; top: 10px; left: 10px; padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 700;
                background: #ff5a5f; color: #fff; z-index: 2; }
     .st-open { background: #d4edda; color: #155724; }
@@ -257,6 +258,7 @@
       <span class="st-badge st-{{ s.status }}">{% if s.status == 'open' %}Open{% elif s.status == 'busy' %}Busy{% else %}Closed{% endif %}</span>
       <div class="st-logo" {% if s.logo %}style="background-image:url('{{ s.logo.url }}')"{% endif %}>{% if not s.logo %}{{ s.business_name|slice:":1"|upper }}{% endif %}</div>
       <div class="st-body">
+        {% if s.sponsored %}<span class="st-spons">Sponsored</span>{% endif %}
         <div class="st-name">{{ s.business_name }}</div>
         <div class="st-tags">{% if s.store_category %}<span class="st-ctype">{{ s.store_category.icon }} {{ s.store_category.name }}</span> &middot; {% endif %}{% if s.cuisine_list %}{% for c in s.cuisine_list %}{{ c.icon }} {{ c.name }}{% if not forloop.last %} &bull; {% endif %}{% endfor %}{% elif s.tags %}{{ s.tags|join:" &bull; " }}{% else %}{{ s.product_count }} product{{ s.product_count|pluralize }}{% endif %}{% if s.city %} &middot; {{ s.city }}{% endif %}</div>
         {% if s.matched_items %}<div style="font-size:12.5px;color:#4338ca;margin-top:4px;"><i class="bi bi-search"></i> {{ s.matched_items|join:", " }}</div>{% endif %}

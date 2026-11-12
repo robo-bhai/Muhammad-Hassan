@@ -353,6 +353,8 @@ def notify_vendor_new_order(order):
     prof = get_store_profile(order.vendor_id)
     if not prof:
         return
+    from . import whatsapp_auto
+    whatsapp_auto.notify(order, 'placed')
     items = order.items.count()
     when = ''
     if getattr(order, 'scheduled_for', None):
@@ -537,6 +539,9 @@ def after_vendor_action(order, action, user):
     link = f'/shop/order/{order.id}/'
     cust_user = _customer_user(order)
     shop = store_name(order.vendor_id)
+
+    from . import whatsapp_auto
+    whatsapp_auto.notify(order, action)      # WhatsApp (settings mein on ho to); ghalti order nahi rokti
 
     if action == 'accept':
         eta = f'\nTayyar hone mein ~{order.prep_minutes} minute.' if order.prep_minutes else ''

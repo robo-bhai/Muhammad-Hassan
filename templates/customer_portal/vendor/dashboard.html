@@ -89,6 +89,7 @@
             <a href="{% url 'vendor_menu' %}" class="vd-btn"><i class="bi bi-list-stars"></i> Menu</a>
             <a href="{% url 'vendor_reports' %}" class="vd-btn"><i class="bi bi-graph-up"></i> Reports</a>
             {% if profile.is_approved %}<a href="{% url 'vendor_offers' %}" class="vd-btn"><i class="bi bi-tag"></i> Offers</a>{% endif %}
+            {% if profile.is_approved and SHOP.shop_sponsored_enabled %}<a href="{% url 'vendor_promote' %}" class="vd-btn"><i class="bi bi-megaphone"></i> Promote</a>{% endif %}
             <a href="{% url 'vendor_orders' %}" class="vd-btn"><i class="bi bi-bag-check"></i> Orders{% if new_orders %} <span class="vd-badge" style="background:#dc3545;color:#fff;">{{ new_orders }}</span>{% endif %}</a>
             <a href="{% url 'vendor_disputes' %}" class="vd-btn"><i class="bi bi-exclamation-triangle"></i> Disputes{% if dispute_pending %} <span class="vd-badge" style="background:#dc3545;color:#fff;">{{ dispute_pending }}</span>{% endif %}</a>
             <a href="{% url 'vendor_store_settings' %}" class="vd-btn"><i class="bi bi-gear"></i> Store</a>

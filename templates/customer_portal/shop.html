@@ -881,6 +881,9 @@
     .promo-a { background: linear-gradient(135deg, #1e3a8a, #2563eb 55%, #7c3aed); }
     .promo-b { background: linear-gradient(135deg, #9d174d, #db2777 55%, #f43f5e); }
     .promo-c { background: linear-gradient(135deg, #065f46, #059669 55%, #34d399); }
+    .store-spons { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 999px; padding: 0 7px; margin-bottom: 3px; }
+    .promo-d { background: linear-gradient(135deg, #92400e, #d97706 55%, #fbbf24); }
+    .promo-e { background: linear-gradient(135deg, #5b21b6, #7c3aed 55%, #c084fc); }
     .promo-dots { display: flex; justify-content: center; gap: 6px; margin: 6px 0 2px; }
     .promo-dots span { width: 7px; height: 7px; border-radius: 50%; background: #d9d9d9; transition: all .2s; }
     .promo-dots span.on { background: #1f1f1f; width: 18px; border-radius: 6px; }
@@ -1228,6 +1231,14 @@
         </a>
         {% endif %}
         {% endif %}
+        {% for c in club_cards %}
+        <a href="{% url c.url %}" class="promo-card {{ c.css }}">
+            <h3>{{ c.title }}</h3>
+            <p>{{ c.text }}</p>
+            <span class="promo-cta">{{ c.cta }}</span>
+            <span class="promo-emoji"><i class="bi {{ c.icon }}"></i></span>
+        </a>
+        {% endfor %}
     </div>
     <div class="promo-dots" id="promoDots"></div>
 
@@ -1252,6 +1263,7 @@
                 <span class="store-logo">{% if st.logo %}<img src="{{ st.logo|thumb:160 }}" alt="{{ st.business_name }}" loading="lazy">{% else %}{{ st.business_name|slice:":1"|upper }}{% endif %}</span>
             </div>
             <div class="store-body">
+                {% if st.sponsored %}<span class="store-spons">Sponsored</span>{% endif %}
                 <div class="store-name">{{ st.business_name }}</div>
                 <div class="store-meta">
                     <span><i class="bi bi-clock"></i> {{ st.delivery_time_min }}-{{ st.delivery_time_max }} min</span>

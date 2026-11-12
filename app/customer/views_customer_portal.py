@@ -687,6 +687,32 @@ def get_product_final_price(product):
 # 1. SHOP HOME
 # ============================================
 
+def _club_cards():
+    """Homepage par Pro aur Loyalty ke cards. Flag band ho to khali; ghalti homepage nahi rokti."""
+    cards = []
+    try:
+        from . import offers
+        pro = offers.pro_settings()
+        if pro['enabled']:
+            if pro['price'] > 0:
+                sub = f"Rs {pro['price']:,.0f} for {pro['days']} days"
+            else:
+                sub = f"Join for {pro['days']} days"
+            if pro['min_order'] > 0:
+                sub += f" - on orders over Rs {pro['min_order']:,.0f}"
+            cards.append({'css': 'promo-d', 'title': 'Pro: free delivery', 'text': sub,
+                          'cta': 'Join Pro', 'url': 'pro_page', 'icon': 'bi-star-fill'})
+        loy = offers.loyalty_settings()
+        if loy['enabled'] and offers.wallet_enabled() and loy['per_100'] > 0:
+            earn = f"{loy['per_100']:g}"
+            cards.append({'css': 'promo-e', 'title': 'Earn reward points',
+                          'text': f"{earn} point for every Rs 100 you spend; 1 point = Rs {loy['value']:g}",
+                          'cta': 'My points', 'url': 'wallet_page', 'icon': 'bi-gift-fill'})
+    except Exception as exc:
+        logger.error('Shop home club cards error: %s', exc)
+    return cards
+
+
 def shop_home(request):
     """Shop home page"""
     from django.core.paginator import Paginator
@@ -876,14 +902,24 @@ def shop_home(request):
         live_vendors = Product.objects.filter(
             is_active=True, approval_status='approved', vendor__isnull=False
         ).values('vendor')
+        from .sponsored import sponsored_profile_ids
+        spons_ids = sponsored_profile_ids()
         featured_stores = list(
             VendorProfile.objects.filter(is_approved=True, vendor__in=live_vendors)
             .select_related('vendor').order_by('business_name')[:12]
         )
+        if spons_ids:       # sponsored stores 12 ki hadd se bahar hon tab bhi shamil
+            have = {st.pk for st in featured_stores}
+            featured_stores += list(
+                VendorProfile.objects.filter(is_approved=True, vendor__in=live_vendors, pk__in=spons_ids - have)
+                .select_related('vendor'))
         order = {'open': 0, 'busy': 1, 'closed': 2}
         for st in featured_stores:
             st.status = st.status_label
-        featured_stores.sort(key=lambda x: order.get(x.status, 3))
+            st.sponsored = st.pk in spons_ids
+        featured_stores.sort(key=lambda x: (order.get(x.status, 3), 0 if x.sponsored else 1))
+        if len(featured_stores) > 12:       # sponsored ko pehle rakh kar 12 tak (baqi sab pehle jaise)
+            featured_stores = featured_stores[:max(12, len(spons_ids))]
     except Exception as e:
         logger.error(f"Shop home banners/stores error: {e}")
         banners, featured_stores = [], []
@@ -895,6 +931,7 @@ def shop_home(request):
 
     context = {
         'banners': banners,
+        'club_cards': _club_cards(),
         'featured_stores': featured_stores,
         'company_name': company.name if company else 'Shop',
         'company': company,

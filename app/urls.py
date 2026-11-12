@@ -1165,6 +1165,7 @@ urlpatterns = [
      path('shop/vendor/reports/', views_vendor_tools.vendor_reports, name='vendor_reports'),
      path('shop/vendor/offers/', views_vendor_tools.vendor_offers, name='vendor_offers'),
      path('shop/vendor/busy/', views_vendor_tools.vendor_pause, name='vendor_pause'),
+     path('shop/vendor/promote/', views_vendor_tools.vendor_promote, name='vendor_promote'),
      path('shop/coupon/apply/', views_coupons.apply_coupon, name='apply_coupon'),
      path('shop/coupon/remove/', views_coupons.remove_coupon, name='remove_coupon'),
      path('shop/wallet/', views_offers.wallet_page, name='wallet_page'),

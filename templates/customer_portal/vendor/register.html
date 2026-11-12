@@ -339,6 +339,12 @@
             <h3>Register as a Seller</h3>
             <p>Apni products hamari shop par list karein</p>
         </div>
+        {% if launch_offer %}
+        <div style="background:#ecfdf5;border-bottom:1px solid #a7f3d0;color:#065f46;padding:12px 18px;text-align:center;font-size:14px;line-height:1.6;">
+            🎁 <b>Launch offer:</b> naye seller ke liye pehle <b>{{ launch_offer.days }} din</b>
+            {% if launch_offer.percent == 0 %}<b>zero commission</b>{% else %}sirf <b>{{ launch_offer.percent|floatformat:"-2" }}%</b> commission{% endif %}.
+        </div>
+        {% endif %}
         
         <!-- Body -->
         <div class="register-body">

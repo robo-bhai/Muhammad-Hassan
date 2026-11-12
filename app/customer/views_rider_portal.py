@@ -431,6 +431,8 @@ def rider_order_action(request, pk, action):
                 di.save()
                 _track(order, 'out_for_delivery', 'Out for Delivery',
                        f'Rider {rider.name} ne {shop} se maal le liya.', request.user, rider)
+                from . import whatsapp_auto
+                whatsapp_auto.notify(order, 'pickup', rider=rider)
                 store_orders._notify(cust, f'🛵 Order #{order.order_no} raaste mein hai',
                                      f'Rider {rider.name} ({rider.phone}) aap ka order le kar nikal chuka hai.',
                                      f'/shop/order/{order.id}/', 'info')

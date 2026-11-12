@@ -290,6 +290,17 @@ def _area_context(profile=None):
     }
 
 
+def _launch_offer_banner():
+    """Register page par dikhane ke liye: admin ne launch offer on kiya ho to {'days', 'percent'}, warna None."""
+    try:
+        from .vendor_commission import launch_promo_settings
+        cfg = launch_promo_settings()
+    except Exception:
+        logger.exception('launch_promo_settings failed')
+        return None
+    return cfg if cfg['days'] > 0 else None
+
+
 @flag_required('vendor_register_enabled')
 def vendor_register(request):
     """Vendor account banao. Admin approve karega (ya auto-approve setting)."""
@@ -390,6 +401,7 @@ def vendor_register(request):
         'page_title': 'Seller Registration',
         'store_categories': StoreCategory.objects.filter(is_active=True),
         'company_name': _company_name(),
+        'launch_offer': _launch_offer_banner(),
         **_area_context(),
     })
 
