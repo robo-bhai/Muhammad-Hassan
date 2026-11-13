@@ -253,6 +253,14 @@ urlpatterns = [
     path('customers/create/', views_frontend.customer_create, name='customer_create'),
     path('customers/<int:pk>/update/', views_frontend.customer_update, name='customer_update'),
     path('customers/<int:pk>/ledger/', views_frontend.customer_ledger, name='customer_ledger'),
+    path('customers/<int:pk>/suspend/<str:action>/', views_frontend.customer_suspend_action, name='customer_suspend_action'),
+    path('people/duplicates/', views_frontend.duplicate_report, name='duplicate_report'),
+    path('people/blocked/', views_frontend.blocked_list, name='blocked_list'),
+    path('people/blocked/add/', views_frontend.blocked_add, name='blocked_add'),
+    path('people/blocked/<int:pk>/remove/', views_frontend.blocked_remove, name='blocked_remove'),
+    path('people/history/', views_frontend.account_history, name='account_history'),
+    path('people/overview/', views_frontend.oversight_dashboard, name='oversight_dashboard'),
+    path('people/vendor-performance/', views_frontend.vendor_performance, name='vendor_performance'),
     
     # ============================================
     # VENDORS

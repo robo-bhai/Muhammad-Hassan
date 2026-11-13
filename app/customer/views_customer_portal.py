@@ -1622,6 +1622,10 @@ def place_order(request):
         if not profile:
             messages.error(request, '❌ Customer profile not found')
             return redirect('checkout')
+
+        if profile.is_suspended:
+            messages.error(request, '⛔ Aap ka account suspend hai, order nahi ho sakta.')
+            return redirect('shop_home')
         
         if not profile.should_skip_order_otp():
             otp_verified = check_otp_verified(request)

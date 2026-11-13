@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Blacklist{% endblock %}
+{% block page_title %}🚫 Blacklist (Blocked Phone / Email / Device){% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <div class="alert alert-info small mb-3">
+    Blacklist sirf <b>naye account</b> rokti hai: block phone, email ya device se register nahi ho sakta
+    (customer aur vendor dono). Pehle se bane account ko <b>Suspend</b> rokta hai.
+    Customer/vendor ko suspend karte waqt blacklist ka option milta hai, aur unsuspend/approve karne par woh entries khud hat jati hain.
+    <br><b>Device</b> = IP + browser; shared WiFi ya mobile network par dusre log bhi ruk sakte hain, isliye isay soch kar use karein.
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header fw-bold">➕ Haath se block karein</div>
+    <div class="card-body">
+      <form method="post" action="{% url 'blocked_add' %}" class="row g-2 align-items-end">
+        {% csrf_token %}
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1">Kya</label>
+          <select name="kind" class="form-select form-select-sm">
+            <option value="phone">Phone</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label small mb-1">Phone ya email</label>
+          <input type="text" name="value" class="form-control form-control-sm" required placeholder="0300 1234567 ya name@mail.com">
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label small mb-1">Wajah (optional)</label>
+          <input type="text" name="reason" class="form-control form-control-sm" maxlength="255">
+        </div>
+        <div class="col-12 col-md-2">
+          <button class="btn btn-danger btn-sm w-100">🚫 Block</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-md-5">
+      <input type="text" name="search" value="{{ search }}" class="form-control form-control-sm" placeholder="Search phone / email / wajah...">
+    </div>
+    <div class="col-6 col-md-3">
+      <select name="kind" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Sab ({{ total }})</option>
+        <option value="phone" {% if kind == 'phone' %}selected{% endif %}>Phone</option>
+        <option value="email" {% if kind == 'email' %}selected{% endif %}>Email</option>
+        <option value="device" {% if kind == 'device' %}selected{% endif %}>Device</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2"><button class="btn btn-sm btn-outline-secondary w-100">Search</button></div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead class="table-dark"><tr>
+        <th>Kya</th><th>Value</th><th>Wajah</th><th>Kahan se</th><th>Kis ne / kab</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for b in page_obj %}
+        <tr>
+          <td><span class="badge bg-{% if b.kind == 'phone' %}primary{% elif b.kind == 'email' %}info text-dark{% else %}secondary{% endif %}">{{ b.get_kind_display }}</span></td>
+          <td>{{ b.label|default:b.value }}</td>
+          <td class="text-muted">{{ b.reason|default:'—' }}</td>
+          <td>{{ b.source }}{% if b.source_ref %} <small class="text-muted">({{ b.source_ref }})</small>{% endif %}</td>
+          <td class="small text-muted">{{ b.created_by.username|default:'—' }}<br>{{ b.created_at|date:"d M Y H:i" }}</td>
+          <td class="text-end">
+            <form method="post" action="{% url 'blocked_remove' b.pk %}" onsubmit="return confirm('Blacklist se hataein?');">
+              {% csrf_token %}<button class="btn btn-sm btn-outline-success">Hataein</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Blacklist khali hai ✅</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <nav><ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&kind={{ kind }}">‹</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&kind={{ kind }}">›</a></li>{% endif %}
+  </ul></nav>
+  {% endif %}
+</div>
+{% endblock %}

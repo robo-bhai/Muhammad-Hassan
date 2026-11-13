@@ -35,7 +35,8 @@ from ..models import (
     Product, Inventory
 )
 
-from ..decorators import customer_login_required
+from ..decorators import customer_login_required, customer_suspension_notice
+from ..utils.phone_utils import find_by_phone
 from ..security.security_utils import safe_error
 
 logger = logging.getLogger(__name__)
@@ -375,11 +376,19 @@ def customer_register(request):
                 logger.exception('referral: reading code failed')
                 referral_code = ''
             
-            if Customer.objects.filter(contact_number=phone).exists():
+            # Blacklist: block kiya hua phone / email / device naya account nahi bana sakta
+            from ..utils.blacklist import blocked_identity, current_device, BLOCKED_MSG
+            signup_device = current_device(request)
+            if blocked_identity(phone=phone, email=email, device=signup_device):
+                messages.error(request, BLOCKED_MSG)
+                return redirect('customer_register')
+
+            # ERP mein kisi bhi format (0300-.., +92 ..) mein likha hua number bhi pakda jata hai
+            if find_by_phone(Customer, phone):
                 messages.error(request, '⚠️ This phone is already registered')
                 return redirect('customer_login')
             
-            if User.objects.filter(email=email).exists():
+            if User.objects.filter(email__iexact=email).exists():
                 messages.error(request, '⚠️ This email is already registered')
                 return redirect('customer_register')
             
@@ -417,7 +426,8 @@ def customer_register(request):
                     user=user,
                     phone_verified=False,
                     email_verified=True,
-                    last_login_at=now()
+                    last_login_at=now(),
+                    signup_device=signup_device,
                 )
                 
                 # Referral: pending record (sirf flag ON ho aur code theek ho; warna kuch nahi hota)
@@ -530,6 +540,10 @@ def customer_login(request):
             )
             
             if authenticated_user:
+                notice = customer_suspension_notice(authenticated_user)
+                if notice:
+                    messages.error(request, notice)
+                    return redirect('customer_login')
                 cache.delete(key)
                 safe_login(request, authenticated_user)
                 request.session.save()
@@ -964,6 +978,11 @@ def verify_otp_later(request):
             request.session['order_token'] = order_token
             request.session.modified = True
             
+            notice = customer_suspension_notice(customer.portal_profile.user)
+            if notice:
+                messages.error(request, notice)
+                return redirect('customer_login')
+
             # Login
             safe_login(request, customer.portal_profile.user)
             

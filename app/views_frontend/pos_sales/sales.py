@@ -4,6 +4,8 @@ from django.views.decorators.http import require_POST
 from django.db.models.functions import Coalesce
 from django.db.models import Subquery, OuterRef
 from ...models import *
+from ...utils.phone_utils import find_by_phone, phone_changed
+from ...utils.account_log import log_action
 import logging
 from reportlab.lib.units import inch
 from django.shortcuts import render, redirect, get_object_or_404
@@ -467,7 +469,7 @@ def customer_list(request):
     from django.db.models.functions import Coalesce
     
     # ✅ Base queryset with annotate — NO loop queries
-    customers = Customer.objects.select_related('group').annotate(
+    customers = Customer.objects.select_related('group', 'portal_profile').annotate(
         total_sales=Coalesce(
             Sum(
                 'sale__saleitem__total_amt',
@@ -517,6 +519,11 @@ def customer_list(request):
             Q(contact_number__icontains=search)
         )
     
+    # ✅ Status filter: sirf suspend customers
+    status = request.GET.get('status', '')
+    if status == 'suspended':
+        customers = customers.filter(portal_profile__is_suspended=True)
+
     # ✅ Pagination
     paginator = Paginator(customers, 25)
     page = request.GET.get('page', 1)
@@ -526,8 +533,68 @@ def customer_list(request):
         'company_name': CompanyInfo.objects.first().name if CompanyInfo.objects.exists() else 'ERP System',
         'page_obj': page_obj,
         'search': search,
+        'status': status,
+        'suspended_count': CustomerProfile.objects.filter(is_suspended=True).count(),
     }
     return render(request, 'customers/list.html', context)
+
+
+@login_required
+@perm_required('edit_customers')
+@require_POST
+def customer_suspend_action(request, pk, action):
+    """Customer ka shop account suspend / unsuspend (login aur order dono ruk jate hain)."""
+    customer = get_object_or_404(Customer, pk=pk)
+    profile = getattr(customer, 'portal_profile', None)
+    nxt = request.POST.get('next', '')
+    back = nxt if nxt.startswith('/') and not nxt.startswith('//') else None
+
+    def _back():
+        return redirect(back) if back else redirect('customer_list')
+
+    if profile is None:
+        messages.error(request, '❌ Is customer ka shop account nahi hai.')
+        return _back()
+
+    log = logging.getLogger(__name__)
+    if action == 'suspend':
+        reason = request.POST.get('reason', '').strip()[:255]
+        profile.is_suspended = True
+        profile.suspended_at = now()
+        profile.suspended_reason = reason
+        profile.suspended_by = request.user
+        profile.save(update_fields=['is_suspended', 'suspended_at', 'suspended_reason',
+                                    'suspended_by', 'updated_at'])
+        log.warning('Customer %s suspended by %s. Reason: %s', customer.pk, request.user, reason or '-')
+        messages.warning(request, f'⛔ "{customer.name}" suspend ho gaya. Ab woh login ya order nahi kar sakta.')
+        log_action('customer', customer.pk, customer.name, 'suspend', reason=reason, user=request.user,
+                   detail=('Blacklist: phone+email' + ('+device' if request.POST.get('blacklist_device') else ''))
+                   if request.POST.get('blacklist') else '')
+        if request.POST.get('blacklist'):
+            from ...utils.blacklist import block_account
+            n = block_account(
+                phones=[customer.contact_number],
+                emails=[customer.email, profile.user.email],
+                device=profile.signup_device if request.POST.get('blacklist_device') else '',
+                reason=reason, source='customer', source_ref=f'customer:{customer.pk}', user=request.user)
+            messages.warning(request, f'🚫 {n} pehchaan blacklist ho gayin - in se naya account nahi ban sakega.')
+    elif action == 'unsuspend':
+        profile.is_suspended = False
+        profile.suspended_at = None
+        profile.suspended_reason = ''
+        profile.suspended_by = None
+        profile.save(update_fields=['is_suspended', 'suspended_at', 'suspended_reason',
+                                    'suspended_by', 'updated_at'])
+        log.warning('Customer %s unsuspended by %s', customer.pk, request.user)
+        from ...utils.blacklist import unblock_ref
+        freed = unblock_ref(f'customer:{customer.pk}')
+        log_action('customer', customer.pk, customer.name, 'unsuspend', user=request.user,
+                   detail=f'Blacklist se {freed} entries hati' if freed else '')
+        messages.success(request, f'✅ "{customer.name}" ka account dobara chalu ho gaya.'
+                                  + (f' Blacklist se {freed} entries bhi hata di gayin.' if freed else ''))
+    else:
+        messages.error(request, '❌ Invalid action')
+    return _back()
 
 
 @login_required
@@ -568,9 +635,9 @@ def customer_create(request):
                     messages.error(request, '❌ Sahi email address daalein (e.g., name@gmail.com)')
                     return redirect('customer_create')
                 
-                # ✅ Duplicate email check
-                if Customer.objects.filter(email=email).exists():
-                    existing = Customer.objects.filter(email=email).first()
+                # ✅ Duplicate email check (bare/chhota likhai ka farq nahi)
+                if Customer.objects.filter(email__iexact=email).exists():
+                    existing = Customer.objects.filter(email__iexact=email).first()
                     messages.error(
                         request, 
                         f'⚠️ This email "{email}" is already registered with "{existing.name}"!'
@@ -582,14 +649,16 @@ def customer_create(request):
                 messages.error(request, f'⚠️ Customer code "{customer_code}" already exists!')
                 return redirect('customer_create')
             
-            # ✅ Duplicate contact number check
-            if contact_number and Customer.objects.filter(contact_number=contact_number).exists():
-                existing = Customer.objects.filter(contact_number=contact_number).first()
-                messages.warning(
-                    request, 
-                    f'⚠️ This number "{contact_number}" is already registered with "{existing.name}". '
-                    f'The customer is still being created.'
-                )
+            # ✅ Duplicate contact number check (0300-.. / +92 300 .. sab ek hi number ginay jate hain)
+            if contact_number:
+                same = find_by_phone(Customer, contact_number)
+                if same and not request.POST.get('allow_duplicate_phone'):
+                    messages.error(
+                        request,
+                        f'⚠️ Ye number "{contact_number}" pehle se "{same[0].name}" ke naam par hai. '
+                        f'Agar number waqai share hota hai to "allow karein" ka tick laga kar dobara save karein.'
+                    )
+                    return redirect('customer_create')
             
             # ========================================== #
             # STEP 3: Customer Create Karein             #
@@ -672,7 +741,7 @@ def customer_update(request, pk):
                     return redirect('customer_update', pk=pk)
                 
                 # ✅ Duplicate email check (khud ke ilawa)
-                duplicate_email = Customer.objects.filter(email=email).exclude(pk=pk).first()
+                duplicate_email = Customer.objects.filter(email__iexact=email).exclude(pk=pk).first()
                 if duplicate_email:
                     messages.error(
                         request, 
@@ -680,6 +749,18 @@ def customer_update(request, pk):
                     )
                     return redirect('customer_update', pk=pk)
             
+            # ✅ Duplicate number check (khud ke ilawa; sirf tab jab number sach mein badla ho,
+            #    taake pehle se duplicate customer ki baaqi details edit ho saken)
+            if contact_number and phone_changed(customer.contact_number, contact_number):
+                same = find_by_phone(Customer, contact_number, exclude_pk=pk)
+                if same and not request.POST.get('allow_duplicate_phone'):
+                    messages.error(
+                        request,
+                        f'⚠️ Ye number "{contact_number}" pehle se "{same[0].name}" ke naam par hai. '
+                        f'Agar number waqai share hota hai to "allow karein" ka tick laga kar dobara save karein.'
+                    )
+                    return redirect('customer_update', pk=pk)
+
             # ✅ Duplicate customer code check (khud ke ilawa)
             if customer_code:
                 duplicate_code = Customer.objects.filter(

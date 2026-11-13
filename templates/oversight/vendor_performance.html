@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Vendor Performance{% endblock %}
+{% block page_title %}📈 Vendor Performance Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <input type="hidden" name="f" value="1">
+    <div class="col-6 col-md-3"><label class="form-label small mb-1">Muddat</label>
+      <select name="days" class="form-select form-select-sm">
+        {% for val, label in periods %}<option value="{{ val }}" {% if days == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select></div>
+    <div class="col-6 col-md-3"><label class="form-label small mb-1">Tarteeb (sabse bura pehle)</label>
+      <select name="sort" class="form-select form-select-sm">
+        <option value="orders" {% if sort == 'orders' %}selected{% endif %}>Zyada orders</option>
+        <option value="cancel" {% if sort == 'cancel' %}selected{% endif %}>Zyada cancel %</option>
+        <option value="rating" {% if sort == 'rating' %}selected{% endif %}>Kam rating</option>
+        <option value="delivery" {% if sort == 'delivery' %}selected{% endif %}>Sust delivery</option>
+        <option value="disputes" {% if sort == 'disputes' %}selected{% endif %}>Zyada disputes</option>
+        <option value="sales" {% if sort == 'sales' %}selected{% endif %}>Zyada sales</option>
+      </select></div>
+    <div class="col-12 col-md-3">
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="flagged" value="1" id="fl" {% if flagged %}checked{% endif %}>
+        <label class="form-check-label small" for="fl">Sirf "nazar rakhein" wale</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="hide_empty" value="1" id="he" {% if hide_empty %}checked{% endif %}>
+        <label class="form-check-label small" for="he">Bina orders wale chhupayein</label></div>
+    </div>
+    <div class="col-12 col-md-3 d-flex gap-1">
+      <button class="btn btn-sm btn-primary flex-fill">Dikhayein</button>
+      <a class="btn btn-sm btn-outline-success flex-fill" href="?days={{ days }}&sort={{ sort }}{% if flagged %}&flagged=1{% endif %}&f=1{% if hide_empty %}&hide_empty=1{% endif %}&export=csv">CSV</a>
+    </div>
+  </form>
+
+  <div class="small text-muted mb-2">
+    {{ rows|length }} vendors{% if flagged_count %} · <b class="text-danger">{{ flagged_count }} par nazar rakhein</b>{% endif %}.
+    Cancel % = cancel hue orders / sab orders. Delivery = order lagne se deliver hone tak ka average. Response = order lagne se vendor ke jawab tak.
+    Flag tab lagta hai jab kam az kam 5 orders (rating ke liye 3 ratings) hon.
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead class="table-dark"><tr>
+        <th>Vendor</th><th class="text-end">Orders</th><th class="text-end">Deliver</th><th class="text-end">Cancel</th>
+        <th class="text-end">Cancel %</th><th class="text-end">Response</th><th class="text-end">Delivery</th>
+        <th class="text-end">Rating</th><th class="text-end">Disputes</th><th class="text-end">Sales (Rs)</th><th>Nazar rakhein</th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr {% if r.flags %}class="table-danger"{% endif %}>
+          <td><a href="{% url 'vendor_ledger' r.vendor_id %}">{{ r.name }}</a>
+            <small class="text-muted">{{ r.city }}</small>
+            {% if r.status != 'approved' %}<span class="badge bg-secondary">{{ r.status }}</span>{% endif %}</td>
+          <td class="text-end">{{ r.orders }}</td>
+          <td class="text-end">{{ r.delivered }}</td>
+          <td class="text-end">{{ r.cancelled }}{% if r.rejected %} <small class="text-muted">({{ r.rejected }} vendor)</small>{% endif %}</td>
+          <td class="text-end">{% if r.cancel_rate is not None %}{{ r.cancel_rate }}%{% else %}-{% endif %}</td>
+          <td class="text-end">{{ r.response_txt }}</td>
+          <td class="text-end">{{ r.delivery_txt }}</td>
+          <td class="text-end">{% if r.rating is not None %}{{ r.rating }} <small class="text-muted">({{ r.rating_n }})</small>{% else %}-{% endif %}</td>
+          <td class="text-end">{{ r.disputes }}</td>
+          <td class="text-end">{{ r.sales|floatformat:0 }}</td>
+          <td>{% for f in r.flags %}<span class="badge bg-danger me-1">{{ f }}</span>{% endfor %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="11" class="text-center text-muted py-4">Is muddat mein koi data nahi.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

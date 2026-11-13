@@ -6,6 +6,9 @@ name: Django CI/CD Pipeline
 #   every 30 min : local snapshot only (cache can only be saved at the end of the job)
 #   end of run   : stop server, final snapshot -> save as new cache entry, keep latest 3
 # Note: GitHub deletes cache entries not used for 7 days, so keep the workflow running at least weekly.
+# EXPORT: every run also uploads the encrypted snapshot as an Artifact (keeps latest 3, 14 days) so you can download a copy.
+# FAST RESTART: (1) pip + cloudflared are cached and installed BEFORE waiting for the old run; (2) the old run keeps
+#   serving until the new run has finished installing (max 8 min), so the site is only down for stop + snapshot + restore.
 # AUTO-RESTART: GitHub kills any job at 6 hours. After ~5h10m this run starts a NEW run of itself
 #   (workflow_dispatch). The new run waits for this one, this one sees the newer run, stops the server,
 #   takes the final snapshot, and the new run restores it and goes live again (a few minutes gap only).
@@ -93,6 +96,61 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Restore pip cache
+        id: pip_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py313-${{ hashFiles('.github/workflows/deploy.yml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py313-
+
+      - name: Install Pips & System Tools
+        run: |
+          # apt-get update sirf tab jab seedhi install na ho (tez)
+          PKGS="mysql-client-core-8.0 libmysqlclient-dev pkg-config build-essential"
+          sudo apt-get install -y --no-install-recommends $PKGS \
+            || { sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS; }
+          python -m pip install --upgrade pip
+          pip install mysqlclient gunicorn "django-import-export>=3.3.0" "django>=5.2,<5.3" django-dbbackup django-axes reportlab openpyxl pillow python-barcode qrcode cryptography python-dotenv requests django-pwa whitenoise django-cloudinary-storage rembg numpy
+
+      - name: Save pip cache (right after install, not at job end)
+        if: steps.pip_cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py313-${{ hashFiles('.github/workflows/deploy.yml') }}
+
+      - name: Cloudflared cache key (refreshes monthly)
+        run: echo "CF_MONTH=$(date +%Y-%m)" >> "$GITHUB_ENV"
+
+      - name: Restore cloudflared binary cache
+        id: cf_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/cf-bin
+          key: cloudflared-linux-amd64-${{ env.CF_MONTH }}
+
+      - name: Install Cloudflare Tunnel (cloudflared)
+        run: |
+          mkdir -p ~/cf-bin
+          if [ ! -x ~/cf-bin/cloudflared ]; then
+            curl -L --retry 3 --output ~/cf-bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+            chmod +x ~/cf-bin/cloudflared
+          else
+            echo "cloudflared restored from cache."
+          fi
+          sudo install -m 0755 ~/cf-bin/cloudflared /usr/local/bin/cloudflared
+
+      - name: Save cloudflared cache
+        if: steps.cf_cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ~/cf-bin
+          key: cloudflared-linux-amd64-${{ env.CF_MONTH }}
+
       - name: Wait for Previous Workflow Runs to Complete
         env:
           GH_TOKEN: ${{ github.token }}
@@ -126,19 +184,12 @@ jobs:
             TOTAL_PENDING=$(echo "$OLDER_RUNS" | jq 'length')
             if [ "${TOTAL_PENDING:-0}" -gt 0 ]; then
               echo "Older run(s) $OLDER_RUNS still active. Holding (ID: $CURRENT_RUN_ID)..."
-              sleep 10
+              sleep 3
             else
               echo "No older active runs. Proceeding."
               break
             fi
           done
-
-      - name: Install Pips & System Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends mysql-client-core-8.0 libmysqlclient-dev pkg-config build-essential
-          python -m pip install --upgrade pip
-          pip install mysqlclient gunicorn "django-import-export>=3.3.0" "django>=5.2,<5.3" django-dbbackup django-axes reportlab openpyxl pillow python-barcode qrcode cryptography python-dotenv requests django-pwa whitenoise django-cloudinary-storage rembg numpy
 
       - name: Parse Trigger Source & Inputs
         env:
@@ -366,13 +417,6 @@ jobs:
           mkdir -p static
           python manage.py collectstatic --noinput --clear
 
-      - name: Install Cloudflare Tunnel (cloudflared)
-        if: env.STOP_AFTER_MIGRATE != 'true'
-        run: |
-          curl -L --output cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-          chmod +x cloudflared
-          sudo mv cloudflared /usr/local/bin/cloudflared
-
       - name: Check and Kill Existing Local Processes
         if: env.STOP_AFTER_MIGRATE != 'true'
         run: |
@@ -419,6 +463,7 @@ jobs:
           BRANCH="${{ github.ref_name }}"
 
           RELAUNCHED=""
+          NEWER_SINCE=""
           for i in {1..65}; do
             for s in {1..60}; do
               # ---- AUTO-RESTART before GitHub's 6 hour limit (18600 s = 5h10m after job start) ----
@@ -434,8 +479,18 @@ jobs:
               fi
               LATEST_RUN_ID=$(gh api "repos/$REPO/actions/runs?branch=$BRANCH&per_page=1" --jq '.workflow_runs[0].id' 2>/dev/null || echo "$CURRENT_RUN_ID")
               if [ "$LATEST_RUN_ID" -gt "$CURRENT_RUN_ID" ]; then
-                echo "Newer run ($LATEST_RUN_ID) detected. Ending log stream -> final snapshot."
-                exit 0
+                # FAST HANDOVER: keep serving until the NEW run has finished installing and is only waiting for us
+                # (its "Wait for Previous Workflow Runs" step is running), or 8 minutes passed. Then stop + final snapshot.
+                if [ -z "$NEWER_SINCE" ]; then
+                  NEWER_SINCE=$(date +%s)
+                  echo "Newer run ($LATEST_RUN_ID) detected. Site stays UP while it installs (max 8 min)."
+                fi
+                NEW_STATE=$(gh api "repos/$REPO/actions/runs/$LATEST_RUN_ID/jobs" --jq '[.jobs[].steps[]? | select(.name == "Wait for Previous Workflow Runs to Complete") | .status] | first // "none"' 2>/dev/null || echo "none")
+                WAITED=$(( $(date +%s) - NEWER_SINCE ))
+                if [ "$NEW_STATE" = "in_progress" ] || [ "$NEW_STATE" = "completed" ] || [ "$WAITED" -ge 480 ]; then
+                  echo "New run ready (state=$NEW_STATE, waited ${WAITED}s). Ending log stream -> final snapshot."
+                  exit 0
+                fi
               fi
               sleep 5
             done
@@ -466,6 +521,17 @@ jobs:
             echo "No snapshot file to save - cache save skipped."
           fi
 
+      - name: Export snapshot as downloadable file (Actions page -> this run -> Artifacts)
+        # Encrypted copy you can download and keep OUTSIDE GitHub's cache (needed to move to another server).
+        # Only the encrypted files are uploaded; without BACKUP_SECRET_KEY they cannot be opened.
+        if: ${{ always() && env.HAVE_SNAP == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-export-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/snapshots/*.enc
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Save snapshot to GitHub cache
         if: ${{ always() && env.HAVE_SNAP == 'true' }}
         uses: actions/cache/save@v4
@@ -482,6 +548,18 @@ jobs:
             --jq '.[3:][] | .id' | while read -r ID; do
               [ -n "$ID" ] && gh cache delete "$ID" -R "${{ github.repository }}" && echo "rotated out cache id $ID"
             done || true
+
+      - name: Rotate old exported files (keep latest 3)
+        if: ${{ always() && env.HAVE_SNAP == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name | startswith("db-export-")) | select(.expired == false) | "\(.created_at) \(.id)"' \
+            | sort -r | tail -n +4 | while read -r TS ID; do
+                [ -n "$ID" ] && gh api -X DELETE "repos/$REPO/actions/artifacts/$ID" >/dev/null && echo "rotated out exported file $ID"
+              done || true
 
       - name: Safety net - start next run if none was started
         # Runs also if the log stream ended early. Not on cancel (cancelled() = you stopped it on purpose),

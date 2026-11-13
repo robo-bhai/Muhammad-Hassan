@@ -7,7 +7,22 @@ Custom Decorators for Customer Portal
 from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.contrib.auth import logout
 from django.urls import reverse
+
+
+def customer_suspension_notice(user):
+    """Customer suspend ho to usko dikhane wala message, warna None.
+    Staff/admin kabhi suspend nahi hote."""
+    if not user or user.is_staff or user.is_superuser:
+        return None
+    profile = getattr(user, 'customer_profile', None)
+    if profile is None or not profile.is_suspended:
+        return None
+    msg = '⛔ Aap ka account suspend kar diya gaya hai.'
+    if profile.suspended_reason:
+        msg += f' Wajah: {profile.suspended_reason}.'
+    return msg + ' Madad ke liye store se rabta karein.'
 
 
 def customer_login_required(view_func):
@@ -37,6 +52,12 @@ def customer_login_required(view_func):
         is_admin = request.user.is_staff or request.user.is_superuser
         
         if is_customer:
+            # ⛔ Suspend customer: purani login session bhi band
+            notice = customer_suspension_notice(request.user)
+            if notice:
+                logout(request)
+                messages.error(request, notice)
+                return redirect('customer_login')
             # ✅ Customer hai — allowed
             return view_func(request, *args, **kwargs)
         

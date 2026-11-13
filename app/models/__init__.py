@@ -14,6 +14,8 @@ _MODULES = [
     "inventory.price_log",
     "trade.vendors",
     "trade.vendor_portal",
+    "trade.blacklist",
+    "trade.account_log",
     "trade.product_options",
     "trade.favorites",
     "trade.offers",

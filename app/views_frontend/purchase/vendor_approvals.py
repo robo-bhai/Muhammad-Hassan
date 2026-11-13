@@ -119,12 +119,31 @@ def vendor_account_action(request, pk, action):
         first_time = profile.approved_at is None and not profile.is_approved   # pehli approval
         VendorProfile.objects.filter(pk=pk).update(is_approved=True, approved_at=now())
         promo = on_vendor_approved(profile, first_time)
+        from ...utils.blacklist import unblock_ref
+        freed = unblock_ref(f'vendor:{profile.vendor_id}')      # pehle blacklist hua tha to ab hata do
+        from ...utils.account_log import log_action
+        log_action('vendor', profile.vendor_id, profile.business_name, 'approve', user=request.user,
+                   detail=f'Blacklist se {freed} entries hati' if freed else '')
         messages.success(request, f'✅ "{profile.business_name}" approve ho gaya. Ab woh products list kar sakta hai.'
                                   + (' 🎁 Launch commission offer laga diya gaya.' if promo else ''))
     elif action == 'suspend':
         VendorProfile.objects.filter(pk=pk).update(is_approved=False)
         hidden = Product.objects.filter(vendor_id=profile.vendor_id, is_active=True).update(is_active=False)
         messages.warning(request, f'⛔ "{profile.business_name}" suspend ho gaya, {hidden} product(s) shop se hata diye.')
+        from ...utils.account_log import log_action
+        log_action('vendor', profile.vendor_id, profile.business_name, 'suspend',
+                   reason=request.POST.get('reason', '').strip(), user=request.user,
+                   detail=('Blacklist: phone+email' + ('+device' if request.POST.get('blacklist_device') else ''))
+                   if request.POST.get('blacklist') else f'{hidden} product(s) hide')
+        if request.POST.get('blacklist'):
+            from ...utils.blacklist import block_account
+            n = block_account(
+                phones=[profile.vendor.contact_number],
+                emails=[profile.user.email],
+                device=profile.signup_device if request.POST.get('blacklist_device') else '',
+                reason=request.POST.get('reason', '').strip()[:255], source='vendor',
+                source_ref=f'vendor:{profile.vendor_id}', user=request.user)
+            messages.warning(request, f'🚫 {n} pehchaan blacklist ho gayin - in se naya account nahi ban sakega.')
     else:
         messages.error(request, '❌ Invalid action')
     return _redirect_back(request, 'accounts')

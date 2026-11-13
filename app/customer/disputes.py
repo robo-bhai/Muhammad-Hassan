@@ -91,6 +91,14 @@ def open_dispute(order, reason, description='', photo=None):
         raise DisputeError('Is order par dispute pehle se mojood hai.')
 
     label = dispute.get_reason_display()
+    try:                                  # Admin ko bhi alert (kabhi dispute khulne se nahi rokta)
+        from django.urls import reverse
+        from ..utils.admin_alerts import alert_admins
+        store = order.vendor.name if order.vendor_id else 'Shop'
+        alert_admins(f'⚠️ Naya dispute: order #{order.order_no}', f'{label} - store: {store}.',
+                     link=reverse('dispute_detail', args=[dispute.pk]))
+    except Exception:
+        logger.exception('dispute admin alert failed')
     store_orders._notify(_user_for_vendor(order.vendor_id), f'⚠️ Dispute: order #{order.order_no}',
                          f'Customer ne masla report kiya: {label}.', '/shop/vendor/', 'warning')
     if dispute.rider_id:

@@ -119,6 +119,8 @@ class VendorProfile(models.Model):
         help_text="Naye vendor ka launch offer ek hi dafa milta hai; ye us ka nishan hai."
     )
     last_login_at = models.DateTimeField(null=True, blank=True)
+    # Register ke waqt ka device hash (IP + browser) - blacklist ke liye
+    signup_device = models.CharField(max_length=64, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     # ---- Payout account (vendor payout request ke liye, ek dafa save hota hai) ----
     PAYOUT_METHODS = [('bank', 'Bank Transfer'), ('jazzcash', 'JazzCash'), ('easypaisa', 'EasyPaisa')]

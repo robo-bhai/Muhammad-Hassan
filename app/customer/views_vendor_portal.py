@@ -41,6 +41,7 @@ from django.utils.timezone import now
 from django.views.decorators.http import require_POST
 
 from ..decorators import vendor_login_required
+from ..utils.phone_utils import find_by_phone
 from ..shop_flags import flag_required, shop_flag
 from ..vendor_commission import (
     base_commission_percent, commission_percent, expire_promos, on_vendor_approved, promo_active, reprice_open_batches, vendor_earnings,
@@ -347,7 +348,13 @@ def vendor_register(request):
 
         phone = normalize_phone(phone)
 
-        if Vendor.objects.filter(contact_number=phone).exists():
+        # Blacklist: block kiya hua phone / email / device naya account nahi bana sakta
+        from ..utils.blacklist import blocked_identity, current_device, BLOCKED_MSG
+        signup_device = current_device(request)
+        if blocked_identity(phone=phone, email=email, device=signup_device):
+            return fail(BLOCKED_MSG)
+
+        if find_by_phone(Vendor, phone):
             messages.error(request, '⚠️ This phone is already registered')
             return redirect('vendor_login')
         if User.objects.filter(email__iexact=email).exists():
@@ -379,6 +386,7 @@ def vendor_register(request):
                     is_approved=approved,
                     approved_at=now() if approved else None,
                     last_login_at=now(),
+                    signup_device=signup_device,
                 )
                 if approved:   # auto-approve: launch commission offer (agar admin ne on kiya ho)
                     on_vendor_approved(new_profile, first_time=True)
@@ -387,6 +395,16 @@ def vendor_register(request):
         except Exception:
             logger.exception("Vendor register error")
             return fail('❌ There was a problem with registration. Please try again')
+
+        # Admin ko alert (kabhi register nahi rokta)
+        try:
+            from ..utils.admin_alerts import alert_admins
+            alert_admins('🏢 Naya vendor register hua',
+                         f'{business_name} ({city}), {owner_name}: '
+                         + ('auto-approve ho gaya.' if approved else 'approval ka intezar hai.'),
+                         link=reverse('vendor_approvals'))
+        except Exception:
+            logger.exception('vendor register admin alert failed')
 
         if approved:
             messages.success(request, '🎉 Account created! You can now list products.')

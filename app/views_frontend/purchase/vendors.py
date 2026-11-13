@@ -2,6 +2,7 @@
 from ...security.permissions import perm_required
 from django.db.models.functions import Coalesce
 from ...models import *
+from ...utils.phone_utils import find_by_phone, phone_changed
 import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -33,6 +34,15 @@ def vendor_create_frontend(request):
             if vendor_code and Vendor.objects.filter(vendor_code=vendor_code).exists():
                 messages.error(request, f'Vendor code "{vendor_code}" already exists!')
                 return redirect('vendor_create_frontend')
+
+            # ✅ Duplicate number (kisi bhi format mein) rokein; same naam par sirf warning
+            if contact_number:
+                same = find_by_phone(Vendor, contact_number)
+                if same:
+                    messages.error(request, f'⚠️ Ye number "{contact_number}" pehle se vendor "{same[0].name}" ke naam par hai.')
+                    return redirect('vendor_create_frontend')
+            if Vendor.objects.filter(name__iexact=name).exists():
+                messages.warning(request, f'ℹ️ "{name}" naam ka vendor pehle se maujood hai - agar alag vendor hai to theek hai.')
             
             vendor = Vendor(
                 name=name,
@@ -83,6 +93,13 @@ def vendor_update(request, pk):
                 existing = Vendor.objects.filter(vendor_code=vendor_code).exclude(pk=pk).first()
                 if existing:
                     messages.error(request, f'❌ Vendor code "{vendor_code}" already exists!')
+                    return redirect('vendor_update', pk=pk)
+
+            # ✅ Duplicate number: sirf tab jab number sach mein badla ho
+            if contact_number and phone_changed(vendor.contact_number, contact_number):
+                same = find_by_phone(Vendor, contact_number, exclude_pk=pk)
+                if same:
+                    messages.error(request, f'⚠️ Ye number "{contact_number}" pehle se vendor "{same[0].name}" ke naam par hai.')
                     return redirect('vendor_update', pk=pk)
             
             # ✅ Update vendor with opening balance
@@ -207,6 +224,15 @@ def vendor_create(request):
             if vendor_code and Vendor.objects.filter(vendor_code=vendor_code).exists():
                 messages.error(request, f'Vendor code "{vendor_code}" already exists!')
                 return redirect('vendor_create')
+
+            # ✅ Duplicate number (kisi bhi format mein) rokein; same naam par sirf warning
+            if contact_number:
+                same = find_by_phone(Vendor, contact_number)
+                if same:
+                    messages.error(request, f'⚠️ Ye number "{contact_number}" pehle se vendor "{same[0].name}" ke naam par hai.')
+                    return redirect('vendor_create')
+            if Vendor.objects.filter(name__iexact=name).exists():
+                messages.warning(request, f'ℹ️ "{name}" naam ka vendor pehle se maujood hai - agar alag vendor hai to theek hai.')
             
             # ✅ FIX: add the opening_balance field (ADD THIS LINE)
             vendor = Vendor(
@@ -287,6 +313,18 @@ def api_create_vendor(request):
                     'message': 'Vendor already exists, selected!'
                 })
             
+            # Same number (kisi bhi format mein) = wahi vendor
+            same = find_by_phone(Vendor, contact_number) if contact_number else []
+            if same:
+                existing = same[0]
+                return JsonResponse({
+                    'success': True,
+                    'id': existing.id,
+                    'name': existing.name,
+                    'code': existing.vendor_code or '',
+                    'message': 'Is number ka vendor pehle se hai, wahi select kar diya!'
+                })
+
             # Create new vendor
             vendor = Vendor.objects.create(
                 name=name,

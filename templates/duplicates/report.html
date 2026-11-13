@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Duplicate Check{% endblock %}
+{% block page_title %}🧬 Duplicate Customers &amp; Vendors{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <div class="alert alert-info">
+    Ek hi phone, email ya naam par kai records yahan dikhte hain (<b>0300-1234567</b> aur <b>+92 300 1234567</b> ek hi number ginay jate hain).
+    Yeh page sirf dikhata hai, kuch badalta ya merge nahi karta. Jo record galat ho use edit karein ya (agar us par koi hisaab nahi) delete karein.
+    <div class="mt-1 small text-muted">{{ customer_count }} customers aur {{ vendor_count }} vendors check hue.
+      {% if total_groups %}<b class="text-danger">{{ total_groups }} duplicate group mile.</b>{% else %}<b class="text-success">Koi duplicate nahi mila ✅</b>{% endif %}</div>
+  </div>
+
+  {# ---------------- Customers: phone ---------------- #}
+  <div class="card mb-3">
+    <div class="card-header fw-bold">👤 Customers — same phone ({{ cust_phone|length }})</div>
+    <div class="card-body p-0">
+      {% for g in cust_phone %}
+      <div class="border-bottom p-2">
+        <div class="fw-semibold mb-1">+{{ g.key }}</div>
+        <table class="table table-sm mb-0">
+          {% for r in g.rows %}
+          <tr>
+            <td style="width:110px">{{ r.customer_code|default:'—' }}</td>
+            <td>{{ r.name }}</td>
+            <td class="text-muted">{{ r.contact_number }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'customer_ledger' r.id %}">Ledger</a>
+              <a class="btn btn-sm btn-outline-warning" href="{% url 'customer_update' r.id %}">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% empty %}<div class="p-3 text-muted">Koi nahi ✅</div>{% endfor %}
+    </div>
+  </div>
+
+  {# ---------------- Customers: email ---------------- #}
+  <div class="card mb-3">
+    <div class="card-header fw-bold">✉️ Customers — same email ({{ cust_email|length }})</div>
+    <div class="card-body p-0">
+      {% for g in cust_email %}
+      <div class="border-bottom p-2">
+        <div class="fw-semibold mb-1">{{ g.key }}</div>
+        <table class="table table-sm mb-0">
+          {% for r in g.rows %}
+          <tr>
+            <td style="width:110px">{{ r.customer_code|default:'—' }}</td>
+            <td>{{ r.name }}</td>
+            <td class="text-muted">{{ r.contact_number|default:'—' }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'customer_ledger' r.id %}">Ledger</a>
+              <a class="btn btn-sm btn-outline-warning" href="{% url 'customer_update' r.id %}">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% empty %}<div class="p-3 text-muted">Koi nahi ✅</div>{% endfor %}
+    </div>
+  </div>
+
+  {# ---------------- Vendors: phone ---------------- #}
+  <div class="card mb-3">
+    <div class="card-header fw-bold">🏢 Vendors — same phone ({{ vend_phone|length }})</div>
+    <div class="card-body p-0">
+      {% for g in vend_phone %}
+      <div class="border-bottom p-2">
+        <div class="fw-semibold mb-1">+{{ g.key }}</div>
+        <table class="table table-sm mb-0">
+          {% for r in g.rows %}
+          <tr>
+            <td style="width:110px">{{ r.vendor_code|default:'—' }}</td>
+            <td>{{ r.name }}</td>
+            <td class="text-muted">{{ r.contact_number }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'vendor_ledger' r.id %}">Ledger</a>
+              <a class="btn btn-sm btn-outline-warning" href="{% url 'vendor_update' r.id %}">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% empty %}<div class="p-3 text-muted">Koi nahi ✅</div>{% endfor %}
+    </div>
+  </div>
+
+  {# ---------------- Vendors: name ---------------- #}
+  <div class="card mb-3">
+    <div class="card-header fw-bold">🏢 Vendors — same naam ({{ vend_name|length }})</div>
+    <div class="card-body p-0">
+      {% for g in vend_name %}
+      <div class="border-bottom p-2">
+        <div class="fw-semibold mb-1">{{ g.key }}</div>
+        <table class="table table-sm mb-0">
+          {% for r in g.rows %}
+          <tr>
+            <td style="width:110px">{{ r.vendor_code|default:'—' }}</td>
+            <td>{{ r.name }}</td>
+            <td class="text-muted">{{ r.contact_number|default:'—' }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'vendor_ledger' r.id %}">Ledger</a>
+              <a class="btn btn-sm btn-outline-warning" href="{% url 'vendor_update' r.id %}">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% empty %}<div class="p-3 text-muted">Koi nahi ✅</div>{% endfor %}
+    </div>
+  </div>
+
+  {# ---------------- Customer + Vendor same number (sirf maloomat) ---------------- #}
+  <div class="card mb-3">
+    <div class="card-header fw-bold">🔁 Same number customer bhi, vendor bhi ({{ both|length }})
+      <small class="text-muted fw-normal">— ho sakta hai ek hi shakhs ho, isliye rokta nahi, sirf dikhata hai</small></div>
+    <div class="card-body p-0">
+      {% for g in both %}
+      <div class="border-bottom p-2">
+        <div class="fw-semibold mb-1">+{{ g.key }}</div>
+        {% for r in g.customers %}<div>👤 {{ r.name }} <a href="{% url 'customer_ledger' r.id %}">ledger</a></div>{% endfor %}
+        {% for r in g.vendors %}<div>🏢 {{ r.name }} <a href="{% url 'vendor_ledger' r.id %}">ledger</a></div>{% endfor %}
+      </div>
+      {% empty %}<div class="p-3 text-muted">Koi nahi ✅</div>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

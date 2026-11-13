@@ -94,8 +94,9 @@
               </form>
               {% else %}
               <form method="post" action="{% url 'vendor_account_action' p.pk 'suspend' %}" class="d-inline"
-                    onsubmit="return confirm('Suspend karne se is vendor ke saare products shop se hat jayenge. Continue?');">
+                    onsubmit="if (!confirm('Suspend karne se is vendor ke saare products shop se hat jayenge. Continue?')) { return false; } var r = prompt('Suspend karne ki wajah (optional):'); if (r === null) { return false; } this.reason.value = r; if (confirm('Phone aur email blacklist bhi karein?\n(Is se in se naya account nahi ban sakega)')) { this.blacklist.value = '1'; if (confirm('Device (IP + browser) bhi block karein?\nDhyan: shared WiFi / mobile network par dusre log bhi ruk sakte hain.')) { this.blacklist_device.value = '1'; } } return true;">
                 {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="reason" value=""><input type="hidden" name="blacklist" value=""><input type="hidden" name="blacklist_device" value="">
                 <button class="btn btn-sm btn-outline-danger">⛔ Suspend</button>
               </form>
               {% endif %}

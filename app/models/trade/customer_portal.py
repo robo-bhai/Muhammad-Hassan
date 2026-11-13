@@ -473,7 +473,18 @@ class CustomerProfile(models.Model):
         null=True,
         verbose_name="Trust Reset Reason"
     )
-    
+
+    # Suspend: admin account band kar sakta hai (login aur order dono ruk jate hain)
+    is_suspended = models.BooleanField(default=False, db_index=True, verbose_name="Suspended")
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspended_reason = models.CharField(max_length=255, blank=True, default='')
+    suspended_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name="Suspended by"
+    )
+    # Register ke waqt ka device hash (IP + browser) - blacklist ke liye; asli IP save nahi hota
+    signup_device = models.CharField(max_length=64, blank=True, default='')
+
     # Timestamps
     last_login_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

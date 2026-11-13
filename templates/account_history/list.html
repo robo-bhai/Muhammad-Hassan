@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Suspend History{% endblock %}
+{% block page_title %}📜 Suspend / Approve History{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body py-2">
+      <div class="fs-4 fw-bold text-danger">{{ suspended_customers }}</div><div class="small text-muted">Abhi suspend customers</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card text-center"><div class="card-body py-2">
+      <div class="fs-4 fw-bold text-danger">{{ suspended_vendors }}</div><div class="small text-muted">Abhi suspend vendors</div></div></div></div>
+    <div class="col-12 col-md-6"><div class="card h-100"><div class="card-body py-2 small text-muted">
+      Har suspend, unsuspend, vendor approve aur blacklist ka record: <b>kis ne, kab, kyun</b>.
+      Yeh record is feature ke baad se likha jata hai (jo customers pehle se suspend the unki ek shuruaati entry bani hai;
+      vendors ka purana suspend record pehle nahi tha).</div></div></div>
+  </div>
+
+  <form method="get" class="row g-2 mb-3 align-items-end">
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1">Type</label>
+      <select name="kind" class="form-select form-select-sm">
+        <option value="">Sab</option>
+        <option value="customer" {% if kind == 'customer' %}selected{% endif %}>Customer</option>
+        <option value="vendor" {% if kind == 'vendor' %}selected{% endif %}>Vendor</option>
+        <option value="other" {% if kind == 'other' %}selected{% endif %}>Blacklist (haath se)</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1">Action</label>
+      <select name="action" class="form-select form-select-sm">
+        <option value="">Sab</option>
+        {% for val, label in actions %}<option value="{{ val }}" {% if action == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1">Se</label>
+      <input type="date" name="from" value="{{ d_from }}" class="form-control form-control-sm"></div>
+    <div class="col-6 col-md-2"><label class="form-label small mb-1">Tak</label>
+      <input type="date" name="to" value="{{ d_to }}" class="form-control form-control-sm"></div>
+    <div class="col-12 col-md-2"><label class="form-label small mb-1">Search</label>
+      <input type="text" name="search" value="{{ search }}" class="form-control form-control-sm" placeholder="naam / wajah / kis ne"></div>
+    <div class="col-12 col-md-2 d-flex gap-1">
+      <button class="btn btn-sm btn-primary flex-fill">Filter</button>
+      <a class="btn btn-sm btn-outline-success flex-fill" href="?{{ keep }}{% if keep %}&{% endif %}export=csv">CSV</a>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead class="table-dark"><tr>
+        <th>Kab</th><th>Type</th><th>Naam</th><th>Action</th><th>Wajah</th><th>Tafseel</th><th>Kis ne</th>
+      </tr></thead>
+      <tbody>
+      {% for r in page_obj %}
+        <tr>
+          <td class="small text-nowrap">{{ r.created_at|date:"d M Y" }}<br><span class="text-muted">{{ r.created_at|date:"H:i" }}</span></td>
+          <td>{{ r.get_kind_display }}</td>
+          <td>
+            {% if r.kind == 'customer' and r.ref_id %}<a href="{% url 'customer_ledger' r.ref_id %}">{{ r.name }}</a>
+            {% elif r.kind == 'vendor' and r.ref_id %}<a href="{% url 'vendor_ledger' r.ref_id %}">{{ r.name }}</a>
+            {% else %}{{ r.name|default:'—' }}{% endif %}
+          </td>
+          <td>
+            <span class="badge bg-{% if r.action == 'suspend' %}danger{% elif r.action == 'unsuspend' or r.action == 'approve' %}success{% elif r.action == 'block' %}dark{% else %}secondary{% endif %}">{{ r.get_action_display }}</span>
+          </td>
+          <td>{{ r.reason|default:'—' }}</td>
+          <td class="small text-muted">{{ r.detail|default:'' }}</td>
+          <td>{{ r.by_name|default:'—' }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">Koi record nahi mila.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <nav><ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if keep %}&{{ keep }}{% endif %}">‹</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if keep %}&{{ keep }}{% endif %}">›</a></li>{% endif %}
+  </ul></nav>
+  {% endif %}
+</div>
+{% endblock %}

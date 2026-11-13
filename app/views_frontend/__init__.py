@@ -66,6 +66,10 @@ _MODULES = [
     "ai.board_cso",
     "system.chat",
     "system.language",
+    "people.duplicates",
+    "people.blocked",
+    "people.account_history",
+    "people.oversight",
     "system.translations",
     "finance.profit_analysis",
     "finance.subledger"

@@ -301,6 +301,15 @@
     
     .btn-action.whatsapp { color: var(--whatsapp); }
     .btn-action.whatsapp:hover { background: rgba(37, 211, 102, 0.1); border-color: var(--whatsapp); }
+
+    .btn-action.suspend { color: #dc3545; }
+    .btn-action.suspend:hover { background: rgba(220, 53, 69, 0.1); border-color: #dc3545; }
+    .btn-action.unsuspend { color: #198754; }
+    .btn-action.unsuspend:hover { background: rgba(25, 135, 84, 0.1); border-color: #198754; }
+    .badge-suspended { background: #dc3545; color: #fff; font-size: 0.65rem; font-weight: 700;
+                       padding: 2px 8px; border-radius: 10px; margin-left: 6px; vertical-align: middle; }
+    .action-buttons form { display: inline; margin: 0; }
+    .action-buttons form button.btn-action { cursor: pointer; background: transparent; }
     
     /* Empty State */
     .empty-state {
@@ -375,7 +384,7 @@
     
     <!-- Filter Card -->
     <div class="filter-card">
-        <form method="post">{% csrf_token %} method="GET" class="row g-3 align-items-end">
+        <form method="get" class="row g-3 align-items-end">
             <div class="col-md-9">
                 <label class="form-label" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--gray);">
                     <i class="bi bi-search"></i> Search Customers
@@ -391,6 +400,11 @@
                 <button type="submit" class="btn-search w-100">
                     <i class="bi bi-search"></i> Search
                 </button>
+                {% if status == 'suspended' %}
+                <a href="{% url 'customer_list' %}" class="btn btn-sm btn-outline-secondary w-100 mt-2">Sab customers dikhayein</a>
+                {% elif suspended_count %}
+                <a href="?status=suspended" class="btn btn-sm btn-outline-danger w-100 mt-2">⛔ Suspended ({{ suspended_count }})</a>
+                {% endif %}
             </div>
         </form>
     </div>
@@ -428,7 +442,7 @@
                             <span class="customer-code">{{ customer.customer_code|default:'N/A' }}</span>
                         </td>
                         <td>
-                            <span class="customer-name">{{ customer.name }}</span>
+                            <span class="customer-name">{{ customer.name }}</span>{% if customer.portal_profile.is_suspended %}<span class="badge-suspended" title="{{ customer.portal_profile.suspended_reason|default:'Wajah nahi likhi' }}">SUSPENDED</span>{% endif %}
                         </td>
                         <td>{{ customer.group.name|default:'—' }}</td>
                         <td>{{ customer.contact_number|default:'—' }}</td>
@@ -452,6 +466,30 @@
                                 <a href="{% url 'customer_ledger' customer.pk %}" class="btn-action ledger" title="View Ledger">
                                     <i class="bi bi-book"></i>
                                 </a>
+                                {% if customer.portal_profile %}
+                                {% if customer.portal_profile.is_suspended %}
+                                <form method="post" action="{% url 'customer_suspend_action' customer.pk 'unsuspend' %}"
+                                      onsubmit="return confirm('{{ customer.name|escapejs }} ka account dobara chalu karein?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="btn-action unsuspend" title="Unsuspend (account chalu karein)">
+                                        <i class="bi bi-unlock"></i>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{% url 'customer_suspend_action' customer.pk 'suspend' %}"
+                                      onsubmit="var r = prompt('{{ customer.name|escapejs }} ko suspend karne ki wajah (optional):'); if (r === null) { return false; } this.reason.value = r; if (confirm('Phone aur email blacklist bhi karein?\n(Is se in se naya account nahi ban sakega)')) { this.blacklist.value = '1'; if (confirm('Device (IP + browser) bhi block karein?\nDhyan: shared WiFi / mobile network par dusre log bhi ruk sakte hain.')) { this.blacklist_device.value = '1'; } } return true;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="reason" value="">
+                                    <input type="hidden" name="blacklist" value="">
+                                    <input type="hidden" name="blacklist_device" value="">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="btn-action suspend" title="Suspend account">
+                                        <i class="bi bi-slash-circle"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% endif %}
                                 {% if customer.contact_number %}
                                 <a href="https://wa.me/92{{ customer.contact_number|slice:'1:' }}?text=Assalam-o-Alaikum%20{{ customer.name|urlencode }}%20sahib%2C%0A%0A" 
                                    target="_blank" class="btn-action whatsapp" title="WhatsApp">

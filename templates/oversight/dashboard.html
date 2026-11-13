@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Overview{% endblock %}
+{% block page_title %}🧭 Vendors &amp; Customers — Aaj ki Tasveer{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="small text-muted mb-2">{{ today|date:"l, d M Y" }}</div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-3"><a class="text-decoration-none" href="{% url 'vendor_approvals' %}?tab=accounts&status=pending">
+      <div class="card h-100 {% if cards.pending_accounts %}border-warning{% endif %}"><div class="card-body py-2 text-center">
+        <div class="fs-3 fw-bold">{{ cards.pending_accounts }}</div><div class="small text-muted">⏳ Pending vendor accounts</div></div></div></a></div>
+    <div class="col-6 col-md-3"><a class="text-decoration-none" href="{% url 'vendor_approvals' %}?tab=products&status=pending">
+      <div class="card h-100 {% if cards.pending_products %}border-warning{% endif %}"><div class="card-body py-2 text-center">
+        <div class="fs-3 fw-bold">{{ cards.pending_products }}</div><div class="small text-muted">📦 Pending products</div></div></div></a></div>
+    <div class="col-6 col-md-3"><a class="text-decoration-none" href="{% url 'dispute_list' %}">
+      <div class="card h-100 {% if cards.open_disputes %}border-danger{% endif %}"><div class="card-body py-2 text-center">
+        <div class="fs-3 fw-bold text-danger">{{ cards.open_disputes }}</div><div class="small text-muted">⚠️ Open disputes</div></div></div></a></div>
+    <div class="col-6 col-md-3"><a class="text-decoration-none" href="{% url 'account_history' %}">
+      <div class="card h-100"><div class="card-body py-2 text-center">
+        <div class="fs-3 fw-bold text-danger">{{ cards.suspended_customers }} / {{ cards.suspended_vendors }}</div>
+        <div class="small text-muted">⛔ Suspended (customers / vendors)</div></div></div></a></div>
+
+    <div class="col-6 col-md-3"><div class="card h-100"><div class="card-body py-2 text-center">
+      <div class="fs-3 fw-bold text-success">{{ cards.new_vendors }}</div><div class="small text-muted">🏢 Naye vendors aaj</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card h-100"><div class="card-body py-2 text-center">
+      <div class="fs-3 fw-bold text-success">{{ cards.new_customers }}</div><div class="small text-muted">👤 Naye customers aaj</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card h-100"><div class="card-body py-2 text-center">
+      <div class="fs-3 fw-bold">{{ cards.orders_today }}</div>
+      <div class="small text-muted">🛒 Store orders aaj{% if cards.cancelled_today %} ({{ cards.cancelled_today }} cancel){% endif %}</div></div></div></div>
+    <div class="col-6 col-md-3"><a class="text-decoration-none" href="{% url 'blocked_list' %}">
+      <div class="card h-100"><div class="card-body py-2 text-center">
+        <div class="fs-3 fw-bold">{{ cards.blocked }}</div><div class="small text-muted">🚫 Blacklist entries</div></div></div></a></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="card h-100"><div class="card-header fw-bold d-flex justify-content-between">
+        <span>⏳ Approval ka intezar (vendors)</span><a class="small" href="{% url 'vendor_approvals' %}">Sab →</a></div>
+        <ul class="list-group list-group-flush">
+          {% for p in pending_list %}
+          <li class="list-group-item d-flex justify-content-between"><span>{{ p.business_name }} <small class="text-muted">{{ p.city }}</small></span>
+            <small class="text-muted">{{ p.created_at|date:"d M H:i" }}</small></li>
+          {% empty %}<li class="list-group-item text-muted">Koi pending nahi ✅</li>{% endfor %}
+        </ul></div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card h-100"><div class="card-header fw-bold d-flex justify-content-between">
+        <span>⚠️ Open disputes (purane pehle)</span><a class="small" href="{% url 'dispute_list' %}">Sab →</a></div>
+        <ul class="list-group list-group-flush">
+          {% for d in dispute_list %}
+          <li class="list-group-item d-flex justify-content-between">
+            <a href="{% url 'dispute_detail' d.pk %}">#{{ d.pk }} — {{ d.get_reason_display }}</a>
+            <small class="text-muted">{{ d.vendor.name|default:'Shop' }} · {{ d.created_at|date:"d M" }}</small></li>
+          {% empty %}<li class="list-group-item text-muted">Koi open dispute nahi ✅</li>{% endfor %}
+        </ul></div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card h-100"><div class="card-header fw-bold d-flex justify-content-between">
+        <span>🔎 Nazar rakhein (vendors, pichhle 30 din){% if flagged_total %} — {{ flagged_total }}{% endif %}</span>
+        <a class="small" href="{% url 'vendor_performance' %}?flagged=1">Report →</a></div>
+        <ul class="list-group list-group-flush">
+          {% for r in flagged %}
+          <li class="list-group-item"><b>{{ r.name }}</b>
+            {% for f in r.flags %}<span class="badge bg-danger ms-1">{{ f }}</span>{% endfor %}</li>
+          {% empty %}<li class="list-group-item text-muted">Sab vendors theek ✅</li>{% endfor %}
+        </ul></div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card h-100"><div class="card-header fw-bold d-flex justify-content-between">
+        <span>📜 Taaza karwaiyan</span><a class="small" href="{% url 'account_history' %}">History →</a></div>
+        <ul class="list-group list-group-flush">
+          {% for h in history %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span><span class="badge bg-secondary">{{ h.get_action_display }}</span> {{ h.name }}{% if h.reason %} <small class="text-muted">— {{ h.reason }}</small>{% endif %}</span>
+            <small class="text-muted">{{ h.by_name }} · {{ h.created_at|date:"d M H:i" }}</small></li>
+          {% empty %}<li class="list-group-item text-muted">Abhi koi record nahi.</li>{% endfor %}
+        </ul></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
