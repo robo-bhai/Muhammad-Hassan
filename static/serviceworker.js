@@ -10,7 +10,7 @@
 // - Navigation preload: page ki request SW start hone ke saath hi chal padti hai (tez load).
 // - Prefetch: user jis link par hath/touch rakhe uska page pehle se 60 sec ke liye save (sirf shop browse pages).
 // - Storage hisaab: purani cache entries khud delete; jagah kam ho to media/pages kam kar deta hai.
-var VERSION = 'v6';   // har release par badlein (cache refresh)
+var VERSION = 'v9';   // har release par badlein (cache refresh)
 var SHELL = 'bms-shell-' + VERSION;
 var STATIC = 'bms-static-' + VERSION;
 var SHOP = 'bms-shop-' + VERSION;
@@ -144,6 +144,73 @@ function trim(name, max) {
   });
 }
 
+// ---- Server restart (Cloudflare 502/503/504/52x/530) ----------------------
+// Server restart ke dauran tunnel network error nahi deta, balkay ek error response deta hai.
+// Isay pakar kar "restart ho raha hai" page dikhate hain jo server wapas aate hi khud reload karta hai.
+function isServerDown(res) {
+  var c = res && res.status;
+  return c === 502 || c === 503 || c === 504 || (c >= 520 && c <= 530);
+}
+
+var RESTART_HTML = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"theme-color\" content=\"#0d6efd\">\n<title>Updating...</title><style>\n:root{--bg1:#eef3ff;--bg2:#f8fbff;--tx:#0f172a;--mu:#64748b;--card:rgba(255,255,255,.8);--pri:#0d6efd;--pri2:#6ea8fe}\n@media(prefers-color-scheme:dark){:root{--bg1:#0b1220;--bg2:#111a2e;--tx:#e5ecff;--mu:#94a3b8;--card:rgba(22,33,58,.8);--pri:#6ea8fe;--pri2:#0d6efd}}\n*{box-sizing:border-box}\nbody{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;position:relative;font-family:system-ui,-apple-system,\"Segoe UI\",Roboto,sans-serif;color:var(--tx);background:linear-gradient(135deg,var(--bg1),var(--bg2))}\n.blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;animation:float 9s ease-in-out infinite}\n.b1{width:260px;height:260px;background:var(--pri);top:-60px;left:-60px}\n.b2{width:300px;height:300px;background:var(--pri2);bottom:-90px;right:-70px;animation-delay:-4s}\n@keyframes float{50%{transform:translate(30px,25px) scale(1.1)}}\n.card{position:relative;z-index:1;width:100%;max-width:380px;text-align:center;padding:34px 26px 24px;border-radius:24px;background:var(--card);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(127,150,200,.25);box-shadow:0 20px 50px rgba(13,110,253,.15);animation:rise .6s ease both}\n@keyframes rise{from{opacity:0;transform:translateY(16px)}}\n.orb{position:relative;width:112px;height:112px;margin:0 auto 16px}\n.orb i{position:absolute;inset:0;border-radius:50%;border:3px solid transparent}\n.orb i:nth-child(1){border-top-color:var(--pri);animation:spin 1.2s linear infinite}\n.orb i:nth-child(2){inset:11px;border-right-color:var(--pri2);animation:spin 1.8s linear infinite reverse}\n.orb i:nth-child(3){inset:22px;border-bottom-color:var(--pri);opacity:.6;animation:spin 2.4s linear infinite}\n.orb b{position:absolute;inset:40px;border-radius:50%;background:radial-gradient(circle,var(--pri2),var(--pri));box-shadow:0 0 22px var(--pri);animation:pulse 1.6s ease-in-out infinite}\n@keyframes spin{to{transform:rotate(360deg)}}\n@keyframes pulse{50%{transform:scale(.7);opacity:.7}}\n.logo{position:absolute;left:32px;top:32px;width:48px;height:48px;border-radius:50%;object-fit:contain;background:#fff;padding:4px;box-shadow:0 0 22px var(--pri);animation:breathe 2s ease-in-out infinite}\n@keyframes breathe{50%{transform:scale(.92)}}\n.brand{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);margin:0 0 8px}\nh1{font-size:21px;margin:0 0 6px}\n.sub{color:var(--mu);font-size:14px;line-height:1.55;margin:0 0 16px}\n.msg{height:20px;font-size:14px;font-weight:600;color:var(--pri);transition:opacity .35s}\n.bar{height:6px;border-radius:99px;background:rgba(127,150,200,.2);margin:14px 0 8px;overflow:hidden}\n.bar span{display:block;height:100%;width:40%;border-radius:99px;background:linear-gradient(90deg,var(--pri),var(--pri2));animation:slide 1.5s ease-in-out infinite}\n@keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(280%)}}\n.time{font-size:12px;color:var(--mu)}\nbutton{margin-top:14px;background:transparent;color:var(--pri);border:1px solid var(--pri);border-radius:10px;padding:9px 20px;font-size:14px;cursor:pointer}\n@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}\n</style></head><body>\n<div class=\"blob b1\"></div><div class=\"blob b2\"></div>\n<div class=\"card\">\n<div class=\"orb\"><i></i><i></i><i></i>__CORE__</div>\n__NAME__\n<h1>System update ho raha hai</h1>\n<p class=\"sub\">Chand lamhon mein dobara hazir. Ye page khud khul jayega, refresh ki zaroorat nahi.</p>\n<div class=\"msg\" id=\"m\">Server tayyar ho raha hai...</div>\n<div class=\"bar\"><span></span></div>\n<div class=\"time\" id=\"t\">Intezar: 0:00</div>\n<button onclick=\"location.reload()\">Abhi try karein</button>\n</div>\n<script>(function(){\nvar M=[\"Server tayyar ho raha hai...\",\"Connection check ho raha hai...\",\"Data load ho raha hai...\",\"Bas thori der aur...\"];\nvar i=0,ok=false,t0=Date.now(),m=document.getElementById(\"m\"),tm=document.getElementById(\"t\");\nsetInterval(function(){if(ok)return;m.style.opacity=0;setTimeout(function(){if(ok)return;i=(i+1)%M.length;m.textContent=M[i];m.style.opacity=1;},350);},3000);\nsetInterval(function(){var s=Math.floor((Date.now()-t0)/1000);tm.textContent=\"Intezar: \"+Math.floor(s/60)+\":\"+(\"0\"+s%60).slice(-2);},1000);\nfunction ping(){fetch(\"/offline/?ping=\"+Date.now(),{cache:\"no-store\",credentials:\"same-origin\"}).then(function(r){\nif(r.status<500){ok=true;m.style.opacity=1;m.textContent=\"Server wapas aa gaya!\";setTimeout(function(){location.reload();},500);}else wait();}).catch(wait);}\nfunction wait(){setTimeout(ping,4000);}\nwindow.addEventListener(\"online\",function(){location.reload();});\nwait();})();</script></body></html>";
+
+// Company logo + naam: server chalta ho tab cache mein rakh lete hain, restart page par dikhate hain.
+var BRAND_DONE = {};
+function portalOf(path) {   // app/pwa_portals.py ki PORTALS ke mutabiq
+  if (/^\/shop\/rider\//.test(path)) return 'rider';
+  if (/^\/shop\/vendor\//.test(path)) return 'vendor';
+  if (/^\/shop\//.test(path)) return 'shop';
+  if (/^\/(?:investor|shareholder|shareholders\/portal)\//.test(path)) return 'investor';
+  return 'erp';
+}
+
+function warmBrand(portal) {   // har SW session mein har portal ke liye ek dafa
+  if (BRAND_DONE[portal]) return Promise.resolve();
+  BRAND_DONE[portal] = 1;
+  var mUrl = '/pwa/manifest/' + portal + '.json', iUrl = '/pwa/icon/' + portal + '/192.png';
+  return caches.open(SHELL).then(function (c) {
+    return Promise.all([
+      fetch(mUrl, {credentials: 'same-origin'}).then(function (r) { if (r && r.ok) return c.put(mUrl, r); }),
+      fetch(iUrl, {credentials: 'same-origin'}).then(function (r) { if (r && r.ok) return c.put(iUrl, r); })
+    ]);
+  }).catch(function () { BRAND_DONE[portal] = 0; });
+}
+
+function brandInfo(portal) {
+  var out = {name: '', logo: ''};
+  return caches.open(SHELL).then(function (c) {
+    return Promise.all([c.match('/pwa/manifest/' + portal + '.json'), c.match('/pwa/icon/' + portal + '/192.png')]);
+  }).then(function (a) {
+    var p1 = a[0] ? a[0].json().then(function (j) { out.name = String((j && j.name) || ''); }).catch(function () {}) : Promise.resolve();
+    var p2 = (a[1] && (a[1].headers.get('Content-Type') || '').indexOf('image/') === 0)
+      ? a[1].arrayBuffer().then(function (buf) {
+          var b = new Uint8Array(buf), s = '';
+          for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+          out.logo = 'data:image/png;base64,' + btoa(s);
+        }).catch(function () {}) : Promise.resolve();
+    return Promise.all([p1, p2]);
+  }).then(function () { return out; }, function () { return out; });
+}
+
+function escHtml(t) {
+  return String(t).replace(/[&<>"']/g, function (ch) {
+    return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch];
+  });
+}
+
+function restartingPage(req) {   // promise -> Response
+  var path = '/';
+  try { path = new URL(req.url).pathname; } catch (e) {}
+  return brandInfo(portalOf(path)).then(function (b) {
+    var core = b.logo ? '<img class="logo" alt="" src="' + b.logo + '">' : '<b></b>';
+    var name = b.name ? '<div class="brand">' + escHtml(b.name) + '</div>' : '';
+    var html = RESTART_HTML.replace('__CORE__', function () { return core; })
+                           .replace('__NAME__', function () { return name; });
+    return new Response(html, {status: 503, headers: {
+      'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '10'}});
+  });
+}
+
 function isHtml(res) {
   var ct = res.headers.get('Content-Type') || '';
   return ct.indexOf('text/html') !== -1;
@@ -162,7 +229,14 @@ function offlineCopy(res, noBar) {   // saved page + chhota "Offline" bar
 // Network-first page with saved-copy fallback.
 function pageStrategy(req, cacheName, max, noBar, preload) {
   return Promise.resolve(preload).then(function (p) { return p || fetch(req); }).then(function (res) {
+    if (isServerDown(res)) {   // restart: POS saved copy dikhaye, baqi pages par auto-reload wala page
+      if (cacheName !== POS) return restartingPage(req);
+      return caches.open(cacheName).then(function (c) { return c.match(req); }).then(function (hit) {
+        return hit ? offlineCopy(hit, noBar) : restartingPage(req);
+      });
+    }
     if (res && res.ok && !res.redirected && res.type === 'basic' && isHtml(res)) {
+      try { warmBrand(portalOf(new URL(req.url).pathname)); } catch (e) {}
       var copy = res.clone();
       caches.open(cacheName).then(function (c) { return c.put(req, copy); }).then(function () { return trim(cacheName, max); });
     }
@@ -256,6 +330,11 @@ self.addEventListener('fetch', function (event) {
   // Baqi pages: network, warna offline page
   if (!/^\/(admin|api|ajax|login|logout|security|media)\//.test(path) && path !== '/login/') {
     event.respondWith(Promise.resolve(pre).then(function (p) { return p || fetch(req); })
+      .then(function (res) {
+        if (isServerDown(res)) return restartingPage(req);
+        if (res && res.ok) event.waitUntil(warmBrand(portalOf(path)));   // logo/naam restart page ke liye save
+        return res;
+      })
       .catch(function () { return caches.match(OFFLINE_URL); }));
   }
 });
