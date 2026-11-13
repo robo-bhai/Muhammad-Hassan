@@ -7,6 +7,7 @@ name: Django CI/CD Pipeline
 #   end of run   : stop server, final snapshot -> save as new cache entry, keep latest 3
 # Note: GitHub deletes cache entries not used for 7 days, so keep the workflow running at least weekly.
 # EXPORT: every run also uploads the encrypted snapshot as an Artifact (keeps latest 3, 14 days) so you can download a copy.
+# SERVER: gunicorn (1 worker, 8 threads) + WhiteNoise for /static/; automatic fallback to runserver if gunicorn cannot start.
 # FAST RESTART: (1) pip + cloudflared are cached and installed BEFORE waiting for the old run; (2) the old run keeps
 #   serving until the new run has finished installing (max 8 min), so the site is only down for stop + snapshot + restore.
 # AUTO-RESTART: GitHub kills any job at 6 hours. After ~5h10m this run starts a NEW run of itself
@@ -421,6 +422,7 @@ jobs:
         if: env.STOP_AFTER_MIGRATE != 'true'
         run: |
           pkill -f "manage.py runserver" || true
+          pkill -f "gunicorn_app:application" || true
           pkill -f "cloudflared" || true
           sleep 2
 
@@ -428,11 +430,106 @@ jobs:
         if: env.STOP_AFTER_MIGRATE != 'true'
         run: |
           touch django.log tunnel.log
-          PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 --insecure > django.log 2>&1 &
+
+          start_runserver() {
+            PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 --insecure >> django.log 2>&1 &
+          }
+
+          # ---- Production server: gunicorn (falls back to runserver by itself if it cannot start) ----
+          # The project settings are not part of this workflow, so the WSGI module is detected at runtime.
+          WSGI_FILE=$(find . -maxdepth 2 -name wsgi.py -not -path "./venv/*" -not -path "./.git/*" | head -n 1)
+          WSGI_MODULE=""
+          if [ -n "$WSGI_FILE" ]; then
+            WSGI_MODULE=$(echo "${WSGI_FILE#./}" | sed 's#\.py$##; s#/#.#g')
+          fi
+          echo "WSGI module: ${WSGI_MODULE:-NOT FOUND}"
+
+          cat > gunicorn_app.py <<'PYEOF'
+          import os
+          from importlib import import_module
+
+          application = import_module(os.environ["WSGI_MODULE"]).application
+          # runserver --insecure used to serve /static/; gunicorn does not, so wrap the app with WhiteNoise
+          # (harmless if the project already uses the WhiteNoise middleware).
+          try:
+              from django.conf import settings
+              from whitenoise import WhiteNoise
+              _root = getattr(settings, "STATIC_ROOT", None)
+              _url = str(getattr(settings, "STATIC_URL", "/static/") or "/static/")
+              if _root and os.path.isdir(str(_root)) and not _url.startswith("http"):
+                  application = WhiteNoise(application, root=str(_root), prefix=_url.strip("/"))
+                  print("WhiteNoise serving static files from", _root, "at", _url, flush=True)
+          except Exception as exc:  # never stop the site because of this wrapper
+              print("WhiteNoise wrapper skipped:", exc, flush=True)
+          PYEOF
+
+          GUNICORN_OK=""
+          if [ -n "$WSGI_MODULE" ] && command -v gunicorn >/dev/null 2>&1; then
+            export WSGI_MODULE
+            # 1 worker + 8 threads = same single-process behaviour as runserver (in-memory caches stay consistent),
+            # but with request timeouts, graceful stop and a proper production server.
+            PYTHONUNBUFFERED=1 gunicorn gunicorn_app:application \
+              --bind 0.0.0.0:8000 --worker-class gthread --workers 1 --threads 8 \
+              --timeout 120 --graceful-timeout 25 --keep-alive 5 \
+              --access-logfile - --error-logfile - --capture-output >> django.log 2>&1 &
+            GUNI_PID=$!
+            for i in {1..40}; do
+              CODE=$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://127.0.0.1:8000/ || true)
+              kill -0 "$GUNI_PID" 2>/dev/null || break      # gunicorn itself died -> fallback
+              if [ -n "$CODE" ] && [ "$CODE" != "000" ]; then GUNICORN_OK="yes"; break; fi
+              sleep 2
+            done
+          fi
+          if [ -n "$GUNICORN_OK" ]; then
+            echo "Server: gunicorn is up (HTTP $CODE)."
+            echo gunicorn > .server_mode
+          else
+            echo "gunicorn did NOT start -> falling back to runserver. Last log lines:"
+            tail -n 30 django.log || true
+            pkill -f "gunicorn_app:application" || true
+            sleep 1
+            start_runserver
+            echo runserver > .server_mode
+            curl -s -H "Title: gunicorn failed - using runserver" -H "Tags: warning" -d "run=${{ github.run_id }}" ntfy.sh/hassan_shops_db || true
+          fi
           # Named tunnel: token from secret CLOUDFLARE_TOKEN, hostname is set in Cloudflare Zero Trust dashboard
           cloudflared tunnel --no-autoupdate run --token "$CLOUDFLARE_TOKEN" > tunnel.log 2>&1 &
           # periodic snapshot every 30 min (local copy; saved to cache at job end)
           setsid nohup bash -c 'while true; do sleep 1800; bash "$HELPER_DIR/snapshot.sh" periodic; done' > periodic_snapshot.log 2>&1 &
+
+          # ---- WATCHDOG: restarts the web server if it crashes or stops answering (checks every 20 s) ----
+          cat > server_watchdog.sh <<'WDEOF'
+          #!/usr/bin/env bash
+          MODE="$(cat .server_mode 2>/dev/null || echo gunicorn)"
+          FAILS=0
+          start_server() {
+            if [ "$MODE" = "gunicorn" ]; then
+              PYTHONUNBUFFERED=1 gunicorn gunicorn_app:application \
+                --bind 0.0.0.0:8000 --worker-class gthread --workers 1 --threads 8 \
+                --timeout 120 --graceful-timeout 25 --keep-alive 5 \
+                --access-logfile - --error-logfile - --capture-output >> django.log 2>&1 &
+            else
+              PYTHONUNBUFFERED=1 python -u manage.py runserver 0.0.0.0:8000 --insecure >> django.log 2>&1 &
+            fi
+          }
+          sleep 60   # give the server time to finish starting
+          while true; do
+            sleep 20
+            CODE=$(curl -s -o /dev/null -m 10 -w '%{http_code}' http://127.0.0.1:8000/ || true)
+            if [ -z "$CODE" ] || [ "$CODE" = "000" ]; then FAILS=$((FAILS+1)); else FAILS=0; fi
+            if [ "$FAILS" -ge 3 ]; then
+              echo "[watchdog] $(date) server not answering -> restarting ($MODE)" >> django.log
+              pkill -KILL -f "gunicorn_app:application" || true
+              pkill -KILL -f "manage.py runserver" || true
+              sleep 2
+              start_server
+              curl -s -H "Title: Server crashed - watchdog restarted it" -H "Tags: warning" -d "mode=$MODE" ntfy.sh/hassan_shops_db || true
+              FAILS=0
+              sleep 40
+            fi
+          done
+          WDEOF
+          setsid nohup bash server_watchdog.sh > watchdog.log 2>&1 &
 
           TUNNEL_OK=""
           for i in {1..30}; do
@@ -506,10 +603,17 @@ jobs:
         if: ${{ always() && env.DB_READY == 'true' && env.STOP_AFTER_MIGRATE != 'true' }}
         run: |
           # Stop writers first so nothing is written after the snapshot
-          pkill -f "manage.py runserver" || true
-          pkill -f "cloudflared" || true
+          pkill -f "server_watchdog.sh" || true               # must stop first, else it would restart the server
+          pkill -f "cloudflared" || true                      # no new requests
           pkill -f "snapshot.sh" || true
-          sleep 3
+          pkill -TERM -f "gunicorn_app:application" || true   # graceful: running requests finish (max 25 s)
+          pkill -f "manage.py runserver" || true
+          for i in {1..30}; do
+            pgrep -f "gunicorn_app:application" >/dev/null 2>&1 || break
+            sleep 1
+          done
+          pkill -KILL -f "gunicorn_app:application" || true
+          sleep 1
           bash "$HELPER_DIR/snapshot.sh" final || true
 
       - name: Check snapshot exists
