@@ -261,6 +261,7 @@ function voToggle(id) {
     var known = {{ new_count|default:0 }};
     var banner = document.getElementById('voNewBanner');
     function beep() {
+        if (window.__pwaAlertAt && Date.now() - window.__pwaAlertAt < 20000) return;   // push ki ring abhi baji hai
         try {
             var C = window.AudioContext || window.webkitAudioContext;
             var ctx = new C(), o = ctx.createOscillator(), g = ctx.createGain();

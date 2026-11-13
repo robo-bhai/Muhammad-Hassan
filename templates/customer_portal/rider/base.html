@@ -77,6 +77,7 @@
 (function(){
   var last = null, audioCtx = null;
   function beep(){
+    if(window.__pwaAlertAt && Date.now()-window.__pwaAlertAt<20000) return;   // push ki ring abhi baji hai
     try{
       audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
       [0,.25,.5].forEach(function(t){
@@ -105,5 +106,6 @@
 })();
 </script>
 {% include 'components/i18n.html' %}
+{% include 'customer_portal/_push_prompt.html' %}
 </body>
 </html>

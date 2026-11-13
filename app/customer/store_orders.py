@@ -330,13 +330,14 @@ def order_cash_due(order):
     return max(order_payable_total(order) - (getattr(order, 'wallet_paid', None) or ZERO), ZERO)
 
 
-def _notify(user, title, message, link=None, kind='info'):
+def _notify(user, title, message, link=None, kind='info', push_kind=None, push_actions=None):
     if not user:
         return
     try:
         from ..models import Notification
         Notification.send(user=user, title=title, message=message,
-                          notification_type=kind, category='sales', link=link)
+                          notification_type=kind, category='sales', link=link,
+                          push_kind=push_kind, push_actions=push_actions)
     except Exception as exc:  # notification se order kabhi na rukey
         logger.error("Notification error: %s", exc)
 
@@ -368,7 +369,27 @@ def notify_vendor_new_order(order):
          f'Dashboard mein Accept ya Reject karein.'),
         link='/shop/vendor/orders/',
         kind='sale',
+        push_kind='vendor',
+        push_actions=_vendor_buttons(prof.user, order),     # notification se seedha Accept / Reject
     )
+    _start_reminders(order, prof.user)
+
+
+def _vendor_buttons(user, order):
+    try:
+        from .push_actions import vendor_buttons
+        return vendor_buttons(user, order)
+    except Exception as exc:
+        logger.error('vendor_buttons error: %s', exc)
+        return None
+
+
+def _start_reminders(order, user):
+    try:
+        from .push_actions import schedule_vendor_reminders
+        schedule_vendor_reminders(order, user)
+    except Exception as exc:
+        logger.error('reminders error: %s', exc)
 
 
 def whatsapp_link(phone, text):

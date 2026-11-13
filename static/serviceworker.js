@@ -9,8 +9,9 @@
 // - Logout par saved pages foran delete ho jati hain (shared phone par data na rahe).
 // - Navigation preload: page ki request SW start hone ke saath hi chal padti hai (tez load).
 // - Prefetch: user jis link par hath/touch rakhe uska page pehle se 60 sec ke liye save (sirf shop browse pages).
+// - Push: notification (vibration, action buttons, urgent order alerts) + icon par badge; click par sahi app window khulti hai.
 // - Storage hisaab: purani cache entries khud delete; jagah kam ho to media/pages kam kar deta hai.
-var VERSION = 'v9';   // har release par badlein (cache refresh)
+var VERSION = 'v10';   // har release par badlein (cache refresh)
 var SHELL = 'bms-shell-' + VERSION;
 var STATIC = 'bms-static-' + VERSION;
 var SHOP = 'bms-shop-' + VERSION;
@@ -337,4 +338,97 @@ self.addEventListener('fetch', function (event) {
       })
       .catch(function () { return caches.match(OFFLINE_URL); }));
   }
+});
+
+
+// ---- Web Push (root scope: ERP/Investor; /shop/ ka push-sw.js bhi isi file ko importScripts karta hai) -----
+var BADGE_URL = '/shop/push/badge/';
+
+function refreshBadge(portal) {   // icon par number (Android/desktop Chrome/Edge, installed iOS 16.4+)
+  var nav = self.navigator;
+  if (!(nav && nav.setAppBadge)) return Promise.resolve();
+  return fetch(BADGE_URL + '?p=' + encodeURIComponent(portal || ''), {credentials: 'same-origin', cache: 'no-store'})
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) {
+      if (!j) return;
+      var n = (j.count | 0);
+      return n > 0 ? nav.setAppBadge(n) : nav.clearAppBadge();
+    }).catch(function () {});
+}
+
+self.addEventListener('push', function (event) {
+  var d = {};
+  try { d = event.data ? event.data.json() : {}; }
+  catch (err) { d = {title: 'Notification', body: event.data ? event.data.text() : ''}; }
+  var url = d.url || '/shop/';
+  var portal = portalOf(url);
+  var actions = (d.actions || []).slice(0, 2).map(function (a) { return {action: a.action, title: a.title}; });
+  var opts = {
+    body: d.body || '',
+    icon: '/pwa/icon/' + portal + '/192.png',
+    data: {url: url, actions: d.actions || [], portal: portal},
+    tag: d.tag || url,
+    renotify: !!d.tag,            // same tag par bhi dobara awaaz/vibration
+    requireInteraction: !!d.interaction,
+    vibrate: d.vibrate || [150]
+  };
+  if (actions.length) opts.actions = actions;
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(d.title || 'Notification', opts),
+    refreshBadge(portal),
+    // App khuli ho to page ko batao (wo alert tone bajata hai)
+    self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(function (list) {
+      list.forEach(function (c) { c.postMessage({type: 'PUSH', kind: d.kind || '', title: d.title || '', url: url}); });
+    })
+  ]));
+});
+
+// Notification ke button (Accept/Reject/Decline) se seedha server par action. Natija ek chhoti notification mein.
+function resultNote(title, body, data) {
+  return self.registration.showNotification(title, {
+    body: body || '', icon: '/pwa/icon/' + (data.portal || 'erp') + '/192.png',
+    tag: 'pwa-action-result', renotify: true, silent: true, data: {url: data.url || '/'}
+  });
+}
+
+function runAction(btn, data) {
+  return fetch('/shop/push/action/', {
+    method: 'POST', credentials: 'same-origin', cache: 'no-store',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify({token: btn.token})
+  }).then(function (r) {
+    return r.json().catch(function () { return {ok: false, message: 'Server ne jawab nahi diya.'}; });
+  }).then(function (j) {
+    return resultNote(j.ok ? '\u2705 ' + (j.message || 'Done') : '\u26A0\uFE0F ' + (j.message || 'Nahi ho saka'),
+                      j.ok ? '' : 'Tap karke app kholein.', data);
+  }).catch(function () {   // internet nahi
+    return resultNote('\uD83D\uDCE1 Internet nahi', 'Action nahi gaya. Tap karke app kholein aur wahan se karein.', data);
+  }).then(function () { return refreshBadge(data.portal); });
+}
+
+self.addEventListener('notificationclick', function (event) {
+  var n = event.notification;
+  var data = n.data || {};
+  n.close();
+  if (event.action === 'later') return;   // sirf band karo
+  var url = data.url || '/shop/';
+  if (event.action) {   // button ka apna url ho to wahan
+    var btn = null;
+    (data.actions || []).forEach(function (a) { if (a.action === event.action) btn = a; });
+    if (btn && btn.token) { event.waitUntil(runAction(btn, data)); return; }   // Accept / Reject: app khole baghair
+    if (btn && btn.url) url = btn.url;
+  }
+  var target;
+  try { target = new URL(url, self.location.origin); } catch (e) { target = new URL('/', self.location.origin); }
+  if (target.origin !== self.location.origin) target = new URL('/', self.location.origin);   // bahari link kabhi nahi
+  event.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(function (list) {
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      try {
+        if (new URL(c.url).origin === target.origin && 'focus' in c) {
+          return c.focus().then(function (w) { return (w && 'navigate' in w) ? w.navigate(target.href) : w; });
+        }
+      } catch (e) {}
+    }
+    return self.clients.openWindow(target.href);
+  }));
 });

@@ -59,7 +59,8 @@ class ShareholderRestrictionMiddleware:
     """Restrict shareholder users to the /shareholder/ portal."""
 
     allowed_prefix = "/shareholder/"
-    open_prefixes = ("/media/", "/static/")
+    # PWA: service worker, manifest/icons, offline page, push + app badge (sirf apne user ka data) shareholder ke liye bhi khule
+    open_prefixes = ("/media/", "/static/", "/serviceworker.js", "/pwa/", "/offline/", "/shop/push/")
 
     def __init__(self, get_response):
         self.get_response = get_response

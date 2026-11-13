@@ -108,7 +108,13 @@ def get_attempt(order, max_active, active_statuses):
     if att:
         return att
     ranking = _compute_ranking(order, max_active, active_statuses)
-    att, _ = DispatchAttempt.objects.get_or_create(sale_order=order, defaults={'ranking': ranking})
+    att, created = DispatchAttempt.objects.get_or_create(sale_order=order, defaults={'ranking': ranking})
+    if created and att.ranking:
+        try:   # pehle rider ko foran push (Accept/Decline buttons ke saath); baqi ko tab jab agla decline kare
+            from .push_actions import push_offer_to_rider
+            push_offer_to_rider(order, att.ranking[0])
+        except Exception:
+            pass
     return att
 
 
@@ -126,8 +132,16 @@ def visible_orders(orders, rider, max_active, active_statuses):
 def decline(order, rider):
     from django.db import transaction
     from ..models import DispatchAttempt
+    newly = False
     with transaction.atomic():
         att = DispatchAttempt.objects.select_for_update().filter(sale_order=order).first()
         if att and rider.id not in att.declined:
             att.declined = list(att.declined) + [rider.id]
             att.save(update_fields=['declined'])
+            newly = True
+    if newly:
+        try:   # agle ranked rider ko offer ki push
+            from .push_actions import push_next_offer
+            push_next_offer(order, rider.id)
+        except Exception:
+            pass

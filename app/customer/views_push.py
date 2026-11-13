@@ -8,33 +8,10 @@ from .. import push_service
 from ..models import PushSubscription
 
 SERVICE_WORKER_JS = r"""
-importScripts('/serviceworker.js');   // offline page + static cache bhi /shop/ par chalay
-// Shop push notifications + root service worker ki offline/static caching.
+// /shop/ scope ka service worker: offline/static caching + push + badge, sab root /serviceworker.js mein hai.
+importScripts('/serviceworker.js');
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
-
-self.addEventListener('push', function (event) {
-  var data = {};
-  try { data = event.data ? event.data.json() : {}; }
-  catch (err) { data = {title: 'Notification', body: event.data ? event.data.text() : ''}; }
-  event.waitUntil(self.registration.showNotification(data.title || 'Notification', {
-    body: data.body || '',
-    data: {url: data.url || '/shop/'},
-    tag: data.url || undefined
-  }));
-});
-
-self.addEventListener('notificationclick', function (event) {
-  event.notification.close();
-  var url = (event.notification.data && event.notification.data.url) || '/shop/';
-  event.waitUntil(self.clients.matchAll({type: 'window', includeUncontrolled: true}).then(function (list) {
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].url.indexOf(url) !== -1 && 'focus' in list[i]) return list[i].focus();
-    }
-    return self.clients.openWindow(url);
-  }));
-});
 """
-
 
 @require_GET
 def push_service_worker(request):
@@ -88,3 +65,50 @@ def push_unsubscribe(request):
         PushSubscription.objects.filter(
             user=request.user, endpoint_hash=PushSubscription.hash_endpoint(endpoint)).delete()
     return JsonResponse({'success': True})
+
+
+# ---- App icon badge (number on the home-screen icon) ------------------------
+_PORTALS = ('vendor', 'rider', 'shop', 'investor', 'erp')
+
+
+def _badge_count(user, portal):
+    """Icon par kitni cheezein intezar mein hain (0 = badge hata do). Kabhi exception nahi uthata.
+    vendor: naye (pending) orders | rider: offers + assigned (abhi pickup nahi hua)
+    shop: chalu orders | investor/erp: unread notifications."""
+    if not user.is_authenticated:
+        return 0
+    try:
+        from ..models import DeliveryInfo, Notification, SaleOrder
+        if portal not in _PORTALS:    # page ne nahi batayaa: user ke role se andaza
+            portal = ('vendor' if getattr(user, 'vendor_profile', None) else
+                      'rider' if getattr(user, 'rider_profile', None) else
+                      'shop' if getattr(user, 'customer_profile', None) else 'erp')
+        if portal == 'vendor':
+            vp = getattr(user, 'vendor_profile', None)
+            return SaleOrder.objects.filter(vendor=vp.vendor, status='pending').count() if vp else 0
+        if portal == 'rider':
+            rp = getattr(user, 'rider_profile', None)
+            if not rp:
+                return 0
+            from . import dispatch
+            from .views_rider_portal import ACTIVE_STATUSES, MAX_ACTIVE_ORDERS, _offers_qs
+            offers = len(dispatch.visible_orders(_offers_qs(), rp, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES)) if rp.is_online else 0
+            return offers + DeliveryInfo.objects.filter(rider=rp, status='assigned').count()
+        if portal == 'shop':
+            cp = getattr(user, 'customer_profile', None)
+            if not cp or not getattr(cp, 'customer_id', None):
+                return 0
+            from .store_orders import OPEN_ORDER_STATUSES
+            return SaleOrder.objects.filter(customer_id=cp.customer_id, status__in=OPEN_ORDER_STATUSES).count()
+        return Notification.objects.filter(user=user, is_read=False).count()     # investor + erp
+    except Exception:
+        return 0
+
+
+@require_GET
+def push_badge(request):
+    """JSON {count}. Page (pwa_badge.js) aur service worker (push aane par) dono ye poochte hain."""
+    portal = (request.GET.get('p') or '').strip().lower()
+    resp = JsonResponse({'count': min(_badge_count(request.user, portal), 99)})
+    resp['Cache-Control'] = 'no-store'
+    return resp

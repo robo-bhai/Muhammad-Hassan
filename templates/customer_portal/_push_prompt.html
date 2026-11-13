@@ -35,7 +35,12 @@
         return post('{% url "push_subscribe" %}', sub.toJSON());
     }
     function getReg() {
-        return navigator.serviceWorker.register('{% url "push_service_worker" %}', {scope: '/shop/'})
+        // /shop/ (customer, vendor, rider): /shop/ scope ka push worker.  ERP aur Investor: root /serviceworker.js (usi mein push hai)
+        if (location.pathname.indexOf('/shop/') === 0) {
+            return navigator.serviceWorker.register('{% url "push_service_worker" %}', {scope: '/shop/'})
+                .then(function () { return navigator.serviceWorker.ready; });
+        }
+        return navigator.serviceWorker.register('/serviceworker.js', {scope: '/'})
             .then(function () { return navigator.serviceWorker.ready; });
     }
 

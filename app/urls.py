@@ -25,6 +25,7 @@ from app.views_frontend.purchase import disputes as views_admin_disputes
 from app.customer import views_reorder
 from app.customer import views_schedule
 from app.customer import views_push
+from app.customer import push_actions
 from app.customer import views_stores
 from app.security import views_admin_otp
 from app.security import views_security
@@ -1277,6 +1278,8 @@ urlpatterns = [
     path('shop/push-sw.js', views_push.push_service_worker, name='push_service_worker'),
     path('shop/push/key/', views_push.push_public_key, name='push_public_key'),
     path('shop/push/subscribe/', views_push.push_subscribe, name='push_subscribe'),
+    path('shop/push/badge/', views_push.push_badge, name='push_badge'),
+    path('shop/push/action/', push_actions.push_action, name='push_action'),
     path('shop/push/unsubscribe/', views_push.push_unsubscribe, name='push_unsubscribe'),
     path('shop/set-area/', views_customer_portal.set_delivery_area, name='set_delivery_area'),
     path('settings/delivery/', views_delivery.delivery_settings_view, name='delivery_settings_view'),
