@@ -163,6 +163,22 @@
     .password-toggle:hover {
         color: #2563eb;
     }
+
+    /* Browser ka apna eye icon chhupao (warna do eye ek ke upar aate hain) */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear { display: none !important; }
+    input[type="password"]::-webkit-credentials-auto-fill-button,
+    input[type="password"]::-webkit-contacts-auto-fill-button {
+        visibility: hidden; display: none !important; pointer-events: none;
+    }
+    .password-wrapper input { padding-right: 52px; }
+    .password-toggle {
+        -webkit-appearance: none; appearance: none;
+        width: 36px; height: 36px; line-height: 1;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0; margin: 0; background: transparent; z-index: 2;
+    }
+    .password-toggle i { font-size: 18px; line-height: 1; color: inherit; }
     
     .btn-register {
         width: 100%;
@@ -449,9 +465,9 @@
                         <input type="password" 
                                name="password" 
                                id="password" 
-                               placeholder="Min 6 characters"
+                               placeholder="Min 8 characters"
                                required
-                               minlength="6"
+                               minlength="{{ pw_min|default:8 }}"
                                autocomplete="new-password">
                         <button type="button" 
                                 class="password-toggle"
@@ -459,7 +475,7 @@
                             <i class="bi bi-eye-fill"></i>
                         </button>
                     </div>
-                    <div class="help-text">At least 6 characters</div>
+                    <div class="help-text">At least 8 characters, with letters and numbers</div>
                 </div>
                 
                 <!-- Confirm Password -->
@@ -474,7 +490,7 @@
                                id="confirm_password" 
                                placeholder="Re-enter password"
                                required
-                               minlength="6"
+                               minlength="{{ pw_min|default:8 }}"
                                autocomplete="new-password">
                         <button type="button" 
                                 class="password-toggle"
@@ -512,6 +528,7 @@
 // ==========================================
 // PASSWORD TOGGLE
 // ==========================================
+const PW_MIN = {{ pw_min|default:8 }};
 function togglePassword(fieldId, btn) {
     const field = document.getElementById(fieldId);
     const icon = btn.querySelector('i');
@@ -562,8 +579,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (!address || address.length < 10) {
             error = '❌ Please enter complete address (min 10 characters)';
             focusField = document.getElementById('address');
-        } else if (!password || password.length < 6) {
-            error = '❌ Password must be at least 6 characters';
+        } else if (!password || password.length < PW_MIN || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+            error = '❌ Password must be at least 8 characters, with letters and numbers';
             focusField = document.getElementById('password');
         } else if (password !== confirmPassword) {
             error = '❌ Passwords do not match!';

@@ -375,24 +375,6 @@
         <li class="menu-group-label" role="presentation">Sales &amp; Purchase</li>
         {% endif %}
 
-        <!-- ========== SALES SECTION ========== -->
-        {% if SHOW_SALES_MODULE %}
-<li class="has-submenu">
-            <a href="#salesSubmenu" data-bs-toggle="collapse" aria-controls="salesSubmenu" role="button" aria-expanded="{% if 'sale' in request.path or 'challan' in request.path %}true{% else %}false{% endif %}">
-                <span class="menu-icon">🛒</span> Sales
-                <i class="bi bi-chevron-down ms-auto arrow-icon"></i>
-            </a>
-            <ul class="collapse list-unstyled {% if 'sale' in request.path or 'challan' in request.path %}show{% endif %}" id="salesSubmenu">
-                <li><a href="{% url 'pos_screen' %}" class="sub-link {% if '/sales/pos/' in request.path %}active{% endif %}"><span>🖥️</span> POS Screen</a></li>
-                <li><a href="{% url 'shift_list' %}" class="sub-link {% if '/sales/shift' in request.path %}active{% endif %}"><span>🕒</span> Cashier Shifts</a></li>
-                <li><a href="{% url 'sale_list' %}" class="sub-link"><span>📋</span> Sales List</a></li>
-                <li><a href="{% url 'sale_order_create' %}" class="sub-link"><span>📝</span> New Sale Order</a></li>
-                <li><a href="{% url 'sale_order_list' %}" class="sub-link"><span>📑</span> Sale Orders</a></li>
-                <li><a href="{% url 'challan_list' %}" class="sub-link"><span>🚚</span> Challans</a></li>
-            </ul>
-        </li>
-        {% endif %}
-
         <!-- ========== PURCHASE SECTION ========== -->
         {% if SHOW_PURCHASE_MODULE %}
 <li class="has-submenu">
@@ -412,6 +394,24 @@
                 <li><a href="{% url 'purchase_order_create' %}" class="sub-link"><span>📝</span> New PO</a></li>
                 <li><a href="{% url 'purchase_order_list' %}" class="sub-link"><span>📑</span> Purchase Orders</a></li>
                 <li><a href="{% url 'grn_list' %}" class="sub-link"><span>📦</span> GRN (Receiving)</a></li>
+            </ul>
+        </li>
+        {% endif %}
+
+        <!-- ========== SALES SECTION ========== -->
+        {% if SHOW_SALES_MODULE %}
+<li class="has-submenu">
+            <a href="#salesSubmenu" data-bs-toggle="collapse" aria-controls="salesSubmenu" role="button" aria-expanded="{% if 'sale' in request.path or 'challan' in request.path %}true{% else %}false{% endif %}">
+                <span class="menu-icon">🛒</span> Sales
+                <i class="bi bi-chevron-down ms-auto arrow-icon"></i>
+            </a>
+            <ul class="collapse list-unstyled {% if 'sale' in request.path or 'challan' in request.path %}show{% endif %}" id="salesSubmenu">
+                <li><a href="{% url 'pos_screen' %}" class="sub-link {% if '/sales/pos/' in request.path %}active{% endif %}"><span>🖥️</span> POS Screen</a></li>
+                <li><a href="{% url 'shift_list' %}" class="sub-link {% if '/sales/shift' in request.path %}active{% endif %}"><span>🕒</span> Cashier Shifts</a></li>
+                <li><a href="{% url 'sale_list' %}" class="sub-link"><span>📋</span> Sales List</a></li>
+                <li><a href="{% url 'sale_order_create' %}" class="sub-link"><span>📝</span> New Sale Order</a></li>
+                <li><a href="{% url 'sale_order_list' %}" class="sub-link"><span>📑</span> Sale Orders</a></li>
+                <li><a href="{% url 'challan_list' %}" class="sub-link"><span>🚚</span> Challans</a></li>
             </ul>
         </li>
         {% endif %}

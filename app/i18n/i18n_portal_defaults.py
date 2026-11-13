@@ -73,6 +73,8 @@ PORTAL_DEFAULTS_3 = [
     ('You only need to enter the OTP and verify', 'آپ کو صرف OTP لکھ کر تصدیق کرنی ہے'),
     ('Min 6 characters', 'کم از کم 6 حروف'),
     ('At least 6 characters', 'کم از کم 6 حروف'),
+    ('Min 8 characters', 'کم از کم 8 حروف'),
+    ('At least 8 characters, with letters and numbers', 'کم از کم 8 حروف، حروف اور ہندسوں کے ساتھ'),
     ('optional', 'اختیاری'),
     ('6-digit code (from email or WhatsApp)', '6 ہندسوں کا کوڈ (ای میل یا واٹس ایپ سے)'),
     ('Enter your phone. The code will arrive by email or WhatsApp', 'اپنا فون نمبر لکھیں۔ کوڈ ای میل یا واٹس ایپ پر آئے گا'),

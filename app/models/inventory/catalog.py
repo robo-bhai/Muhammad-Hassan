@@ -146,6 +146,9 @@ class Product(models.Model):
         help_text="Vendor ke products pending se shuru hote hain; approve hone par shop par nazar aate hain"
     )
     rejection_reason = models.CharField(max_length=200, blank=True, default='')
+    # True = vendor account suspend hone par ye product khud ba khud hide hua tha (vendor ne khud hide nahi kiya).
+    # Account dobara approve hone par sirf yehi products wapas live hote hain; vendor ke apne hide kiye hue hide hi rehte hain.
+    hidden_by_suspend = models.BooleanField(default=False)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)

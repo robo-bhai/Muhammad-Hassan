@@ -59,9 +59,16 @@ class VendorProfileAdmin(admin.ModelAdmin):
         from ..customer.vendor_commission import on_vendor_approved
         pending = queryset.filter(is_approved=False)
         first_time = list(pending.filter(approved_at__isnull=True))   # pehli approval: launch offer ke qabil
+        vendor_ids = list(pending.values_list('vendor_id', flat=True))
         n = pending.update(is_approved=True, approved_at=now())
         promos = sum(1 for p in first_time if on_vendor_approved(p, first_time=True))
+        # Suspend par hide hue approved products dobara live
+        restored = Product.objects.filter(
+            vendor_id__in=vendor_ids, approval_status='approved', hidden_by_suspend=True
+        ).update(is_active=True, hidden_by_suspend=False)
         msg = f'{n} vendor(s) approved.'
+        if restored:
+            msg += f' {restored} purane approved product(s) dobara live.'
         if promos:
             msg += f' {promos} ko launch commission offer mila.'
         self.message_user(request, msg, messages.SUCCESS)
@@ -82,7 +89,7 @@ class VendorProfileAdmin(admin.ModelAdmin):
     def suspend_accounts(self, request, queryset):
         vendor_ids = list(queryset.values_list('vendor_id', flat=True))
         queryset.update(is_approved=False)
-        hidden = Product.objects.filter(vendor_id__in=vendor_ids).update(is_active=False)
+        hidden = Product.objects.filter(vendor_id__in=vendor_ids, is_active=True).update(is_active=False, hidden_by_suspend=True)
         self.message_user(
             request, f'{len(vendor_ids)} vendor(s) suspended, {hidden} product(s) hidden.',
             messages.WARNING
@@ -122,7 +129,7 @@ class VendorSubmissionAdmin(admin.ModelAdmin):
     @admin.action(description='Approve selected products (shop par live karo)')
     def approve_products(self, request, queryset):
         n = queryset.exclude(approval_status='approved').update(
-            approval_status='approved', is_active=True, rejection_reason='')
+            approval_status='approved', is_active=True, rejection_reason='', hidden_by_suspend=False)
         self.message_user(request, f'{n} product(s) approved aur shop par live.', messages.SUCCESS)
 
     @admin.action(description='Reject selected products')

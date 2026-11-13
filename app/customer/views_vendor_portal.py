@@ -291,6 +291,12 @@ def _area_context(profile=None):
     }
 
 
+def _pw_min_length():
+    """Register page ko wahi minimum lambai dikhao jo server check karta hai."""
+    from ..utils.password_policy import MIN_LENGTH
+    return MIN_LENGTH
+
+
 def _launch_offer_banner():
     """Register page par dikhane ke liye: admin ne launch offer on kiya ho to {'days', 'percent'}, warna None."""
     try:
@@ -402,7 +408,7 @@ def vendor_register(request):
             alert_admins('🏢 Naya vendor register hua',
                          f'{business_name} ({city}), {owner_name}: '
                          + ('auto-approve ho gaya.' if approved else 'approval ka intezar hai.'),
-                         link=reverse('vendor_approvals'))
+                         link=request.build_absolute_uri(reverse('vendor_approvals') + '?tab=accounts&status=pending'))
         except Exception:
             logger.exception('vendor register admin alert failed')
 
@@ -420,6 +426,7 @@ def vendor_register(request):
         'store_categories': StoreCategory.objects.filter(is_active=True),
         'company_name': _company_name(),
         'launch_offer': _launch_offer_banner(),
+        'pw_min': _pw_min_length(),
         **_area_context(),
     })
 
@@ -828,7 +835,7 @@ def vendor_product_toggle(request, pk):
         messages.error(request, '❌ Only an approved product can be shown or hidden')
         return redirect('vendor_dashboard')
 
-    Product.objects.filter(pk=product.pk).update(is_active=not product.is_active)
+    Product.objects.filter(pk=product.pk).update(is_active=not product.is_active, hidden_by_suspend=False)
     messages.success(
         request,
         '👁️ The product is now visible in the shop' if not product.is_active

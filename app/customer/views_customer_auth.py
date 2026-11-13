@@ -476,6 +476,11 @@ def customer_register(request):
         'page_title': 'Create Account',
     }
     try:
+        from ..utils.password_policy import MIN_LENGTH as _pw_min
+        context['pw_min'] = _pw_min
+    except Exception:
+        context['pw_min'] = 8
+    try:
         from . import referrals
         context['referral_enabled'] = referrals.enabled()
         context['referral_code'] = referrals.session_code(request) if context['referral_enabled'] else ''

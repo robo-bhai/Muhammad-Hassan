@@ -119,16 +119,21 @@ def vendor_account_action(request, pk, action):
         first_time = profile.approved_at is None and not profile.is_approved   # pehli approval
         VendorProfile.objects.filter(pk=pk).update(is_approved=True, approved_at=now())
         promo = on_vendor_approved(profile, first_time)
+        # Sirf wo products dobara live jo suspend ki wajah se hide hue the; vendor ke khud hide kiye hue hide hi rehte hain
+        restored = Product.objects.filter(
+            vendor_id=profile.vendor_id, approval_status='approved', hidden_by_suspend=True
+        ).update(is_active=True, hidden_by_suspend=False)
         from ...utils.blacklist import unblock_ref
         freed = unblock_ref(f'vendor:{profile.vendor_id}')      # pehle blacklist hua tha to ab hata do
         from ...utils.account_log import log_action
         log_action('vendor', profile.vendor_id, profile.business_name, 'approve', user=request.user,
                    detail=f'Blacklist se {freed} entries hati' if freed else '')
         messages.success(request, f'✅ "{profile.business_name}" approve ho gaya. Ab woh products list kar sakta hai.'
+                                  + (f' 🔄 {restored} purane approved product(s) dobara shop par live ho gaye.' if restored else '')
                                   + (' 🎁 Launch commission offer laga diya gaya.' if promo else ''))
     elif action == 'suspend':
         VendorProfile.objects.filter(pk=pk).update(is_approved=False)
-        hidden = Product.objects.filter(vendor_id=profile.vendor_id, is_active=True).update(is_active=False)
+        hidden = Product.objects.filter(vendor_id=profile.vendor_id, is_active=True).update(is_active=False, hidden_by_suspend=True)
         messages.warning(request, f'⛔ "{profile.business_name}" suspend ho gaya, {hidden} product(s) shop se hata diye.')
         from ...utils.account_log import log_action
         log_action('vendor', profile.vendor_id, profile.business_name, 'suspend',
@@ -157,7 +162,7 @@ def vendor_product_action(request, pk, action):
 
     # .update() use hota hai taake Product.save() ka image-processing dobara na chale.
     if action == 'approve':
-        Product.objects.filter(pk=pk).update(approval_status='approved', is_active=True, rejection_reason='')
+        Product.objects.filter(pk=pk).update(approval_status='approved', is_active=True, rejection_reason='', hidden_by_suspend=False)
         messages.success(request, f'✅ "{product.name}" approve ho gaya aur shop par live hai.')
     elif action == 'reject':
         reason = request.POST.get('reason', '').strip()[:200] or DEFAULT_REJECT_REASON
@@ -180,7 +185,7 @@ def vendor_approvals_bulk(request):
         messages.warning(request, '⚠️ Koi product select nahi kiya.')
     elif action == 'approve':
         n = qs.exclude(approval_status='approved').update(
-            approval_status='approved', is_active=True, rejection_reason='')
+            approval_status='approved', is_active=True, rejection_reason='', hidden_by_suspend=False)
         messages.success(request, f'✅ {n} product(s) approve ho gaye aur shop par live hain.')
     elif action == 'reject':
         reason = request.POST.get('reason', '').strip()[:200] or DEFAULT_REJECT_REASON
