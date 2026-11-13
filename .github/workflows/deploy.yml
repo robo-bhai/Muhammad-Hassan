@@ -84,6 +84,9 @@ jobs:
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
       PYTHONUNBUFFERED: "1"
       RUNNING_IN_TERMUX: "false"
+      # Public repo: run logs are visible to everyone, so server logs stay hidden unless you set the repo
+      # Variable SHOW_DEBUG_LOGS=true (Settings > Secrets and variables > Actions > Variables) while debugging.
+      SHOW_DEBUG_LOGS: ${{ vars.SHOW_DEBUG_LOGS }}
 
     steps:
       - name: Record job start time
@@ -484,8 +487,8 @@ jobs:
             echo "Server: gunicorn is up (HTTP $CODE)."
             echo gunicorn > .server_mode
           else
-            echo "gunicorn did NOT start -> falling back to runserver. Last log lines:"
-            tail -n 30 django.log || true
+            echo "gunicorn did NOT start -> falling back to runserver."
+            if [ "${SHOW_DEBUG_LOGS:-}" = "true" ]; then tail -n 30 django.log || true; else echo "(server log hidden - set Variable SHOW_DEBUG_LOGS=true to see it)"; fi
             pkill -f "gunicorn_app:application" || true
             sleep 1
             start_runserver
@@ -540,8 +543,8 @@ jobs:
           TUNNEL_URL="https://$SITE_DOMAIN"
           echo "TUNNEL_URL=$TUNNEL_URL" >> "$GITHUB_ENV"
           if [ -z "$TUNNEL_OK" ]; then
-            echo "!!! Tunnel connect hota nazar nahi aaya. tunnel.log:"
-            cat tunnel.log
+            echo "!!! Tunnel connect hota nazar nahi aaya."
+            if [ "${SHOW_DEBUG_LOGS:-}" = "true" ]; then cat tunnel.log; else echo "(tunnel log hidden - set Variable SHOW_DEBUG_LOGS=true to see it)"; fi
           else
             echo ""
             echo "=============================================="
@@ -591,12 +594,14 @@ jobs:
               fi
               sleep 5
             done
-            echo "------------------------------------------"
-            echo "TIMESTAMP: $(date)"
-            echo "--- SERVER HTTP ACCESS LOGS ---"
-            grep -E '"GET|POST|PUT|DELETE|HEAD' django.log | tail -n 50 || echo "No HTTP requests logged yet."
-            echo "--- RECENT EXCEPTIONS / ERRORS ---"
-            grep -i -C 3 "error\|exception\|traceback" django.log | tail -n 50 || echo "No errors detected."
+            HB=$(curl -s -o /dev/null -m 5 -w '%{http_code}' http://127.0.0.1:8000/ || true)
+            echo "[$(date -u +%H:%M) UTC] server alive check: HTTP ${HB:-000} (access logs are not printed - public repo)"
+            if [ "${SHOW_DEBUG_LOGS:-}" = "true" ]; then
+              echo "--- SERVER HTTP ACCESS LOGS ---"
+              grep -E '"GET|POST|PUT|DELETE|HEAD' django.log | tail -n 50 || echo "No HTTP requests logged yet."
+              echo "--- RECENT EXCEPTIONS / ERRORS ---"
+              grep -i -C 3 "error\|exception\|traceback" django.log | tail -n 50 || echo "No errors detected."
+            fi
           done || true
 
       - name: Final Snapshot (stop server first)
@@ -681,3 +686,16 @@ jobs:
           else
             gh workflow run deploy.yml --ref "${{ github.ref_name }}" -R "${{ github.repository }}" && echo "Next run started."
           fi
+
+      - name: Clean up old workflow runs (keep latest 30)
+        # Every 5 hours a new run is created, so the Actions list grows fast. Only FINISHED runs are deleted
+        # (never the running one). Their artifacts go with them - the newest 30 runs always cover the 3 kept exports.
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          gh run list -R "$REPO" --workflow deploy.yml --limit 300 --json databaseId,status \
+            --jq '[.[] | select(.status == "completed")] | .[30:] | .[].databaseId' | while read -r ID; do
+              [ -n "$ID" ] && [ "$ID" != "${{ github.run_id }}" ] && gh run delete "$ID" -R "$REPO" >/dev/null 2>&1 && echo "deleted old run $ID"
+            done || true
