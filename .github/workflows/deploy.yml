@@ -23,6 +23,10 @@ on:
         description: 'Empty = latest. Or snapshot file name to restore, or "list" to print available snapshots.'
         required: false
         default: ''
+      build_apk:
+        description: 'true = is run ke sath Rider Android APK bhi banao (Artifacts mein milegi).'
+        required: false
+        default: 'false'
   repository_dispatch:
     types: [ backup_now, restore_now, migrate_now ]
 
@@ -699,3 +703,168 @@ jobs:
             --jq '[.[] | select(.status == "completed")] | .[30:] | .[].databaseId' | while read -r ID; do
               [ -n "$ID" ] && [ "$ID" != "${{ github.run_id }}" ] && gh run delete "$ID" -R "$REPO" >/dev/null 2>&1 && echo "deleted old run $ID"
             done || true
+
+  # ======================================================================================================
+  # RIDER ANDROID APK (Capacitor wrapper)
+  # - Alag job hai: server wale job (build-and-test) ko bilkul nahi chhoota, parallel chalta hai (~6-10 min).
+  # - Kab banta hai: (a) Actions > Run workflow > build_apk = true, ya (b) commit message mein [apk] likho.
+  #   Normal push / auto-restart par APK NAHI banta (APK sirf live site ka wrapper hai, code badalne par
+  #   dobara banane ki zaroorat nahi hoti).
+  # - Download: run page > Artifacts > rider-apk-<number>  (zip khol kar rider.apk phone mein install karo).
+  # - Update install ke liye SAME signing key chahiye. Secrets set karo (warna debug APK banti hai jis ki key
+  #   har run par badal jati hai, yani purani APK ke upar update install nahi hoti):
+  #     ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+  # ======================================================================================================
+  build-rider-apk:
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.build_apk == 'true') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apk]')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true   # APK fail ho to server wale run ko red na kare
+
+    env:
+      APK_SITE_URL: "https://kwl.uqn88.store/shop/rider/"
+      APK_HOST: "kwl.uqn88.store"
+      APK_APP_ID: "store.uqn88.rider"
+      APK_APP_NAME: "Rider"
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout code (icon ke liye)
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Create Capacitor project (live site wrapper)
+        run: |
+          mkdir -p rider-app/www
+          cd rider-app
+          cat > www/index.html <<'HTMLEOF'
+          <!doctype html>
+          <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Rider</title></head>
+          <body style="font-family:sans-serif;text-align:center;padding:40px">Loading...</body></html>
+          HTMLEOF
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund @capacitor/core@^7 @capacitor/cli@^7 @capacitor/android@^7
+          cat > capacitor.config.json <<EOF
+          {
+            "appId": "${APK_APP_ID}",
+            "appName": "${APK_APP_NAME}",
+            "webDir": "www",
+            "server": {
+              "url": "${APK_SITE_URL}",
+              "cleartext": false,
+              "allowNavigation": ["${APK_HOST}"]
+            },
+            "android": { "allowMixedContent": false }
+          }
+          EOF
+          npx cap add android
+          npx cap sync android
+
+      - name: Icon, permissions & version
+        run: |
+          pip install --quiet pillow
+          python - <<'PYEOF'
+          import os, re, glob
+          from PIL import Image
+
+          ws = os.environ['GITHUB_WORKSPACE']
+          res = os.path.join(ws, 'rider-app', 'android', 'app', 'src', 'main', 'res')
+
+          # ---- launcher icon: repo root ki pehli image (PWA icon wali) ----
+          exts = ('.png', '.jpg', '.jpeg', '.webp')
+          imgs = [os.path.join(ws, f) for f in sorted(os.listdir(ws)) if f.lower().endswith(exts)]
+          if imgs:
+              print('Icon source:', imgs[0])
+              img = Image.open(imgs[0]).convert('RGBA')
+              side = min(img.size)
+              l, t = (img.width - side) // 2, (img.height - side) // 2
+              img = img.crop((l, t, l + side, t + side))
+              # adaptive icon xml hata do taa-ke neeche ki PNG har phone par use hon
+              for d in glob.glob(os.path.join(res, 'mipmap-anydpi-v26')):
+                  for f in os.listdir(d):
+                      os.remove(os.path.join(d, f))
+                  os.rmdir(d)
+              for name, px in [('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)]:
+                  d = os.path.join(res, 'mipmap-' + name)
+                  os.makedirs(d, exist_ok=True)
+                  out = img.resize((px, px), Image.Resampling.LANCZOS)
+                  for fn in ('ic_launcher.png', 'ic_launcher_round.png', 'ic_launcher_foreground.png'):
+                      out.save(os.path.join(d, fn), 'PNG')
+          else:
+              print('Repo root mein icon image nahi mili - default icon rahega.')
+
+          # ---- permissions (location, background location, foreground service, camera, notifications) ----
+          mf = os.path.join(ws, 'rider-app', 'android', 'app', 'src', 'main', 'AndroidManifest.xml')
+          xml = open(mf, encoding='utf-8').read()
+          perms = [
+              'android.permission.ACCESS_COARSE_LOCATION',
+              'android.permission.ACCESS_FINE_LOCATION',
+              'android.permission.ACCESS_BACKGROUND_LOCATION',
+              'android.permission.FOREGROUND_SERVICE',
+              'android.permission.FOREGROUND_SERVICE_LOCATION',
+              'android.permission.POST_NOTIFICATIONS',
+              'android.permission.CAMERA',
+          ]
+          add = ''.join('    <uses-permission android:name="%s" />\n' % p for p in perms if p not in xml)
+          xml = xml.replace('</manifest>', add + '</manifest>')
+          open(mf, 'w', encoding='utf-8').write(xml)
+          print('Permissions added.')
+
+          # ---- versionCode har run par barhao (warna update install nahi hoti) ----
+          gradle = os.path.join(ws, 'rider-app', 'android', 'app', 'build.gradle')
+          g = open(gradle, encoding='utf-8').read()
+          g = re.sub(r'versionCode\s+\d+', 'versionCode ' + os.environ['RUN_NO'], g)
+          g = re.sub(r'versionName\s+"[^"]*"', 'versionName "1.0.' + os.environ['RUN_NO'] + '"', g)
+          open(gradle, 'w', encoding='utf-8').write(g)
+          print('versionCode =', os.environ['RUN_NO'])
+          PYEOF
+        env:
+          RUN_NO: ${{ github.run_number }}
+
+      - name: Build APK (signed if keystore secrets set, else debug)
+        working-directory: rider-app/android
+        run: |
+          chmod +x gradlew
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ] && [ -n "${ANDROID_KEYSTORE_PASSWORD:-}" ] \
+             && [ -n "${ANDROID_KEY_ALIAS:-}" ] && [ -n "${ANDROID_KEY_PASSWORD:-}" ]; then
+            echo "Signing secrets found -> release build."
+            ./gradlew --no-daemon assembleRelease
+            BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            UNSIGNED=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+            "$BT/zipalign" -p -f 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+            "$BT/apksigner" sign --ks "$RUNNER_TEMP/release.jks" \
+              --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+              --ks-key-alias "$ANDROID_KEY_ALIAS" \
+              --key-pass env:ANDROID_KEY_PASSWORD \
+              --out ../rider.apk "$RUNNER_TEMP/aligned.apk"
+            "$BT/apksigner" verify ../rider.apk
+            rm -f "$RUNNER_TEMP/release.jks"
+          else
+            echo "WARNING: signing secrets set nahi -> DEBUG apk (install ho jati hai, par update ke liye har baar purani app uninstall karni paregi)."
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../rider.apk
+          fi
+          ls -la ../rider.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rider-apk-${{ github.run_number }}
+          path: rider-app/rider.apk
+          retention-days: 30
+          if-no-files-found: error
