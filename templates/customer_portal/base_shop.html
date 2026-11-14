@@ -2792,7 +2792,14 @@
     
     {% block extra_css %}{% endblock %}
 {% if not SHOP.shop_search_enabled %}<style>.shop-search-section,.sidebar-search-box,.app-search,form#navbarSearchForm{display:none !important}</style>{% endif %}
-{% if not SHOP.shop_voice_search_enabled %}<style>.mic-btn,#voiceSearchBtn,.voice-indicator{display:none !important}</style>{% endif %}
+{% if not SHOP.shop_voice_search_enabled %}<style>.mic-btn,#voiceSearchBtn,.voice-indicator,.voice-lang-btn,.st-mic{display:none !important}</style>{% endif %}
+<style>
+.voice-lang-btn{border:1.5px solid #c7d2fe;background:#eef2ff;color:#4338ca;border-radius:999px;font-size:11px;font-weight:800;line-height:1;padding:5px 8px;cursor:pointer;white-space:nowrap}
+.voice-lang-btn:hover{background:#e0e7ff}
+.mic-btn.listening,.st-mic.listening{animation:micPulse 1s infinite;color:#e11d48}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(225,29,72,.45)}70%{box-shadow:0 0 0 10px rgba(225,29,72,0)}100%{box-shadow:0 0 0 0 rgba(225,29,72,0)}}
+.st-mic{border:0;background:transparent;color:#6366f1;font-size:19px;cursor:pointer;padding:0 6px;display:inline-flex;align-items:center}
+</style>
     {% include "pwa/_pwa.html" %}
 </head>
 <body>
@@ -2862,6 +2869,14 @@
                         <span class="nav-user-role"><i class="bi bi-patch-check-fill"></i> Vendor</span>
                     </span>
                 </a>
+                {% elif user.vendor_staff %}
+                <a href="{% url 'vendor_dashboard' %}" class="nav-user nav-user--vendor" title="{{ user.vendor_staff.store.business_name }} (Staff)">
+                    <span class="nav-user-avatar">{{ user.vendor_staff.store.business_name|slice:":1"|upper }}</span>
+                    <span class="nav-user-info">
+                        <span class="nav-user-name">{{ user.vendor_staff.store.business_name }}</span>
+                        <span class="nav-user-role"><i class="bi bi-person-badge"></i> Staff</span>
+                    </span>
+                </a>
                 {% elif user.customer_profile %}
                 <a href="{% url 'my_account' %}" class="nav-user" title="{{ user.customer_profile.customer.name }} (Customer)">
                     <span class="nav-user-avatar">{{ user.customer_profile.customer.name|slice:":1"|upper }}</span>
@@ -2902,6 +2917,8 @@
                            autocomplete="off">
                     
                     <div class="search-actions">
+                        <button type="button" class="voice-lang-btn" data-voice-lang-btn onclick="toggleVoiceLang()"
+                                title="Voice language: English / اردو" aria-label="Voice language">EN</button>
                         <button type="button" 
                                 class="search-action-btn mic-btn" 
                                 id="voiceSearchBtn"
@@ -3507,6 +3524,7 @@
                         {% endif %}
                         {% if user.is_authenticated and user.customer_profile %}
                         <li><a href="{% url 'my_orders' %}"><i class="bi bi-receipt" aria-hidden="true"></i> My Orders</a></li>
+                        <li><a href="{% url 'repeat_plans' %}"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Repeat Orders</a></li>
                         {% if SHOP.shop_wallet_enabled %}<li><a href="{% url 'wallet_page' %}"><i class="bi bi-wallet2" aria-hidden="true"></i> Wallet</a></li>{% endif %}
                         {% if SHOP.shop_pro_enabled %}<li><a href="{% url 'pro_page' %}"><i class="bi bi-star" aria-hidden="true"></i> Pro</a></li>{% endif %}
                         {% if SHOP.shop_favorites_enabled %}<li><a href="{% url 'favorites_page' %}"><i class="bi bi-heart" aria-hidden="true"></i> Favourites</a></li>{% endif %}
@@ -4241,12 +4259,33 @@ function clearSearch() {
 let voiceRecognition = null;
 let voiceRecognitionActive = false;
 
-function toggleVoiceSearch() {
-    const micBtn = document.getElementById('voiceSearchBtn');
-    const micIcon = document.getElementById('micIcon');
+/* Voice language: English (en-US) ya Urdu (ur-PK). Choice browser mein yaad rehti hai; pehli dafa site ki zubaan se. */
+function getVoiceLang() {
+    var saved = null;
+    try { saved = localStorage.getItem('shopVoiceLang'); } catch (e) {}
+    if (saved === 'ur-PK' || saved === 'en-US') return saved;
+    return '{% if LANG_CODE == 'ur' %}ur-PK{% else %}en-US{% endif %}';
+}
+function refreshVoiceLangButtons() {
+    var ur = getVoiceLang() === 'ur-PK';
+    document.querySelectorAll('[data-voice-lang-btn]').forEach(function (b) { b.textContent = ur ? 'اردو' : 'EN'; });
+}
+function toggleVoiceLang() {
+    var next = getVoiceLang() === 'ur-PK' ? 'en-US' : 'ur-PK';
+    try { localStorage.setItem('shopVoiceLang', next); } catch (e) {}
+    refreshVoiceLangButtons();
+    if (voiceRecognitionActive) stopVoiceSearch();
+}
+document.addEventListener('DOMContentLoaded', refreshVoiceLangButtons);
+
+/* toggleVoiceSearch()                      -> shop home ki search (purane ids)
+   toggleVoiceSearch('stQ', 'stMic', true)  -> kisi bhi search box par; true = bolne ke baad form khud search kare */
+function toggleVoiceSearch(inputId, btnId, autoSubmit) {
+    const micBtn = document.getElementById(btnId || 'voiceSearchBtn');
+    const micIcon = btnId ? null : document.getElementById('micIcon');
     const voiceIndicator = document.getElementById('voiceIndicator');
     const voiceText = document.getElementById('voiceText');
-    const input = document.getElementById('liveSearchInput');
+    const input = document.getElementById(inputId || 'liveSearchInput');
     
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         alert('Voice Search is not supported in this browser.');
@@ -4268,7 +4307,7 @@ function toggleVoiceSearch() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     voiceRecognition = new SpeechRecognition();
     
-    voiceRecognition.lang = 'en-US';
+    voiceRecognition.lang = getVoiceLang();
     voiceRecognition.continuous = false;
     voiceRecognition.interimResults = true;
     voiceRecognition.maxAlternatives = 1;
@@ -4305,6 +4344,9 @@ function toggleVoiceSearch() {
         if (finalTranscript) {
             setTimeout(() => {
                 stopVoiceSearch();
+                if (autoSubmit && input && input.form) {
+                    if (input.form.requestSubmit) input.form.requestSubmit(); else input.form.submit();
+                }
             }, 800);
         }
     };
@@ -4314,6 +4356,7 @@ function toggleVoiceSearch() {
         if (event.error === 'no-speech') errorMsg = 'No sound was heard.';
         else if (event.error === 'audio-capture') errorMsg = '{% if LANG_CODE == 'ur' %}مائیکروفون نہیں ملا۔{% else %}Microphone not found.{% endif %}';
         else if (event.error === 'not-allowed') errorMsg = 'Permission denied.';
+        else if (event.error === 'language-not-supported') errorMsg = '{% if LANG_CODE == 'ur' %}یہ زبان اس براؤزر میں سپورٹ نہیں۔{% else %}This language is not supported in this browser. Try English.{% endif %}';
         else if (event.error === 'network') errorMsg = 'Network error.';
         
         if (voiceText) voiceText.textContent = errorMsg;
@@ -4337,7 +4380,6 @@ function toggleVoiceSearch() {
 }
 
 function stopVoiceSearch() {
-    const micBtn = document.getElementById('voiceSearchBtn');
     const micIcon = document.getElementById('micIcon');
     const voiceIndicator = document.getElementById('voiceIndicator');
     
@@ -4348,7 +4390,7 @@ function stopVoiceSearch() {
         voiceRecognition = null;
     }
     
-    if (micBtn) micBtn.classList.remove('listening');
+    document.querySelectorAll('.mic-btn.listening, .st-mic.listening').forEach(function (b) { b.classList.remove('listening'); });
     if (micIcon) micIcon.className = 'bi bi-mic-fill';
     
     if (voiceIndicator) {
@@ -4359,6 +4401,7 @@ function stopVoiceSearch() {
 }
 
 window.toggleVoiceSearch = toggleVoiceSearch;
+window.toggleVoiceLang = toggleVoiceLang;
 window.stopVoiceSearch = stopVoiceSearch;
 
 /* ============================================ */

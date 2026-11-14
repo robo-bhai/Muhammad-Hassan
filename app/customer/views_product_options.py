@@ -7,6 +7,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..decorators import vendor_login_required
@@ -36,7 +37,7 @@ def _price(value):
 
 @vendor_login_required
 def vendor_product_options(request, pk):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     product = get_object_or_404(Product, pk=pk, vendor=profile.vendor)
 
     if not profile.is_approved:

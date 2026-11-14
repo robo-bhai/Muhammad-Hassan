@@ -26,6 +26,7 @@ class WalletTransaction(models.Model):
         ('dispute', 'Dispute refund'),
         ('referral', 'Referral reward (dost laaya)'),
         ('refbonus', 'Referral welcome bonus'),
+        ('giftcard', 'Gift card redeem'),
     ]
 
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='wallet_transactions')

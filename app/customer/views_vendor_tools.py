@@ -12,6 +12,7 @@ from datetime import datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.db import transaction
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 from django.db.models.functions import ExtractHour, TruncDate
@@ -42,7 +43,7 @@ LINE_TOTAL = ExpressionWrapper(F('qty') * F('price'), output_field=DecimalField(
 @require_POST
 @vendor_login_required
 def vendor_pause(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     try:
         minutes = int(request.POST.get('minutes', 0))
     except (TypeError, ValueError):
@@ -110,7 +111,7 @@ def _safe_cell(v):
 
 @vendor_login_required
 def vendor_reports(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     vendor = profile.vendor
     key, start, end = _report_range(request)
     a, b = _day_start(start), _day_start(end + timedelta(days=1))
@@ -215,7 +216,7 @@ def _apply_discount(product, discount, pct):
 @vendor_login_required
 @flag_required('vendor_can_add_products', redirect_to='vendor_dashboard')
 def vendor_offers(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     if not profile.is_approved:
         messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
@@ -313,7 +314,7 @@ def vendor_promote(request):
     from . import sponsored
     from .store_orders import _notify
 
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     cfg = sponsored.sponsored_settings()
     if not profile.is_approved:
         messages.warning(request, '⏳ Your account has not been approved yet.')

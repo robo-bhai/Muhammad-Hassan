@@ -1,0 +1,48 @@
+{% extends 'customer_portal/base_shop.html' %}
+
+{% block title %}Repeat orders{% endblock %}
+
+{% block content %}
+<style>
+  .rp-wrap { max-width: 760px; margin: 24px auto 40px; padding: 0 14px; }
+  .rp-wrap h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
+  .rp-sub { color: #64748b; font-size: 14px; margin-bottom: 16px; }
+  .rp-card { background: #fff; border-radius: 18px; box-shadow: 0 4px 18px rgba(0,0,0,.07); padding: 14px; margin-bottom: 12px; border: 2px solid transparent; }
+  .rp-card.due { border-color: #2563eb; }
+  .rp-card.off { opacity: .6; }
+  .rp-store { font-weight: 800; font-size: 16px; }
+  .rp-items { font-size: 13px; color: #64748b; }
+  .rp-when { margin-top: 6px; font-weight: 700; color: #1e3a8a; font-size: 14px; }
+  .rp-next { font-size: 12px; color: #64748b; }
+  .rp-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .rp-actions form { flex: 1 1 auto; }
+  .rp-actions button { width: 100%; border: 0; border-radius: 10px; padding: 9px; font-weight: 800; font-size: 13px; }
+  .rp-go { color: #fff; background: linear-gradient(135deg,#2563eb,#7c3aed); }
+  .rp-alt { background: #f1f5f9; color: #334155; }
+  .rp-del { background: #fee2e2; color: #b91c1c; }
+  .rp-empty { text-align: center; color: #64748b; padding: 40px 10px; }
+</style>
+<div class="rp-wrap">
+  <h1><i class="bi bi-arrow-repeat"></i> Repeat orders</h1>
+  <div class="rp-sub">Milk, vegetables and other regular items: we remind you on time and add them to your cart in one tap.</div>
+  {% for p in plans %}
+  <div class="rp-card {% if p.pk == due_id %}due{% endif %} {% if not p.is_active %}off{% endif %}">
+    <div class="rp-store">{{ p.store_name|default:"Your store" }}</div>
+    <div class="rp-items">{{ p.summary }}</div>
+    <div class="rp-when"><i class="bi bi-clock"></i> {{ p.schedule_text }}{% if not p.is_active %} &middot; Paused{% endif %}</div>
+    {% if p.is_active %}<div class="rp-next">Next reminder: {{ p.next_run_at|date:"D, d M, h:i A" }}</div>{% endif %}
+    <div class="rp-actions">
+      <form method="post" action="{% url 'repeat_plan_run' p.pk %}">{% csrf_token %}<button type="submit" class="rp-go"><i class="bi bi-cart-plus"></i> Order now</button></form>
+      <form method="post" action="{% url 'repeat_plan_toggle' p.pk %}">{% csrf_token %}<button type="submit" class="rp-alt">{% if p.is_active %}Pause{% else %}Resume{% endif %}</button></form>
+      <form method="post" action="{% url 'repeat_plan_delete' p.pk %}" onsubmit="return confirm('Delete this repeat order?')">{% csrf_token %}<button type="submit" class="rp-del">Delete</button></form>
+    </div>
+  </div>
+  {% empty %}
+  <div class="rp-empty">
+    <i class="bi bi-arrow-repeat" style="font-size:42px"></i>
+    <p class="mt-2">No repeat orders yet. Open a delivered order and tap <b>Repeat this order</b>.</p>
+    <a href="{% url 'my_orders' %}" class="btn btn-primary btn-sm">My orders</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

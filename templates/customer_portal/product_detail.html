@@ -567,6 +567,28 @@
                     </div>
                     {% else %}
                     <div class="pd-out"><i class="bi bi-x-circle"></i> Out of stock</div>
+                    {% if favorites_on and SHOP.shop_wishlist_alerts_enabled %}
+                    <button type="button" id="pdNotify" class="fv-chip {% if is_wished %}on{% endif %}" style="margin-top:8px;padding:9px 16px;font-size:14px;border:1.5px solid #6366f1;background:#eef2ff;color:#4338ca;border-radius:999px;font-weight:700;cursor:pointer;"
+                            {% if is_wished %}disabled{% endif %}
+                            onclick="notifyWhenBack(this,'{% url 'wishlist_toggle' product.pk %}')">
+                        <i class="bi bi-bell-fill"></i> <span>{% if is_wished %}We will notify you when it is back{% else %}Notify me when it is back{% endif %}</span></button>
+                    <script>
+                    function notifyWhenBack(btn, url) {
+                        if (btn.disabled) return;
+                        btn.disabled = true;
+                        var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+                        fetch(url, {method: 'POST', headers: {'X-CSRFToken': m ? decodeURIComponent(m[1]) : '', 'X-Requested-With': 'XMLHttpRequest'}})
+                          .then(function (r) { return r.json().then(function (d) { return {status: r.status, d: d}; }); })
+                          .then(function (res) {
+                            if (res.status === 401 && res.d.login_url) { location.href = res.d.login_url + '?next=' + encodeURIComponent(location.pathname); return; }
+                            if (!res.d.success) { btn.disabled = false; alert(res.d.message || 'Something went wrong'); return; }
+                            if (res.d.favorited) { btn.querySelector('span').textContent = 'We will notify you when it is back'; }
+                            else { btn.disabled = false; btn.querySelector('span').textContent = 'Notify me when it is back'; }
+                          })
+                          .catch(function () { btn.disabled = false; alert('Network problem. Please try again'); });
+                    }
+                    </script>
+                    {% endif %}
                     {% endif %}
 
                     <div class="product-features">

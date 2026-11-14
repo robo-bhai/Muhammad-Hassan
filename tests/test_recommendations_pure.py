@@ -45,8 +45,8 @@ def test_home_wiring_and_template():
     assert "from .recommendations import home_rows" in view
     tpl = _read('templates', 'customer_portal', 'shop.html')
     assert "{% url 'reorder' o.order_id %}" in tpl
-    assert 'reco.favourites' in tpl and 'reco.trending' in tpl and 'reco.reorder' in tpl
-    assert 'csrf_token' in tpl[tpl.index('reco.reorder'):tpl.index('reco.favourites')]
+    assert 'reco.favourites' in tpl and 'reco.trending' in tpl and 'reorder_widget' in tpl
+    assert 'csrf_token' in tpl[tpl.index('reorder_widget'):tpl.index('reco.favourites')]
 
 
 def test_errors_never_break_home():
@@ -59,3 +59,14 @@ def test_template_tags_balanced():
     s = _read('templates', 'customer_portal', 'shop.html')
     for o, c in (('{% if', '{% endif %}'), ('{% for', '{% endfor %}')):
         assert len(re.findall(re.escape(o) + r'[ \t]', s)) == s.count(c), o
+
+
+def test_home_reorder_widget_wiring():
+    rec = _read('app', 'customer', 'recommendations.py')
+    assert 'def home_reorder(request)' in rec and "'thumbs'" in rec and "'count'" in rec
+    view = _read('app', 'customer', 'views_customer_portal.py')
+    assert "'reorder_widget': _home_reorder(" in view
+    tpl = _read('templates', 'customer_portal', 'shop.html')
+    assert '{% if reorder_widget %}' in tpl and "{% url 'reorder' o.order_id %}" in tpl
+    # widget category tiles se pehle aata hai (home ke top par)
+    assert tpl.index('{% if reorder_widget %}') < tpl.index('<!-- ========== CATEGORY TILES')

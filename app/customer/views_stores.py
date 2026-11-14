@@ -22,6 +22,7 @@ from .views_reviews import store_rating_map, store_reviews
 from .views_favorites import current_customer, favorite_store_ids
 from . import coupons as coupon_logic
 from . import delivery_pricing
+from .voice_terms import q_any
 
 STATUS_ORDER = {'open': 0, 'busy': 1, 'closed': 2}
 
@@ -106,7 +107,7 @@ def store_list(request):
     live = _live_products()
     stores = VendorProfile.objects.filter(
         is_approved=True, vendor__in=live.values('vendor')
-    ).select_related('vendor', 'store_category').prefetch_related('cuisines')
+    ).select_related('vendor', 'store_category').prefetch_related('cuisines', 'day_hours')
     base_stores = stores
 
     # Cuisines (Pizza, Burger, Biryani...) - admin switch ke peeche
@@ -142,9 +143,8 @@ def store_list(request):
         stores = stores.filter(vendor__in=live.filter(category_id=category_id).values('vendor'))
     if search:
         stores = stores.filter(
-            Q(business_name__icontains=search) | Q(store_description__icontains=search) |
-            Q(city__icontains=search) |
-            Q(vendor__in=live.filter(name__icontains=search).values('vendor'))
+            q_any(['business_name', 'store_description', 'city'], search) |
+            Q(vendor__in=live.filter(q_any(['name'], search)).values('vendor'))      # Urdu / Roman Urdu / English
         )
     if free_only:
         stores = stores.filter(delivery_fee=0)
@@ -166,7 +166,7 @@ def store_list(request):
     # Dish search: search likhne par har store ke kuch milte hue items (card par dikhane ke liye)
     matches = {}
     if search:
-        for vid, pname in live.filter(name__icontains=search).order_by('name').values_list('vendor', 'name')[:400]:
+        for vid, pname in live.filter(q_any(['name'], search)).order_by('name').values_list('vendor', 'name')[:400]:
             lst = matches.setdefault(vid, [])
             if len(lst) < 2:
                 lst.append(pname)
@@ -270,6 +270,9 @@ def store_list(request):
 def store_detail(request, pk):
     store = get_object_or_404(VendorProfile.objects.select_related('vendor', 'store_category'), pk=pk, is_approved=True)
     base = _live_products().filter(vendor=store.vendor)
+    if store.hide_sold_out:      # vendor ne sold-out maal chhupane ko kaha (restock par khud wapas)
+        from .stock_alerts import hide_sold_out
+        base = hide_sold_out(base)
 
     search = request.GET.get('q', '').strip()[:100]
     try:
@@ -297,7 +300,7 @@ def store_detail(request, pk):
     if category_id:
         products = products.filter(category_id=category_id)
     if search:
-        products = products.filter(Q(name__icontains=search) | Q(description__icontains=search))
+        products = products.filter(q_any(['name', 'description'], search))
 
     products = products.annotate(
         section_rank=section_rank,

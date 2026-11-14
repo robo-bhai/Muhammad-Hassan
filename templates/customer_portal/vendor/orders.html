@@ -113,6 +113,8 @@
             <span class="vo-badge vo-{{ o.status }}">{{ o.get_status_display }}</span>
         </div>
 
+        {% if SHOP.shop_order_chat_enabled and o.status != 'cancelled' %}<div class="mb-2"><button type="button" class="btn btn-sm btn-outline-primary"
+            onclick="OrderChat.open({{ o.id }}, 'vendor')">💬 {% if LANG_CODE == 'ur' %}گاہک سے بات{% else %}Chat with customer{% endif %}<span class="oc-badge" data-chat-badge="{{ o.id }}" data-chat-channel="vendor"></span></button></div>{% endif %}
         <div class="vo-cust">
             <b><i class="bi bi-person"></i> {{ o.customer.name }}</b>
             {% if o.customer.contact_number %} &middot; {% if row.show_contact %}{{ o.customer.contact_number }}{% else %}{{ o.customer.contact_number|mask_phone }}{% endif %}{% endif %}
@@ -255,35 +257,7 @@ function voToggle(id) {
     document.querySelectorAll('.vo-form.open').forEach(function (f) { f.classList.remove('open'); });
     if (!wasOpen) el.classList.add('open');
 }
-
-/* Naye order ka intezar: har 30 second mein poochho, naya aaye to beep + banner */
-(function () {
-    var known = {{ new_count|default:0 }};
-    var banner = document.getElementById('voNewBanner');
-    function beep() {
-        if (window.__pwaAlertAt && Date.now() - window.__pwaAlertAt < 20000) return;   // push ki ring abhi baji hai
-        try {
-            var C = window.AudioContext || window.webkitAudioContext;
-            var ctx = new C(), o = ctx.createOscillator(), g = ctx.createGain();
-            o.connect(g); g.connect(ctx.destination);
-            o.frequency.value = 880; g.gain.value = 0.2;
-            o.start(); setTimeout(function () { o.stop(); ctx.close(); }, 450);
-        } catch (e) {}
-    }
-    function poll() {
-        fetch('{% url "vendor_orders_poll" %}', {credentials: 'same-origin'})
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                if (d.new > known) {
-                    banner.style.display = 'block';
-                    banner.textContent = '🔔 Naya order aaya hai! (' + d.new + ' naye) - dekhne ke liye tap karein';
-                    beep();
-                    if (navigator.vibrate) navigator.vibrate(300);
-                }
-                known = d.new;
-            }).catch(function () {});
-    }
-    setInterval(poll, 30000);
-})();
 </script>
+{% include 'customer_portal/vendor/_order_ringer.html' %}
+{% include 'customer_portal/_order_chat_panel.html' %}
 {% endblock %}

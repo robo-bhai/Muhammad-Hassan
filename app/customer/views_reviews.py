@@ -2,6 +2,7 @@
 import logging
 
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.db import IntegrityError, transaction
 from django.db.models import Avg, Count
 from django.shortcuts import get_object_or_404, redirect, render
@@ -136,7 +137,7 @@ REPLY_MAX = 300
 @vendor_login_required
 def vendor_reviews(request):
     """Store ke saare reviews + har review par jawab dene ka form."""
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     vendor = profile.vendor
     qs = (OrderReview.objects.filter(vendor=vendor, vendor_rating__isnull=False)
           .select_related('sale_order__customer'))
@@ -159,7 +160,7 @@ def vendor_reviews(request):
 @require_POST
 def vendor_reply_review(request, review_id):
     """Vendor apne store ke review par ek public jawab likhta ya badalta hai (khali bhejne par hata deta hai)."""
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     review = get_object_or_404(OrderReview, id=review_id, vendor=profile.vendor, vendor_rating__isnull=False)
     text = ' '.join(request.POST.get('reply', '').split())[:REPLY_MAX]
     first_reply = not review.vendor_reply

@@ -55,10 +55,75 @@
   {% endif %}
 
   <div class="wl-note">
-    💡 To add money to your wallet, contact the shop. The shop will top up your account.
+    {% if funds %}💡 Add money below: pay the shop, then send us the transaction ID.{% else %}💡 To add money to your wallet, contact the shop. The shop will top up your account.{% endif %}
     {% if cashback_percent > 0 %}<br>🎁 {% t "Every delivered order earns <b>{}%</b> cashback in your wallet" cashback_percent|floatformat:"-2" %}{% if cashback_max > 0 %} {% t "(max Rs. {} per order)" cashback_max|floatformat:0 %}{% endif %}.{% endif %}
     <br>↩️ If an order is cancelled, the money taken from your wallet is returned.
   </div>
+
+  {% if funds %}
+  <style>
+    .wf-card { background: #fff; border-radius: 18px; box-shadow: 0 4px 18px rgba(0,0,0,.07); padding: 14px 16px; margin-top: 14px; }
+    .wf-card h3 { font-size: 16px; font-weight: 800; margin: 0 0 8px; }
+    .wf-card input, .wf-card select { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 9px 10px; margin-bottom: 8px; font-size: 14px; }
+    .wf-btn { width: 100%; border: 0; border-radius: 10px; padding: 10px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#2563eb,#7c3aed); }
+    .wf-pay { font-size: 13px; background: #f8fafc; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+    .wf-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; padding: 7px 0; border-top: 1px solid #f1f1f1; }
+    .wf-code { font-family: monospace; font-weight: 800; color: #1e3a8a; letter-spacing: 1px; }
+    .wf-tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: #e2e8f0; }
+    .wf-tag.approved, .wf-tag.active { background: #dcfce7; color: #166534; }
+    .wf-tag.rejected, .wf-tag.cancelled { background: #fee2e2; color: #991b1b; }
+  </style>
+
+  <div class="wf-card">
+    <h3>🎟️ Redeem a gift card</h3>
+    <form method="post" action="{% url 'gift_card_redeem' %}">{% csrf_token %}
+      <input type="text" name="code" placeholder="GC-XXXX-XXXX" autocomplete="off" autocapitalize="characters" required>
+      <button type="submit" class="wf-btn">Add to my wallet</button>
+    </form>
+  </div>
+
+  <div class="wf-card">
+    <h3>➕ Add money to wallet</h3>
+    {% if funds.payment %}<div class="wf-pay">Send the amount to:{% for k, v in funds.payment.items %}<br><b>{{ k }}:</b> {{ v }}{% endfor %}</div>{% endif %}
+    <form method="post" action="{% url 'wallet_topup_request' %}">{% csrf_token %}
+      <input type="number" name="amount" min="{{ funds.limits.min|floatformat:0 }}" step="1" placeholder="Amount (min Rs. {{ funds.limits.min|floatformat:0 }})" required>
+      <select name="method"><option value="jazzcash">JazzCash</option><option value="easypaisa">EasyPaisa</option><option value="bank">Bank transfer</option></select>
+      <input type="text" name="reference" maxlength="80" placeholder="Transaction ID" required>
+      <button type="submit" class="wf-btn">Send request</button>
+    </form>
+  </div>
+
+  <div class="wf-card">
+    <h3>🎁 Buy a gift card</h3>
+    <form method="post" action="{% url 'gift_card_buy' %}">{% csrf_token %}
+      <input type="number" name="amount" min="{{ funds.limits.min|floatformat:0 }}" step="1" placeholder="Gift amount" required>
+      <input type="text" name="recipient_name" maxlength="100" placeholder="For (name, optional)">
+      <input type="text" name="message" maxlength="200" placeholder="Message (optional)">
+      <select name="method"><option value="jazzcash">JazzCash</option><option value="easypaisa">EasyPaisa</option><option value="bank">Bank transfer</option></select>
+      <input type="text" name="reference" maxlength="80" placeholder="Transaction ID" required>
+      <button type="submit" class="wf-btn">Buy gift card</button>
+    </form>
+    <div style="font-size:12px;color:#64748b;margin-top:6px;">After we confirm your payment, the code appears below. Send it to anyone: they redeem it into their own wallet.</div>
+  </div>
+
+  {% if funds.cards %}
+  <div class="wf-card"><h3>Your gift cards</h3>
+    {% for c in funds.cards %}
+    <div class="wf-row"><span><span class="wf-code">{{ c.code }}</span><br><small>{% if c.recipient_name %}For {{ c.recipient_name }} &middot; {% endif %}{% if c.expires_at %}Valid till {{ c.expires_at|date:"d M Y" }}{% endif %}</small></span>
+      <span style="text-align:right"><b>Rs. {{ c.amount|floatformat:0 }}</b><br><span class="wf-tag {{ c.status }}">{{ c.get_status_display }}</span></span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if funds.requests %}
+  <div class="wf-card"><h3>Your requests</h3>
+    {% for r in funds.requests %}
+    <div class="wf-row"><span>{{ r.get_kind_display }} &middot; Rs. {{ r.amount|floatformat:0 }}<br><small>{{ r.created_at|date:"d M, h:i A" }}{% if r.admin_note %} &middot; {{ r.admin_note }}{% endif %}</small></span>
+      <span class="wf-tag {{ r.status }}" style="align-self:flex-start">{{ r.get_status_display }}</span></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
 
   <div class="wl-card">
     {% for r in rows %}

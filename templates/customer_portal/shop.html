@@ -1174,6 +1174,7 @@
                 <input type="text" name="search" id="liveSearchInput" placeholder="Search for products, groceries &amp; more"
                        aria-label="Search products" enterkeyhint="search" value="{{ search|default:'' }}" autocomplete="off">
                 <div class="search-actions">
+                    <button type="button" class="voice-lang-btn" data-voice-lang-btn onclick="toggleVoiceLang()" title="Voice language: English / اردو" aria-label="Voice language">EN</button>
                     <button type="button" class="search-action-btn mic-btn" id="voiceSearchBtn" onclick="toggleVoiceSearch()" aria-label="Voice Search"><i class="bi bi-mic-fill" id="micIcon"></i></button>
                     <button type="button" class="search-action-btn clear-btn {% if search %}show{% endif %}" id="clearSearchBtn" onclick="clearSearch()" aria-label="Clear"><i class="bi bi-x-lg"></i></button>
                 </div>
@@ -1182,6 +1183,49 @@
             <div class="search-results-count {% if search %}has-text{% endif %}" id="searchResultsCount">{% if search %}Searching for "<strong>{{ search }}</strong>"...{% endif %}</div>
         </form>
     </div>
+
+    {% if reorder_widget %}
+    <!-- ========== REORDER WIDGET (one click) ========== -->
+    <style>
+        .rw-head { display: flex; align-items: center; gap: 8px; margin: 14px 16px 8px; }
+        .rw-head h2 { font-size: 18px; font-weight: 800; margin: 0; }
+        .rw-head i { color: #2563eb; }
+        .rw-track { display: flex; gap: 12px; overflow-x: auto; padding: 2px 16px 8px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+        .rw-track::-webkit-scrollbar { display: none; }
+        .rw-card { flex: 0 0 min(88%, 340px); scroll-snap-align: start; background: linear-gradient(135deg,#eff6ff,#f5f3ff); border: 1px solid #dbeafe; border-radius: 18px; padding: 12px; box-shadow: 0 6px 18px rgba(37,99,235,.10); }
+        .rw-card:only-child { flex-basis: 100%; }
+        .rw-top { display: flex; gap: 10px; align-items: center; }
+        .rw-thumbs { display: flex; flex: 0 0 auto; }
+        .rw-thumbs span { width: 46px; height: 46px; border-radius: 12px; background: #e2e8f0 center/cover no-repeat; border: 2px solid #fff; margin-left: -14px; }
+        .rw-thumbs span:first-child { margin-left: 0; }
+        .rw-info { min-width: 0; }
+        .rw-info b { display: block; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rw-info small { display: block; font-size: .74rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rw-meta { display: flex; justify-content: space-between; font-size: .76rem; color: #475569; margin: 8px 2px 0; }
+        .rw-btn { margin-top: 8px; width: 100%; border: 0; border-radius: 12px; padding: 11px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#2563eb,#7c3aed); }
+        .rw-btn[disabled] { opacity: .65; }
+    </style>
+    <div class="rw-head"><i class="bi bi-arrow-repeat"></i><h2>Order again</h2></div>
+    <div class="rw-track">
+        {% for o in reorder_widget %}
+        <div class="rw-card">
+            <div class="rw-top">
+                <div class="rw-thumbs">
+                    {% for img in o.thumbs %}<span style="background-image:url('{{ img|thumb:160 }}')"></span>{% empty %}<span></span>{% endfor %}
+                </div>
+                <div class="rw-info">
+                    <b>{{ o.store_name }}</b>
+                    <small>{{ o.summary }}</small>
+                </div>
+            </div>
+            <div class="rw-meta"><span>{{ o.count }} item{{ o.count|pluralize }} &middot; {{ o.date|date:"d M" }}</span><strong>Rs {{ o.total|floatformat:0 }}</strong></div>
+            <form method="post" action="{% url 'reorder' o.order_id %}" onsubmit="var b=this.querySelector('button');b.disabled=true;b.innerHTML='Adding to cart...';">{% csrf_token %}
+                <button type="submit" class="rw-btn"><i class="bi bi-lightning-charge-fill"></i> Reorder in 1 tap</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     {% if not search and not selected_category and not selected_brand %}
     <!-- ========== CATEGORY TILES ========== -->
@@ -1293,19 +1337,6 @@
         .reco-again .reco-sub { white-space: normal; }
         .reco-again button { margin-top: 8px; width: 100%; border: 0; border-radius: 10px; padding: 8px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#2563eb,#7c3aed); }
     </style>
-    {% if reco.reorder %}
-    <div class="row-head"><h2>Order again</h2></div>
-    <div class="reco-track">
-        {% for o in reco.reorder %}
-        <div class="reco-again">
-            <b>{{ o.store_name }}</b>
-            <div class="reco-sub">{{ o.summary }}</div>
-            <div class="reco-sub">Rs {{ o.total|floatformat:0 }} &middot; {{ o.date|date:"d M" }}</div>
-            <form method="post" action="{% url 'reorder' o.order_id %}">{% csrf_token %}<button type="submit"><i class="bi bi-arrow-repeat"></i> Reorder</button></form>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
     {% if reco.favourites %}
     <div class="row-head"><h2>Your favourites</h2></div>
     <div class="reco-track">

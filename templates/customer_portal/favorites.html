@@ -22,6 +22,10 @@
   .fv-price { margin-top: 6px; font-weight: 800; color: #198754; }
   .fv-oos { color: #b91c1c; font-size: 12px; font-weight: 700; }
   .fv-heart { position: absolute; top: 10px; right: 10px; z-index: 2; }
+  .fv-alerts { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 14px 14px; }
+  .fv-chip { border: 1.5px solid #e5e7eb; background: #fff; color: #6b7280; border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .fv-chip.on { background: #eef2ff; border-color: #6366f1; color: #4338ca; }
+  .fv-chip:disabled { opacity: .6; }
   .fv-empty { text-align: center; color: #6b7280; padding: 50px 10px; background: #fff; border-radius: 18px; }
   .fv-empty a { color: #2563eb; font-weight: 700; }
 </style>
@@ -73,6 +77,16 @@
             {% if p.stock_int <= 0 %}<div class="fv-oos">Out of stock</div>{% endif %}
           </div>
         </a>
+        {% if alerts_on %}
+        <div class="fv-alerts">
+          <button type="button" class="fv-chip {% if p.alert_stock %}on{% endif %}" onclick="toggleAlert(this, '{% url 'wishlist_alert_toggle' p.pk 'stock' %}')"
+                  title="{% if LANG_CODE == 'ur' %}اسٹاک واپس آنے پر اطلاع{% else %}Notify me when it is back in stock{% endif %}">
+            <i class="bi {% if p.alert_stock %}bi-bell-fill{% else %}bi-bell-slash{% endif %}"></i> {% if LANG_CODE == 'ur' %}اسٹاک الرٹ{% else %}Back in stock{% endif %}</button>
+          <button type="button" class="fv-chip {% if p.alert_price %}on{% endif %}" onclick="toggleAlert(this, '{% url 'wishlist_alert_toggle' p.pk 'price' %}')"
+                  title="{% if LANG_CODE == 'ur' %}قیمت کم ہونے پر اطلاع{% else %}Notify me when the price drops{% endif %}">
+            <i class="bi {% if p.alert_price %}bi-graph-down-arrow{% else %}bi-slash-circle{% endif %}"></i> {% if LANG_CODE == 'ur' %}قیمت الرٹ{% else %}Price drop{% endif %}</button>
+        </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
@@ -82,4 +96,21 @@
   {% endif %}
 </div>
 {% include 'customer_portal/_fav_js.html' %}
+<script>
+  function toggleAlert(btn, url) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    fetch(url, {method: 'POST', headers: {'X-CSRFToken': m ? decodeURIComponent(m[1]) : '', 'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        btn.disabled = false;
+        if (!d.success) { alert(d.message || 'Something went wrong'); return; }
+        btn.classList.toggle('on', !!d.on);
+        var i = btn.querySelector('i'), stock = url.indexOf('/alert/stock/') > -1;
+        if (i) i.className = 'bi ' + (stock ? (d.on ? 'bi-bell-fill' : 'bi-bell-slash') : (d.on ? 'bi-graph-down-arrow' : 'bi-slash-circle'));
+      })
+      .catch(function () { btn.disabled = false; alert('Network problem. Please try again'); });
+  }
+</script>
 {% endblock %}

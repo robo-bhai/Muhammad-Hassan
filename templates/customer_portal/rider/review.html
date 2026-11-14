@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Rider documents{% endblock %}
+{% block page_title %}📄 {{ rider.name }} — documents{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <a href="{% url 'rider_manage' %}" class="btn btn-sm btn-outline-secondary mb-3">← Riders</a>
+  <div class="card shadow-sm mb-3"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div><b>{{ rider.name }}</b> · {{ rider.phone }}{% if rider.vehicle %} · {{ rider.vehicle }}{% endif %}<br>
+        Status: <span class="badge {% if rider.approval_status == 'approved' %}bg-success{% elif rider.approval_status == 'pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ rider.get_approval_status_display }}</span>
+        {% if rider.approval_note %}<small class="text-muted">— {{ rider.approval_note }}</small>{% endif %}</div>
+      <form method="post" class="d-flex flex-wrap gap-2 align-items-center">{% csrf_token %}
+        <input class="form-control form-control-sm" name="note" placeholder="Wajah (rad / suspend ke liye)" style="max-width:220px">
+        <button class="btn btn-sm btn-success" name="action" value="rider_approve">✅ Approve</button>
+        <button class="btn btn-sm btn-outline-danger" name="action" value="rider_reject">Rad</button>
+        <button class="btn btn-sm btn-outline-dark" name="action" value="rider_suspend">Suspend</button>
+        <button class="btn btn-sm btn-outline-secondary" name="action" value="rider_pending" title="Documents dobara maangein">Documents dobara</button>
+      </form>
+    </div>
+    <div class="small text-muted mt-2">Sab zaroori documents approve karne par pending rider khud approve ho jata hai.</div>
+  </div></div>
+
+  <div class="row g-3">
+  {% for it in items %}
+    <div class="col-md-6"><div class="card shadow-sm h-100"><div class="card-body">
+      <div class="d-flex justify-content-between"><b>{{ it.label }}</b>
+        {% if not it.doc %}<span class="badge bg-secondary">Nahi diya</span>
+        {% elif it.doc.status == 'approved' %}<span class="badge bg-success">Approved</span>
+        {% elif it.doc.status == 'rejected' %}<span class="badge bg-danger">Rad</span>
+        {% else %}<span class="badge bg-warning text-dark">Review baqi</span>{% endif %}</div>
+      {% if it.doc %}
+        <div class="small text-muted my-1">{% if it.doc.number %}Number: <b>{{ it.doc.number }}</b> · {% endif %}
+          {% if it.doc.expiry %}Expiry: <b class="{% if it.expired %}text-danger{% endif %}">{{ it.doc.expiry|date:"d M Y" }}{% if it.expired %} (expire){% endif %}</b> · {% endif %}
+          Upload: {{ it.doc.uploaded_at|date:"d M H:i" }}</div>
+        {% if it.doc.file.name|slice:"-4:"|lower == ".pdf" %}
+          <a href="{% url 'rider_document_file' it.doc.id %}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mb-2">📄 PDF kholen</a>
+        {% else %}
+          <a href="{% url 'rider_document_file' it.doc.id %}" target="_blank" rel="noopener"><img src="{% url 'rider_document_file' it.doc.id %}" alt="{{ it.label }}" class="img-fluid rounded border mb-2" style="max-height:220px"></a>
+        {% endif %}
+        {% if it.doc.status == 'rejected' %}<div class="small text-danger mb-2">Wajah: {{ it.doc.reject_reason }}</div>{% endif %}
+        <form method="post" class="d-flex flex-wrap gap-2">{% csrf_token %}
+          <input type="hidden" name="doc_id" value="{{ it.doc.id }}">
+          <button class="btn btn-sm btn-success" name="action" value="doc_approve"{% if it.doc.status == 'approved' %} disabled{% endif %}>✅ Approve</button>
+          <input class="form-control form-control-sm" name="reason" placeholder="Rad karne ki wajah" style="max-width:200px">
+          <button class="btn btn-sm btn-outline-danger" name="action" value="doc_reject">Rad</button>
+        </form>
+      {% endif %}
+    </div></div></div>
+  {% endfor %}
+  </div>
+</div>
+{% endblock %}

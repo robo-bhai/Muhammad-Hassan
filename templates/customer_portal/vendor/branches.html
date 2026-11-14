@@ -1,0 +1,76 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Branches{% endblock %}
+
+{% block content %}
+<style>
+    .br-wrap { max-width: 680px; margin: 26px auto; padding: 0 14px; }
+    .br-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .br-card { background: #fff; border-radius: 18px; box-shadow: 0 6px 28px rgba(0,0,0,.07); padding: 16px 18px; margin-bottom: 14px; }
+    .br-card h4 { margin: 0 0 10px; font-weight: 800; }
+    .br-in, .br-ta { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 8px 10px; font-size: 15px; margin-top: 4px; }
+    .br-lbl { display: block; font-weight: 700; font-size: 13.5px; margin-top: 10px; }
+    .br-btn { border: 0; border-radius: 12px; padding: 11px 18px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#ea580c,#f59e0b); cursor: pointer; width: 100%; margin-top: 14px; }
+    .br-mini { border: 1px solid #d1d5db; background: #fff; border-radius: 8px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+    .br-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid #f1f1f1; }
+    .br-row.on { background: #fff7ed; margin: 0 -10px; padding: 12px 10px; border-radius: 10px; }
+    .br-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .br-alert.error { background: #f8d7da; color: #721c24; }
+    .br-note { font-size: 12.5px; color: #6b7280; margin-top: 8px; }
+    .br-del { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 0 10px; }
+    .br-del input { border: 1px solid #d1d5db; border-radius: 8px; padding: 4px 8px; font-size: 13px; width: 150px; }
+    .br-red { border-color: #fecaca; color: #b91c1c; }
+    .br-badge { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+</style>
+
+<div class="br-wrap">
+    <a class="br-back" href="{% url 'vendor_dashboard' %}">&larr; Dashboard</a>
+    {% for m in messages %}<div class="br-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="br-card">
+        <h4>&#127978; Your stores</h4>
+        <div class="br-row {% if active.pk == owner.pk %}on{% endif %}">
+            <div><b>{{ owner.business_name }}</b> <small style="color:#6b7280;">main store</small>
+                {% if active.pk == owner.pk %}<span class="br-badge">working here</span>{% endif %}</div>
+            {% if active.pk != owner.pk %}
+            <form method="post" action="{% url 'vendor_branch_action' 0 'switch' %}">{% csrf_token %}<button class="br-mini" type="submit">Switch</button></form>
+            {% endif %}
+        </div>
+        {% for b in branches %}
+        <div class="br-row {% if active.pk == b.pk %}on{% endif %}">
+            <div><b>{{ b.branch_name }}</b> <small style="color:#6b7280;">{{ b.city }}</small>
+                {% if active.pk == b.pk %}<span class="br-badge">working here</span>{% endif %}</div>
+            {% if active.pk != b.pk %}
+            <form method="post" action="{% url 'vendor_branch_action' b.pk 'switch' %}">{% csrf_token %}<button class="br-mini" type="submit">Switch</button></form>
+            {% endif %}
+        </div>
+        <form method="post" action="{% url 'vendor_branch_action' b.pk 'delete' %}" class="br-del" onsubmit="return confirm('Delete branch {{ b.branch_name|escapejs }} and all its products? This cannot be undone.');">{% csrf_token %}
+            <input type="password" name="password" placeholder="Your password" autocomplete="current-password" required>
+            <button class="br-mini br-red" type="submit">Delete branch</button>
+        </form>
+        {% endfor %}
+        {% if branches %}<p class="br-note">Delete sirf tab hoti hai jab branch ka koi order, payout ya hisaab na ho. Warna store ko "Closed" kar dein.</p>{% endif %}
+        <p class="br-note">Switch karne ke baad dashboard, products, orders, reports aur payouts usi branch ke dikhte hain.</p>
+    </div>
+
+    {% if branches %}
+    <div class="br-card">
+        <h4>&#128203; Copy products</h4>
+        <p class="br-note" style="margin:0 0 10px;">Ek store ke products (variants/add-ons samet) doosre store me copy karein.</p>
+        <a class="br-btn" style="display:block;text-align:center;text-decoration:none;" href="{% url 'vendor_branch_copy' %}">Copy products between stores</a>
+    </div>
+    {% endif %}
+
+    <div class="br-card">
+        <h4>&#10133; Add branch</h4>
+        <form method="post">{% csrf_token %}
+            <label class="br-lbl">Branch name<input class="br-in" name="branch_name" maxlength="60" placeholder="Gulberg" required></label>
+            <label class="br-lbl">Branch phone (optional)<input class="br-in" name="phone" inputmode="tel" placeholder="03XXXXXXXXX"></label>
+            <label class="br-lbl">City<input class="br-in" name="city" maxlength="100" value="{{ owner.city }}"></label>
+            <label class="br-lbl">Address<textarea class="br-ta" name="address" rows="2" maxlength="300" required></textarea></label>
+            <label class="br-lbl">Delivery areas (comma se alag, optional)<textarea class="br-ta" name="delivery_areas" rows="2" maxlength="1000"></textarea></label>
+            <button class="br-btn" type="submit">Create branch</button>
+        </form>
+        <p class="br-note">Branch customer ko "{{ owner.business_name }} - Branch" naam se alag store dikhegi. Category, cuisines, delivery fee, timing aur commission main store se copy hote hain; products har branch ke apne hain. Max {{ max_branches }} branches.</p>
+    </div>
+</div>
+{% endblock %}

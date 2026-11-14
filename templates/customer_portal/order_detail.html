@@ -29,6 +29,23 @@
     <form method="post" action="{% url 'reorder' order.id %}" class="d-inline ms-2">{% csrf_token %}
         <button type="submit" class="btn btn-success btn-sm mb-3"><i class="bi bi-arrow-repeat"></i> Reorder</button>
     </form>
+    <details class="d-inline-block ms-2 mb-3 align-top">
+        <summary class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-check"></i> Repeat this order</summary>
+        <form method="post" action="{% url 'repeat_plan_create' order.id %}" class="card card-body mt-2" style="max-width:320px">{% csrf_token %}
+            <label class="form-label small mb-1">How often?</label>
+            <select name="frequency" class="form-select form-select-sm mb-2" onchange="this.form.weekday.style.display=this.value==='weekly'?'block':'none'">
+                <option value="daily">Every day</option>
+                <option value="weekly">Every week</option>
+            </select>
+            <select name="weekday" class="form-select form-select-sm mb-2" style="display:none">
+                <option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option>
+                <option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+            </select>
+            <label class="form-label small mb-1">Remind me at</label>
+            <input type="time" name="time_of_day" value="08:00" class="form-control form-control-sm mb-2" required>
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+        </form>
+    </details>
     {% endif %}
 
     <!-- Hero -->
@@ -107,6 +124,18 @@
         <a href="tel:{{ rider_di.rider.phone }}" class="ms-2">📞 {{ rider_di.rider.phone }}</a>
     </div></div>
     {% endif %}
+    {% endif %}
+
+    {% if SHOP.shop_order_chat_enabled %}
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body py-3 d-flex flex-wrap gap-2">
+        {% if is_store_order %}<button type="button" class="btn btn-outline-primary btn-sm"
+            onclick="OrderChat.open({{ order.id }}, 'vendor', [['vendor','Store']{% if rider_di.rider %},['rider','Rider']{% endif %}])">
+            💬 {% if LANG_CODE == 'ur' %}اسٹور سے بات کریں{% else %}Chat with store{% endif %}<span class="oc-badge" data-chat-badge="{{ order.id }}" data-chat-channel="vendor"></span></button>{% endif %}
+        {% if rider_di.rider %}<button type="button" class="btn btn-outline-primary btn-sm"
+            onclick="OrderChat.open({{ order.id }}, 'rider', [{% if is_store_order %}['vendor','Store'],{% endif %}['rider','Rider']])">
+            💬 {% if LANG_CODE == 'ur' %}رائیڈر سے بات کریں{% else %}Chat with rider{% endif %}<span class="oc-badge" data-chat-badge="{{ order.id }}" data-chat-channel="rider"></span></button>{% endif %}
+    </div></div>
+    {% include 'customer_portal/_order_chat_panel.html' %}
     {% endif %}
 
     {% if can_review %}

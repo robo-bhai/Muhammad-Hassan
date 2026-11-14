@@ -4,6 +4,7 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -38,7 +39,7 @@ def _sell_price(product):
 @vendor_login_required
 @flag_required('vendor_deals_enabled', redirect_to='vendor_dashboard')
 def vendor_deals(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     if not profile.is_approved:
         messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
@@ -147,7 +148,7 @@ def _create(request, profile, vendor):
 @vendor_login_required
 @require_POST
 def vendor_deal_end(request, pk):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     deal = get_object_or_404(StoreDeal, pk=pk, profile=profile)
     deal.is_active = False
     deal.save(update_fields=['is_active'])

@@ -1,5 +1,6 @@
 """Auto dispatch ke views: rider reject, vendor store location."""
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.views.decorators.http import require_POST
@@ -28,5 +29,5 @@ def vendor_set_location(request):
     coords = parse_coords(request.POST.get('lat'), request.POST.get('lng'))
     if coords is None:
         return JsonResponse({'ok': False, 'error': 'bad_coords'}, status=400)
-    VendorProfile.objects.filter(pk=request.user.vendor_profile.pk).update(lat=coords[0], lng=coords[1])
+    VendorProfile.objects.filter(pk=get_vendor_profile(request.user).pk).update(lat=coords[0], lng=coords[1])
     return JsonResponse({'ok': True})

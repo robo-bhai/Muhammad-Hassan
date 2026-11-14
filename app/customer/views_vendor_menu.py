@@ -7,6 +7,7 @@ sab se upar "Popular" section mein dikhte hain.
 import logging
 
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -30,7 +31,7 @@ def vendor_categories(profile):
 
 @vendor_login_required
 def vendor_menu(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     if not profile.is_approved:
         messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')

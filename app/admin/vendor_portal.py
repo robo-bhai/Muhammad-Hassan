@@ -559,3 +559,72 @@ class LoyaltyTransactionAdmin(admin.ModelAdmin):
             obj.kind = 'adjust'
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(WalletTopUp, site=admin.site)
+class WalletTopUpAdmin(admin.ModelAdmin):
+    """Customer ki wallet top-up / gift card requests. Payment (JazzCash/EasyPaisa/bank) check kar ke Approve karein."""
+    list_display = ('created_at', 'customer', 'kind', 'amount', 'method', 'reference', 'status', 'reviewed_by')
+    list_filter = ('status', 'kind', 'method')
+    search_fields = ('customer__name', 'customer__contact_number', 'reference')
+    raw_id_fields = ('customer',)
+    readonly_fields = ('customer', 'kind', 'amount', 'method', 'reference', 'recipient_name', 'message', 'status',
+                       'gift_card', 'reviewed_by', 'reviewed_at', 'created_at')
+    actions = ['approve_selected', 'reject_selected']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description='✅ Approve (payment mil gayi)')
+    def approve_selected(self, request, queryset):
+        from ..customer import wallet_funds
+        done = sum(1 for r in queryset.filter(status='pending') if wallet_funds.approve(r, request.user)[0])
+        self.message_user(request, f'{done} request approve ho gayi.', messages.SUCCESS)
+
+    @admin.action(description='❌ Reject (payment nahi mili)')
+    def reject_selected(self, request, queryset):
+        from ..customer import wallet_funds
+        done = sum(1 for r in queryset.filter(status='pending') if wallet_funds.reject(r, request.user)[0])
+        self.message_user(request, f'{done} request reject ho gayi.', messages.WARNING)
+
+
+@admin.register(GiftCard, site=admin.site)
+class GiftCardAdmin(admin.ModelAdmin):
+    """Gift cards. Online khareedne par Approve se khud banta hai; yahan se shop khud bhi (promo ke liye) bana sakti hai."""
+    list_display = ('code', 'amount', 'status', 'buyer', 'redeemed_by', 'expires_at', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('code', 'buyer__name', 'redeemed_by__name', 'recipient_name')
+    raw_id_fields = ('buyer', 'redeemed_by')
+    fields = ('code', 'amount', 'status', 'expires_at', 'buyer', 'recipient_name', 'message', 'redeemed_by', 'redeemed_at')
+    actions = ['cancel_selected']
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return ('code', 'amount', 'buyer', 'recipient_name', 'message', 'redeemed_by', 'redeemed_at')
+        return ('code', 'status', 'redeemed_by', 'redeemed_at')
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            from ..customer import wallet_funds
+            obj.code = wallet_funds.generate_code()
+            obj.issued_by = request.user
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description='❌ Cancel (sirf active cards)')
+    def cancel_selected(self, request, queryset):
+        n = queryset.filter(status='active').update(status='cancelled')
+        self.message_user(request, f'{n} gift card cancel ho gaye.', messages.WARNING)
+
+
+@admin.register(VendorStaff, site=admin.site)
+class VendorStaffAdmin(admin.ModelAdmin):
+    list_display = ('name', 'store', 'phone', 'role', 'is_active', 'last_login_at')
+    list_filter = ('role', 'is_active')
+    search_fields = ('name', 'phone', 'store__business_name')
+    readonly_fields = ('user', 'last_login_at', 'created_at')

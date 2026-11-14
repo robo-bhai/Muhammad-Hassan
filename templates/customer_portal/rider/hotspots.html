@@ -1,0 +1,90 @@
+{% extends 'customer_portal/rider/base.html' %}
+{% block title %}Demand{% endblock %}
+{% block body %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<div class="wrap">
+  <h3>🔥 Kahan orders zyada hain</h3>
+  {% if not has_data %}
+    <div class="card empty">Abhi itna data nahi ke demand dikhayi ja sake. Kuch din orders aane dein.</div>
+  {% else %}
+  <div class="card">
+    <div class="acts" style="margin:0 0 8px">
+      <button type="button" class="btn o s hs-tab" data-k="now">Abhi (agle 3 ghante)</button>
+      <button type="button" class="btn l s hs-tab" data-k="day">Aaj ({{ today_name }})</button>
+      <button type="button" class="btn l s hs-tab" data-k="all">Poora hafta</button>
+    </div>
+    {% if has_zones %}
+    <div id="hsMap" style="height:300px;border-radius:14px"></div>
+    <div class="hs-legend"><i style="background:#dc2626"></i> bohat zyada <i style="background:#f59e0b"></i> theek-thaak <i style="background:#facc15"></i> kam</div>
+    <ol id="hsList" class="stops"></ol>
+    {% else %}
+    <div class="empty">Stores ki location (GPS) set na hone ki wajah se map nahi ban saka.</div>
+    {% endif %}
+    <small style="color:var(--mut)">Pichle 4 hafton ke orders ke mutabiq. Zone = store ke aas-paas ka ~1 km.</small>
+  </div>
+
+  <h3>⏰ Aaj ({{ today_name }}) ke ghante</h3>
+  <div class="card">
+    {% if today_window %}<div class="batch-tag">Behtareen shift: {{ today_window.start }}:00 – {{ today_window.end }}:00 (~{{ today_window.avg }} order/ghanta)</div>{% endif %}
+    <div class="hs-bars">
+      {% for v in data.profile %}<div class="hs-col{% if forloop.counter0 == data.hour %} now{% endif %}" title="{{ forloop.counter0 }}:00 — {{ v }} orders/ghanta"><span style="height:{% widthratio v max_hour 100 %}%"></span><small>{% if forloop.counter0|divisibleby:3 %}{{ forloop.counter0 }}{% endif %}</small></div>{% endfor %}
+    </div>
+  </div>
+
+  <h3>🗓️ Shift planner</h3>
+  <div class="card">
+    <table>
+      {% for p in plan %}
+      <tr><td><b>{{ p.day }}</b></td>
+        <td>{% if p.window %}{{ p.window.start }}:00 – {{ p.window.end }}:00{% else %}—{% endif %}</td>
+        <td style="text-align:right">{% if p.window %}~{{ p.window.avg }} order/ghanta{% else %}<small>data kam</small>{% endif %}</td></tr>
+      {% endfor %}
+    </table>
+    <small style="color:var(--mut)">Har din ki 3 ghante ki sab se busy window.</small>
+  </div>
+  {% endif %}
+</div>
+<style>
+  .hs-legend{font-size:12px;color:var(--mut);margin:8px 0}.hs-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 8px}
+  .hs-bars{display:flex;align-items:flex-end;gap:2px;height:110px;margin-top:8px}
+  .hs-col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+  .hs-col span{display:block;width:100%;background:#fdba74;border-radius:3px 3px 0 0;min-height:2px}
+  .hs-col.now span{background:var(--brand)}.hs-col small{font-size:9px;color:var(--mut);height:12px}
+</style>
+{% if has_zones %}
+{{ data|json_script:"hsData" }}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('hsData').textContent);
+  var map = L.map('hsMap'), layer = L.layerGroup().addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+  function color(l){ return l>=.67 ? '#dc2626' : (l>=.34 ? '#f59e0b' : '#facc15'); }
+  function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  function show(k){
+    var zs = D['zones_'+k] || [], list = document.getElementById('hsList');
+    layer.clearLayers(); list.innerHTML = '';
+    var pts = [];
+    zs.forEach(function(z, i){
+      var ll = [z.lat, z.lng]; pts.push(ll);
+      L.circle(ll, {radius: 350 + z.level*450, color: color(z.level), fillColor: color(z.level), fillOpacity: .45, weight: 1})
+        .addTo(layer).bindPopup('<b>'+esc(z.names.join(', '))+'</b><br>'+z.count+' orders');
+      var li = document.createElement('li');
+      li.innerHTML = '<b>'+esc(z.names.join(', '))+'</b> <small>('+z.count+' orders)</small>';
+      list.appendChild(li);
+    });
+    if (D.my) { L.marker(D.my).addTo(layer).bindPopup('Aap yahan hain'); pts.push(D.my); }
+    if (!zs.length) { list.innerHTML = '<li>Is waqt ke liye koi data nahi.</li>'; }
+    if (pts.length) map.fitBounds(pts, {padding:[30,30], maxZoom:15}); else map.setView([30.3753,69.3451], 5);
+  }
+  document.querySelectorAll('.hs-tab').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.hs-tab').forEach(function(x){ x.className = 'btn l s hs-tab'; });
+      b.className = 'btn o s hs-tab'; show(b.dataset.k);
+    });
+  });
+  show('now');
+})();
+</script>
+{% endif %}
+{% endblock %}

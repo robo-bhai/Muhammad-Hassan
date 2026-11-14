@@ -23,6 +23,14 @@ class WishlistItem(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='wishlist_items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='wishlisted_by')
     created_at = models.DateTimeField(auto_now_add=True)
+    # Alerts: maal wapas aaye (Back in stock) aur qeemat gire (Price drop)
+    notify_stock = models.BooleanField(default=True)
+    notify_price = models.BooleanField(default=True)
+    last_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True,
+                                     help_text="Aakhri dekhi hui qeemat; isse neeche jaye to price drop alert")
+    was_out_of_stock = models.BooleanField(default=False,
+                                           help_text="Stock 0 hua tha; wapas aane par Back in stock alert")
+    last_alert_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('customer', 'product')

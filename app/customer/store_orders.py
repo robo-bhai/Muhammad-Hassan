@@ -205,12 +205,9 @@ def session_schedule(session):
         return None
 
 
-def _within_hours_at(prof, local_time):
-    if not prof.opens_at or not prof.closes_at:
-        return True
-    if prof.opens_at <= prof.closes_at:
-        return prof.opens_at <= local_time <= prof.closes_at
-    return local_time >= prof.opens_at or local_time <= prof.closes_at
+def _within_hours_at(prof, local_dt):
+    """local_dt = aware local datetime (din ke hisab se waqt dekhna hai)."""
+    return prof.within_hours_at(local_dt)
 
 
 def schedule_error(cart, when, subtotal=0):
@@ -226,9 +223,11 @@ def schedule_error(cart, when, subtotal=0):
     if rules.get('is_vendor_store') and prof:
         if prof.store_status == 'closed':
             return f"{rules['name']} abhi band hai, schedule order nahi ho sakta."
-        if not _within_hours_at(prof, timezone.localtime(when).time()):
-            return (f"{rules['name']} us waqt band hoga. Khulne ka waqt: "
-                    f"{prof.opens_at.strftime('%I:%M %p')} - {prof.closes_at.strftime('%I:%M %p')}.")
+        local_when = timezone.localtime(when)
+        if not _within_hours_at(prof, local_when):
+            day = prof.DAY_NAMES[local_when.weekday()]
+            return (f"{rules['name']} us waqt band hoga. {day} ko khulne ka waqt: "
+                    f"{prof.hours_text_for(local_when)}.")
     return None
 
 
@@ -356,23 +355,55 @@ def notify_vendor_new_order(order):
         return
     from . import whatsapp_auto
     whatsapp_auto.notify(order, 'placed')
+    if try_auto_accept(order, prof):
+        return
     items = order.items.count()
     when = ''
     if getattr(order, 'scheduled_for', None):
         from django.utils import timezone
         when = f"\n⏰ Schedule: {timezone.localtime(order.scheduled_for).strftime('%d %b, %I:%M %p')}"
-    _notify(
-        prof.user,
-        f'🛒 Naya order #{order.order_no}' + (' (schedule)' if when else ''),
-        (f'{order.customer.name} - {items} item(s)\n'
-         f'Total: Rs. {order_payable_total(order):,.0f}{when}\n'
-         f'Dashboard mein Accept ya Reject karein.'),
-        link='/shop/vendor/orders/',
-        kind='sale',
-        push_kind='vendor',
-        push_actions=_vendor_buttons(prof.user, order),     # notification se seedha Accept / Reject
-    )
-    _start_reminders(order, prof.user)
+    from .vendor_access import notify_users
+    for target in notify_users(prof):          # owner (branch ho to us ka owner) + active staff
+        _notify(
+            target,
+            f'🛒 Naya order #{order.order_no}' + (' (schedule)' if when else '') + (f' [{prof.branch_name}]' if prof.parent_id else ''),
+            (f'{order.customer.name} - {items} item(s)\n'
+             f'Total: Rs. {order_payable_total(order):,.0f}{when}\n'
+             f'Dashboard mein Accept ya Reject karein.'),
+            link='/shop/vendor/orders/',
+            kind='sale',
+            push_kind='vendor',
+            push_actions=_vendor_buttons(target, order),     # notification se seedha Accept / Reject
+        )
+        _start_reminders(order, target)
+
+
+def try_auto_accept(order, prof):
+    """Store ne auto-accept chalu kiya ho to naya order khud qubool. True = ho gaya (ringtone/reminders ki zaroorat nahi).
+    Koi bhi galti ho to False: order normal tareeqe se vendor ke paas jata hai (kabhi order nahi rukta)."""
+    if not getattr(prof, 'auto_accept', False) or order.status != 'pending':
+        return False
+    try:
+        from django.db import transaction
+        from ..models import SaleOrder
+        with transaction.atomic():
+            locked = SaleOrder.objects.select_for_update().get(pk=order.pk)
+            if locked.status != 'pending':
+                return False
+            apply_vendor_action(locked, 'accept', user=prof.user,
+                                prep_minutes=prof.auto_accept_prep_minutes or None)
+        order.status = locked.status
+        order.prep_minutes = locked.prep_minutes
+        from .vendor_access import notify_users
+        for target in notify_users(prof):
+            _notify(target, f'✅ Order #{order.order_no} auto-accept ho gaya' + (f' [{prof.branch_name}]' if prof.parent_id else ''),
+                    f'{order.customer.name} - Rs. {order_payable_total(order):,.0f}\n'
+                    'Auto-accept chalu hai. Tayyar hone par Ready dabayein.',
+                    link='/shop/vendor/orders/?tab=active', kind='sale')   # push_kind nahi: auto-accept par ring nahi bajni chahiye
+        return True
+    except Exception as exc:
+        logger.error('Auto-accept error (order %s): %s', getattr(order, 'pk', '?'), exc)
+        return False
 
 
 def _vendor_buttons(user, order):
@@ -427,7 +458,7 @@ def suggest_other_stores(order, limit=3):
     live = Product.objects.filter(is_active=True, approval_status='approved', vendor__isnull=False)
     base = VendorProfile.objects.filter(
         is_approved=True, vendor__in=live.values('vendor')
-    ).exclude(vendor_id=order.vendor_id).select_related('vendor')
+    ).exclude(vendor_id=order.vendor_id).select_related('vendor').prefetch_related('day_hours')
 
     cat_ids = list(
         Product.objects.filter(saleorderitem__order=order)

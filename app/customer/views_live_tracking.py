@@ -9,6 +9,7 @@ Live rider tracking (Talabat jaisa map).
 Privacy: location sirf tab milti hai jab delivery chal rahi ho (assigned / picked_up / in_transit).
 """
 import math
+from datetime import datetime, timezone as dt_timezone
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
@@ -18,7 +19,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from ..models import DeliveryInfo, RiderProfile, SaleOrder
-from . import drop_pin
+from . import drop_pin, location_sync
 from .views_rider_portal import ACTIVE_STATUSES, rider_login_required
 
 MIN_SECONDS_BETWEEN_UPDATES = 3
@@ -52,10 +53,16 @@ def rider_location_update(request):
     if not rider.is_online:
         return JsonResponse({'ok': False, 'error': 'offline'}, status=409)
     now = timezone.now()
-    if rider.last_location_at and (now - rider.last_location_at).total_seconds() < MIN_SECONDS_BETWEEN_UPDATES:
-        return JsonResponse({'ok': True, 'skipped': True})
+    # Offline queue se aayi point mein `at` (epoch seconds) hota hai: purani point naye ko overwrite nahi karti.
+    captured, reason = location_sync.resolve_capture(
+        request.POST.get('at'), now.timestamp(),
+        rider.last_location_at.timestamp() if rider.last_location_at else None,
+        min_gap=MIN_SECONDS_BETWEEN_UPDATES)
+    if captured is None:
+        return JsonResponse({'ok': True, 'skipped': True, 'reason': reason})
     RiderProfile.objects.filter(pk=rider.pk).update(
-        last_lat=coords[0], last_lng=coords[1], last_location_at=now, last_seen_at=now)
+        last_lat=coords[0], last_lng=coords[1],
+        last_location_at=datetime.fromtimestamp(captured, tz=dt_timezone.utc), last_seen_at=now)
     return JsonResponse({'ok': True})
 
 

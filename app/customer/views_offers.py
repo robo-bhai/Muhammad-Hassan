@@ -51,8 +51,19 @@ def wallet_page(request):
         'cashback_percent': offers.setting_decimal('cashback_percent', '0'),
         'cashback_max': offers.setting_decimal('cashback_max', '0'),
         'loyalty': _loyalty_context(customer),
+        'funds': _funds_context(customer),
         'cart_count': get_cart_count_value(request),
     })
+
+
+def _funds_context(customer):
+    """Top-up / gift card hissa; ghalti par wallet page nahi rukta."""
+    try:
+        from . import wallet_funds
+        return wallet_funds.wallet_context(customer)
+    except Exception:
+        logger.exception('Wallet funds context error')
+        return None
 
 
 def _loyalty_context(customer):

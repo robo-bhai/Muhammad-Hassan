@@ -1,0 +1,20 @@
+<div class="card">
+  <div class="row"><b>🔋 Battery saver</b>
+    <select id="saverSel" style="padding:8px;border-radius:10px;border:1px solid #d1d5db;font-size:14px;background:#fff">
+      <option value="auto">Auto (battery 20% se kam)</option>
+      <option value="on">Hamesha ON</option>
+      <option value="off">OFF</option>
+    </select></div>
+  <small style="color:var(--mut)">Delivery ke dauran location kam baar (~20 sec) aur kam GPS power se jati hai, aur screen jagaye nahi rakhi jati. <span id="saverNow"></span></small>
+</div>
+<script>
+(function(){
+  var sel = document.getElementById('saverSel'), now = document.getElementById('saverNow');
+  try{ sel.value = localStorage.getItem('riderSaver') || 'auto'; }catch(e){}
+  sel.addEventListener('change', function(){
+    try{ localStorage.setItem('riderSaver', sel.value); }catch(e){}
+    window.dispatchEvent(new Event('riderSaverChanged'));
+  });
+  window.addEventListener('riderSaverState', function(e){ now.textContent = e.detail.saver ? '\uD83D\uDFE2 Abhi saver chal raha hai.' : ''; });
+})();
+</script>

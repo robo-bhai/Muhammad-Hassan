@@ -9,10 +9,12 @@ from app.customer import views_password_reset
 from app.customer import views_product_options
 from app.customer import views_vendor_menu
 from app.customer import views_favorites
+from app.customer import views_order_chat
 from app.customer import views_vendor_tools
 from app.customer import views_coupons
 from app.customer import views_offers
 from app.customer import views_rider_portal
+from app.customer import views_rider_onboarding
 from app.customer import views_rider_password_reset
 from app.customer import views_live_tracking
 from app.customer import views_dispatch
@@ -21,8 +23,12 @@ from app.customer import views_vendor_deals
 from app.customer import views_disputes
 from app.customer import views_dispute_responses
 from app.customer import views_vendor_payouts
+from app.customer import views_vendor_staff
+from app.customer import views_vendor_branches
 from app.views_frontend.purchase import disputes as views_admin_disputes
 from app.customer import views_reorder
+from app.customer import views_repeat
+from app.customer import views_wallet_funds
 from app.customer import views_schedule
 from app.customer import views_push
 from app.customer import push_actions
@@ -1182,6 +1188,9 @@ urlpatterns = [
      path('shop/coupon/remove/', views_coupons.remove_coupon, name='remove_coupon'),
      path('shop/wallet/', views_offers.wallet_page, name='wallet_page'),
      path('shop/wallet/use/', views_offers.wallet_toggle, name='wallet_toggle'),
+     path('shop/wallet/topup/', views_wallet_funds.topup_request, name='wallet_topup_request'),
+     path('shop/wallet/gift/buy/', views_wallet_funds.gift_buy, name='gift_card_buy'),
+     path('shop/wallet/gift/redeem/', views_wallet_funds.gift_redeem, name='gift_card_redeem'),
      path('shop/pro/', views_offers.pro_page, name='pro_page'),
      path('shop/pro/request/', views_offers.pro_request, name='pro_request'),
      path('shop/pro/wallet/', views_offers.pro_buy_wallet, name='pro_buy_wallet'),
@@ -1189,6 +1198,7 @@ urlpatterns = [
      path('shop/favourites/', views_favorites.favorites_page, name='favorites_page'),
      path('shop/favourites/store/<int:pk>/toggle/', views_favorites.favorite_store_toggle, name='favorite_store_toggle'),
      path('shop/favourites/item/<int:pk>/toggle/', views_favorites.wishlist_toggle, name='wishlist_toggle'),
+     path('shop/favourites/item/<int:pk>/alert/<str:kind>/', views_favorites.wishlist_alert_toggle, name='wishlist_alert_toggle'),
      path('shop/vendor/orders/<int:pk>/assign-rider/', views_rider_portal.vendor_assign_rider, name='vendor_assign_rider'),
      path('shop/vendor/orders/<int:pk>/<str:action>/', views_vendor_portal.vendor_order_action, name='vendor_order_action'),
      path('shop/vendor/api/orders-poll/', views_vendor_portal.vendor_orders_poll, name='vendor_orders_poll'),
@@ -1201,6 +1211,14 @@ urlpatterns = [
      path('shop/rider/', views_rider_portal.rider_home, name='rider_home'),
      path('shop/rider/history/', views_rider_portal.rider_history, name='rider_history'),
      path('shop/rider/earnings/', views_rider_portal.rider_earnings, name='rider_earnings'),
+     path('shop/rider/hotspots/', views_rider_portal.rider_hotspots, name='rider_hotspots'),
+     path('shop/rider/documents/', views_rider_onboarding.rider_documents, name='rider_documents'),
+     path('shop/rider/documents/<int:pk>/file/', views_rider_onboarding.rider_document_file, name='rider_document_file'),
+     path('shop/rider/shifts/', views_rider_onboarding.rider_shifts, name='rider_shifts'),
+     path('shop/rider/shifts/<int:pk>/book/', views_rider_onboarding.rider_shift_book, name='rider_shift_book'),
+     path('shop/rider/shifts/<int:pk>/cancel/', views_rider_onboarding.rider_shift_cancel, name='rider_shift_cancel'),
+     path('shop/rider/manage/shifts/', views_rider_onboarding.rider_shift_admin, name='rider_shift_admin'),
+     path('shop/rider/manage/<int:pk>/review/', views_rider_onboarding.rider_review, name='rider_review'),
      path('shop/rider/online/', views_rider_portal.rider_toggle_online, name='rider_toggle_online'),
      path('shop/rider/api/poll/', views_rider_portal.rider_poll, name='rider_poll'),
      path('shop/rider/api/location/', views_live_tracking.rider_location_update, name='rider_location_update'),
@@ -1236,6 +1254,12 @@ urlpatterns = [
      path('shop/vendor/reviews/<int:review_id>/reply/', views_reviews.vendor_reply_review, name='vendor_reply_review'),
      path('shop/order/<int:order_id>/dispute/', views_disputes.dispute_create, name='dispute_create'),
      path('shop/vendor/payouts/', views_vendor_payouts.vendor_payouts, name='vendor_payouts'),
+     path('shop/vendor/staff/', views_vendor_staff.vendor_staff, name='vendor_staff'),
+     path('shop/vendor/switch-store/', views_vendor_staff.vendor_switch_store, name='vendor_switch_store'),
+     path('shop/vendor/branches/', views_vendor_branches.vendor_branches, name='vendor_branches'),
+     path('shop/vendor/branches/copy/', views_vendor_branches.vendor_branch_copy, name='vendor_branch_copy'),
+     path('shop/vendor/branches/<int:pk>/<str:action>/', views_vendor_branches.vendor_branch_action, name='vendor_branch_action'),
+     path('shop/vendor/staff/<int:pk>/<str:action>/', views_vendor_staff.vendor_staff_action, name='vendor_staff_action'),
      path('shop/vendor/payouts/<int:pk>/cancel/', views_vendor_payouts.vendor_payout_cancel, name='vendor_payout_cancel'),
      path('shop/vendor/disputes/', views_dispute_responses.vendor_disputes, name='vendor_disputes'),
      path('shop/vendor/disputes/<int:pk>/', views_dispute_responses.vendor_dispute_detail, name='vendor_dispute_detail'),
@@ -1244,6 +1268,11 @@ urlpatterns = [
      path('disputes/', views_admin_disputes.dispute_list, name='dispute_list'),
      path('disputes/<int:pk>/', views_admin_disputes.dispute_detail, name='dispute_detail'),
      path('shop/order/<int:order_id>/reorder/', views_reorder.reorder, name='reorder'),
+     path('shop/repeat/', views_repeat.repeat_plans_page, name='repeat_plans'),
+     path('shop/order/<int:order_id>/repeat/', views_repeat.repeat_plan_create, name='repeat_plan_create'),
+     path('shop/repeat/<int:pk>/toggle/', views_repeat.repeat_plan_toggle, name='repeat_plan_toggle'),
+     path('shop/repeat/<int:pk>/delete/', views_repeat.repeat_plan_delete, name='repeat_plan_delete'),
+     path('shop/repeat/<int:pk>/run/', views_repeat.repeat_plan_run, name='repeat_plan_run'),
      path('customers/<int:pk>/', views_frontend.customer_ledger, name='customer_detail'),
      path('shop/send-order-otp/', views_customer_auth.send_order_otp, name='send_order_otp'),
      path('shop/verify-order-otp/', views_customer_auth.verify_order_otp, name='verify_order_otp'),
@@ -1259,6 +1288,9 @@ urlpatterns = [
     path('shop/api/otp-remaining/', views_customer_portal.get_otp_remaining_api, name='get_otp_remaining_api'),
     path('shop/buy-now/<int:product_id>/', views_customer_portal.buy_now, name='buy_now'),
     path('shop/update-address/', views_customer_portal.update_delivery_address, name='update_delivery_address'),
+    path('shop/order-chat/unread/', views_order_chat.order_chat_unread, name='order_chat_unread'),
+    path('shop/order-chat/<int:order_id>/<str:channel>/messages/', views_order_chat.order_chat_messages, name='order_chat_messages'),
+    path('shop/order-chat/<int:order_id>/<str:channel>/send/', views_order_chat.order_chat_send, name='order_chat_send'),
     path('shop/chat/send/', views_customer_portal.chat_send_message, name='chat_send'),
     path('shop/chat/messages/', views_customer_portal.chat_get_messages, name='chat_get_messages'),
     path('shop/chat/typing/', views_customer_portal.chat_typing, name='chat_typing'),

@@ -11,5 +11,6 @@ class AppConfig(AppConfig):
         import app.ledger.signals_gl
         import app.customer.offers_signals
         import app.customer.stock_alerts
+        import app.customer.wishlist_alerts
         from app.image_tools import connect_signals as _img_signals
         _img_signals()

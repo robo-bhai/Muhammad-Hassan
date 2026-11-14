@@ -1,0 +1,67 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Copy products{% endblock %}
+
+{% block content %}
+<style>
+    .cp-wrap { max-width: 680px; margin: 26px auto; padding: 0 14px; }
+    .cp-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .cp-card { background: #fff; border-radius: 18px; box-shadow: 0 6px 28px rgba(0,0,0,.07); padding: 16px 18px; margin-bottom: 14px; }
+    .cp-card h4 { margin: 0 0 10px; font-weight: 800; }
+    .cp-sel, .cp-in { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 8px 10px; font-size: 15px; margin-top: 4px; }
+    .cp-lbl { display: block; font-weight: 700; font-size: 13.5px; margin-top: 10px; }
+    .cp-btn { border: 0; border-radius: 12px; padding: 11px 18px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#ea580c,#f59e0b); cursor: pointer; width: 100%; margin-top: 14px; }
+    .cp-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .cp-alert.error { background: #f8d7da; color: #721c24; }
+    .cp-pick { max-height: 340px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 10px; padding: 4px 10px; margin-top: 6px; }
+    .cp-p { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed #f0f0f0; font-size: 14px; }
+    .cp-p:last-child { border-bottom: 0; }
+    .cp-p .nm { flex: 1; }
+    .cp-p small { color: #6b7280; }
+    .cp-note { font-size: 12.5px; color: #6b7280; margin-top: 8px; }
+</style>
+
+<div class="cp-wrap">
+    <a class="cp-back" href="{% url 'vendor_branches' %}">&larr; Branches</a>
+    {% for m in messages %}<div class="cp-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="cp-card">
+        <h4>&#128203; Copy products</h4>
+        <form method="get">
+            <label class="cp-lbl">From
+                <select class="cp-sel" name="src">{% for s in stores %}<option value="{{ s.pk }}" {% if src.pk == s.pk %}selected{% endif %}>{{ s.business_name }}</option>{% endfor %}</select></label>
+            <label class="cp-lbl">To
+                <select class="cp-sel" name="dst">{% for s in stores %}<option value="{{ s.pk }}" {% if dst.pk == s.pk %}selected{% endif %}>{{ s.business_name }}</option>{% endfor %}</select></label>
+            <button class="cp-btn" type="submit">Show products</button>
+        </form>
+    </div>
+
+    {% if src and dst %}
+    <div class="cp-card">
+        <h4>Choose products ({{ products|length }})</h4>
+        {% if products %}
+        <form method="post">{% csrf_token %}
+            <input type="hidden" name="src" value="{{ src.pk }}">
+            <input type="hidden" name="dst" value="{{ dst.pk }}">
+            <label style="font-size:14px;"><input type="checkbox" onclick="document.querySelectorAll('.cp-chk:not(:disabled)').forEach(c=>c.checked=this.checked)" checked> Select all</label>
+            <div class="cp-pick">
+                {% for p in products %}
+                <label class="cp-p">
+                    <input class="cp-chk" type="checkbox" name="product" value="{{ p.pk }}" {% if p.already %}disabled{% else %}checked{% endif %}>
+                    <span class="nm">{{ p.name }}{% if p.category %} <small>&middot; {{ p.category.name }}</small>{% endif %}</span>
+                    <small>{% if p.already %}already there{% else %}Rs. {{ p.price|floatformat:0 }}{% endif %}</small>
+                </label>
+                {% endfor %}
+            </div>
+            <label class="cp-lbl"><input type="checkbox" name="with_options" value="1" checked> Copy variants and add-ons too</label>
+            <label class="cp-lbl">Starting stock for each copied product
+                <input class="cp-in" type="number" name="stock" min="0" value="0"></label>
+            <button class="cp-btn" type="submit">Copy to {{ dst.business_name }}</button>
+        </form>
+        <p class="cp-note">Jo product naam se pehle se maujood ho wo chhor diya jata hai. Stock 0 rakhein to branch me product "out of stock" dikhega jab tak aap stock add na karein. Agar admin ne naye products ke liye approval on rakha hai to copy hue products bhi approval ka intezar karenge.</p>
+        {% else %}
+        <p style="margin:0;color:#6b7280;">{% if src.pk == dst.pk %}Do alag stores chunein.{% else %}Is store me copy karne ke liye products nahi hain.{% endif %}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -89,7 +89,7 @@ def _compute_ranking(order, max_active, active_statuses):
     from ..models import RiderProfile
     now = timezone.now()
     riders = (RiderProfile.objects
-              .filter(is_active=True, is_online=True,
+              .filter(is_active=True, is_online=True, approval_status='approved',
                       last_seen_at__gte=now - timedelta(seconds=SEEN_FRESH_SECONDS))
               .annotate(active_n=Count('deliveries', filter=Q(deliveries__status__in=active_statuses))))
     cands = []

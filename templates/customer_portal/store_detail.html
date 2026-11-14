@@ -147,8 +147,11 @@
         {% if fee_too_far %}<div style="color:#b91c1c;font-size:12.5px;font-weight:700;margin-top:2px">{{ fee_range_message }}</div>{% endif %}</div>
       {% if store_cuisines %}<div class="sd-stat"><div class="k">Cuisines</div><div class="v">{% for c in store_cuisines %}{{ c.icon }} {{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div></div>{% endif %}
       <div class="sd-stat"><div class="k">Minimum order</div><div class="v"><i class="bi bi-basket"></i>{% if store.min_order_amount > 0 %}{{ currency }} {{ store.min_order_amount|floatformat:0 }}{% else %}None{% endif %}</div></div>
-      {% if store.opens_at and store.closes_at %}
-      <div class="sd-stat"><div class="k">Opening hours</div><div class="v"><i class="bi bi-calendar-check"></i>{{ store.opens_at|time:"H:i" }} - {{ store.closes_at|time:"H:i" }}</div></div>
+      {% if store.has_any_hours %}
+      <div class="sd-stat"><div class="k">Opening hours</div><div class="v"><i class="bi bi-calendar-check"></i>{{ store.today_hours_text }}{% if store.has_day_hours %}
+        <details style="font-size:12px;font-weight:500;margin-top:2px;"><summary style="cursor:pointer;color:#2563eb;">All days</summary>
+          {% for d in store.week_hours %}<div style="{% if d.today %}font-weight:800;{% endif %}">{{ d.day|slice:":3" }}: {{ d.text }}</div>{% endfor %}
+        </details>{% endif %}</div></div>
       {% endif %}
     </div>
 
@@ -162,7 +165,9 @@
 
   <form class="sd-search" method="get">
     {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
-    <input type="text" name="q" value="{{ search }}" placeholder="Is store mein search karein...">
+    <input type="text" name="q" id="sdQ" value="{{ search }}" placeholder="{% if LANG_CODE == 'ur' %}اس اسٹور میں تلاش کریں...{% else %}Is store mein search karein...{% endif %}">
+    <button type="button" class="voice-lang-btn" data-voice-lang-btn onclick="toggleVoiceLang()" title="Voice language: English / اردو" aria-label="Voice language" style="background:#eef2ff;color:#4338ca;border:1.5px solid #c7d2fe;border-radius:999px;padding:0 10px;align-self:center;height:34px">EN</button>
+    <button type="button" class="st-mic" id="sdMic" onclick="toggleVoiceSearch('sdQ','sdMic',true)" title="Voice Search" aria-label="Voice Search" style="background:#eef2ff;color:#4338ca;border-radius:12px;padding:0 13px"><i class="bi bi-mic-fill"></i></button>
     <button type="submit" aria-label="Search"><i class="bi bi-search"></i></button>
   </form>
 

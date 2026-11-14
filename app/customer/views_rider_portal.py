@@ -10,6 +10,7 @@ import logging
 from functools import wraps
 
 from django.conf import settings
+from .vendor_access import get_vendor_profile
 from django.contrib import messages
 from django.contrib.auth import authenticate, logout
 from django.contrib.auth.models import User
@@ -29,11 +30,15 @@ from django.views.decorators.http import require_POST
 
 from ..decorators import vendor_login_required
 from ..models import (
-    CompanyInfo, DeliveryInfo, OrderTracking, RiderProfile, RiderSettlement, SaleOrder, VendorProfile,
+    CompanyInfo, DeliveryInfo, OrderTracking, RiderBonus, RiderProfile, RiderSettlement, SaleOrder, VendorProfile,
 )
 from . import store_orders
 from ..utils.password_policy import first_error
 from . import dispatch
+from . import batching
+from . import demand
+from . import goals
+from . import rider_gate
 from .views_reviews import rider_rating
 from .views_customer_auth import get_client_ip, is_valid_phone, normalize_phone, safe_login
 
@@ -102,8 +107,11 @@ def rider_balances(rider):
     d = DeliveryInfo.objects.filter(rider=rider, status='delivered').aggregate(
         cash=Sum('cash_collected'), earned=Sum('rider_fee'), n=Count('id'))
     st = {r['kind']: _D(r['t']) for r in rider.settlements.values('kind').annotate(t=Sum('amount'))}
-    cash, earned = _D(d['cash']), _D(d['earned'])
+    cash, fees = _D(d['cash']), _D(d['earned'])
+    bonus = _D(rider.bonuses.aggregate(t=Sum('amount'))['t'])
+    earned = fees + bonus
     return {
+        'bonus': bonus, 'fees': fees,
         'deliveries': d['n'] or 0,
         'cash_collected': cash,
         'cash_deposited': st.get('cash_in', Decimal('0')),
@@ -120,6 +128,63 @@ def period_stats(rider, since_date):
     return {'deliveries': a['n'] or 0, 'earned': _D(a['earned'])}
 
 
+def _setting_num(name):
+    from .offers import setting_decimal
+    return setting_decimal(name, '0')
+
+
+def _goal_cfg():
+    return {
+        'daily': (int(_setting_num('rider_goal_daily_orders')), _setting_num('rider_goal_daily_bonus')),
+        'weekly': (int(_setting_num('rider_goal_weekly_orders')), _setting_num('rider_goal_weekly_bonus')),
+    }
+
+
+def _goal_periods():
+    today = timezone.localdate()
+    return {'daily': today, 'weekly': goals.week_start(today)}
+
+
+def _goals_ctx(rider):
+    """Rider ke goals ki progress: [{'kind','label','done','goal','bonus','pct','left','reached','paid'}]."""
+    out = []
+    periods = _goal_periods()
+    cfg = _goal_cfg()
+    labels = {'daily': 'Aaj ka goal', 'weekly': 'Is hafte ka goal'}
+    for kind in ('daily', 'weekly'):
+        goal, bonus = cfg[kind]
+        p = goals.progress(period_stats(rider, periods[kind])['deliveries'], goal, bonus)
+        if not p:
+            continue
+        p.update(kind=kind, label=labels[kind],
+                 paid=rider.bonuses.filter(kind=kind, period_start=periods[kind]).exists())
+        out.append(p)
+    return out
+
+
+def _award_goal_bonuses(rider):
+    """Delivery ke baad: jo goal poora hua aur bonus abhi nahi mila, woh de do. Naye bonuses ki list lautata hai."""
+    given = []
+    periods = _goal_periods()
+    for kind, (goal, bonus) in _goal_cfg().items():
+        if goal <= 0 or bonus <= 0:
+            continue
+        n = period_stats(rider, periods[kind])['deliveries']
+        if n < goal:
+            continue
+        _obj, created = RiderBonus.objects.get_or_create(
+            rider=rider, kind=kind, period_start=periods[kind],
+            defaults={'amount': bonus, 'deliveries': n})
+        if created:
+            given.append((kind, bonus))
+    return given
+
+
+def _cash_ctx(rider, balances=None):
+    b = balances or rider_balances(rider)
+    return goals.cash_state(b['cash_in_hand'], _setting_num('rider_cash_limit'))
+
+
 def _touch(rider):
     RiderProfile.objects.filter(pk=rider.pk).update(last_seen_at=now())
 
@@ -128,13 +193,43 @@ def _maps(addr):
     return 'https://www.google.com/maps/search/?api=1&query=' + quote(addr) if addr else ''
 
 
+def _nav_links(lat, lng, addr):
+    """Google Maps / Waze ke turn-by-turn navigation links. Coordinates ko tarjih, warna address."""
+    if lat is not None and lng is not None:
+        dest = f'{lat},{lng}'
+        return {
+            'google': f'https://www.google.com/maps/dir/?api=1&destination={dest}&travelmode=two-wheeler&dir_action=navigate',
+            'waze': f'https://waze.com/ul?ll={dest}&navigate=yes',
+        }
+    if addr:
+        q = quote(addr)
+        return {
+            'google': f'https://www.google.com/maps/dir/?api=1&destination={q}&travelmode=two-wheeler&dir_action=navigate',
+            'waze': f'https://waze.com/ul?q={q}&navigate=yes',
+        }
+    return None
+
+
+def _nav_for_leg(di, o, store_addr, cust_addr):
+    """Rider ab kahan ja raha hai: 'assigned' = store, uske baad = customer."""
+    if di.status == 'assigned':
+        s_lat, s_lng = dispatch._store_coords(o)
+        links = _nav_links(s_lat, s_lng, store_addr)
+        return ('store', links) if links else (None, None)
+    links = _nav_links(o.delivery_lat, o.delivery_lng, cust_addr)
+    return ('customer', links) if links else (None, None)
+
+
 def _card(di):
     o = di.sale_order
     cust = o.customer
     store_addr = getattr(o.vendor, 'address', '') if o.vendor_id else ''
     phone = (getattr(cust, 'contact_number', '') or '')
     digits = ''.join(ch for ch in phone if ch.isdigit())
+    cust_addr = getattr(cust, 'address', '') or ''
+    nav_leg, nav = _nav_for_leg(di, o, store_addr, cust_addr)
     return {
+        'nav_leg': nav_leg, 'nav': nav,
         'di': di, 'order': o, 'items': list(o.items.all()),
         'store': store_orders.store_name(o.vendor_id),
         'store_phone': getattr(o.vendor, 'contact_number', '') if o.vendor_id else '',
@@ -156,7 +251,33 @@ def _offers_qs():
             .prefetch_related('items__product').order_by('vendor_responded_at')[:20])
 
 
-def _offer_card(o, rider):
+def _ll(lat, lng):
+    return (float(lat), float(lng)) if lat is not None and lng is not None else None
+
+
+def _batch_info(o):
+    """Order ki batching ke liye zaroori maloomat."""
+    s_lat, s_lng = dispatch._store_coords(o)
+    cust = o.customer
+    return {
+        'order_no': o.order_no, 'vendor_id': o.vendor_id,
+        'store_name': store_orders.store_name(o.vendor_id),
+        'store_ll': _ll(s_lat, s_lng),
+        'store_addr': getattr(o.vendor, 'address', '') if o.vendor_id else '',
+        'cust_name': getattr(cust, 'name', '') or '',
+        'drop_ll': _ll(o.delivery_lat, o.delivery_lng),
+        'cust_addr': getattr(cust, 'address', '') or '',
+    }
+
+
+BATCH_LABELS = {
+    'same_store': '🔗 Aap ke order wale hi store ka — saath uthayein',
+    'near_store': '🔗 Aap ke order ke store ke qareeb — saath uthayein',
+    'same_area': '🔗 Aap ke customer ke ilaqe mein — ek hi raaste par',
+}
+
+
+def _offer_card(o, rider, actives=None):
     cust = o.customer
     store_addr = getattr(o.vendor, 'address', '') if o.vendor_id else ''
     return {
@@ -167,6 +288,7 @@ def _offer_card(o, rider):
         'is_cod': (o.payment_method or 'cod') == 'cod',
         'fee': rider.per_delivery_fee,
         'dist_km': dispatch.distance_km(o, rider),
+        'batch': BATCH_LABELS.get(batching.match_offer(_batch_info(o), actives or [])),
     }
 
 
@@ -266,16 +388,20 @@ def rider_register(request):
         if not error:
             phone = normalize_phone(phone_raw)
             username = 'rider_' + phone.replace('+', '')
-            auto = shop_flag('rider_auto_approve')
+            docs_flow = shop_flag('rider_documents_required')     # documents upload + approval (Talabat jaisa)
+            auto = True if docs_flow else shop_flag('rider_auto_approve')
             try:
                 with transaction.atomic():
                     user = User.objects.create_user(username=username, password=password, first_name=name[:30])
-                    RiderProfile.objects.create(user=user, name=name, phone=phone, vehicle=vehicle, is_active=auto)
+                    RiderProfile.objects.create(user=user, name=name, phone=phone, vehicle=vehicle, is_active=auto,
+                                                approval_status='pending' if docs_flow else 'approved')
             except IntegrityError:
                 error = '❌ A rider with this phone already exists.'
             else:
                 cache.set(key, cache.get(key, 0) + 1, 3600)
-                if auto:
+                if docs_flow:
+                    messages.success(request, '✅ Registration complete. Log in and upload your documents (CPR, licence, vehicle, photo) for approval.')
+                elif auto:
                     messages.success(request, '✅ Registration complete. You can log in now.')
                 else:
                     messages.success(request, '✅ Registration received. You can log in after admin approval.')
@@ -320,11 +446,75 @@ def rider_home(request):
     mine = (DeliveryInfo.objects.filter(rider=rider, status__in=ACTIVE_STATUSES, sale_order__isnull=False)
             .select_related('sale_order', 'sale_order__customer', 'sale_order__vendor')
             .prefetch_related('sale_order__items__product').order_by('assigned_at'))
-    offers = [_offer_card(o, rider) for o in dispatch.visible_orders(_offers_qs(), rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES)] if rider.is_online else []
+    actives = [_batch_info(d.sale_order) for d in mine]
+    can_work, gate_msg = rider_gate.work_status(rider)
+    offers = [_offer_card(o, rider, actives) for o in dispatch.visible_orders(_offers_qs(), rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES)] if (rider.is_online and can_work) else []
+    # ek raaste ke offers pehle
+    offers.sort(key=lambda c: 0 if c['batch'] else 1)
+    plan = batching.plan_route(
+        [dict(a, status=d.status) for a, d in zip(actives, mine)],
+        dispatch._rider_coords(rider, now()) if actives else None)
     today = period_stats(rider, timezone.localdate())
+    bal = rider_balances(rider)
     return render(request, 'customer_portal/rider/home.html', _rider_ctx(
-        request, 'orders', mine=[_card(d) for d in mine], offers=offers,
-        today=today, balances=rider_balances(rider), max_active=MAX_ACTIVE_ORDERS))
+        request, 'orders', mine=[_card(d) for d in mine], offers=offers, plan=plan,
+        today=today, balances=bal, max_active=MAX_ACTIVE_ORDERS,
+        goal_list=_goals_ctx(rider), cash=_cash_ctx(rider, bal),
+        gate_msg=gate_msg, doc_warnings=rider_gate.doc_warnings(rider), next_shift=rider_gate.next_shift(rider)))
+
+
+DEMAND_CACHE_SECONDS = 300
+
+
+def _demand_rows():
+    """Pichle 28 din ke delivery orders: [(weekday, hour, vendor_id)]. 5 minute cache (sab riders ke liye ek)."""
+    key = 'rider_demand_rows_v1'
+    rows = cache.get(key)
+    if rows is not None:
+        return rows
+    since = now() - timedelta(days=demand.WINDOW_DAYS)
+    qs = (SaleOrder.objects.filter(created_at__gte=since, delivery_info__isnull=False)
+          .exclude(status='cancelled').values_list('created_at', 'vendor_id')[:20000])
+    rows = []
+    for dt, vid in qs:
+        loc = timezone.localtime(dt)
+        rows.append((loc.weekday(), loc.hour, vid))
+    cache.set(key, rows, DEMAND_CACHE_SECONDS)
+    return rows
+
+
+@rider_login_required
+@flag_required('rider_hotspots_enabled', redirect_to='rider_home')
+def rider_hotspots(request):
+    """Heat map (kahan orders zyada hain) + shift planner (kab kaam karna behtar hai)."""
+    rider = request.user.rider_profile
+    _touch(rider)
+    rows = _demand_rows()
+    vids = {v for _w, _h, v in rows if v}
+    stores = {}
+    for p in VendorProfile.objects.filter(vendor_id__in=vids).values('vendor_id', 'business_name', 'lat', 'lng'):
+        stores[p['vendor_id']] = {'name': p['business_name'], 'lat': _f(p['lat']), 'lng': _f(p['lng'])}
+
+    local = timezone.localtime()
+    wd, hr = local.weekday(), local.hour
+    near_hours = {hr, (hr + 1) % 24, (hr + 2) % 24}
+    today_profile = demand.hour_profile(rows, wd)
+    data = {
+        'zones_now': demand.zones(rows, stores, hours=near_hours, weekday=wd),
+        'zones_day': demand.zones(rows, stores, weekday=wd),
+        'zones_all': demand.zones(rows, stores),
+        'profile': today_profile, 'hour': hr,
+        'my': ([float(rider.last_lat), float(rider.last_lng)]
+               if rider.last_lat is not None and rider.last_lng is not None else None),
+    }
+    return render(request, 'customer_portal/rider/hotspots.html', _rider_ctx(
+        request, 'hotspots', data=data, today_name=demand.DAY_NAMES[wd],
+        plan=demand.weekly_plan(rows), today_window=demand.best_window(today_profile),
+        has_data=bool(rows), has_zones=bool(data['zones_all']), max_hour=max(today_profile) or 1))
+
+
+def _f(v):
+    return float(v) if v is not None else None
 
 
 @rider_login_required
@@ -349,6 +539,8 @@ def rider_earnings(request):
         today=period_stats(rider, today),
         week=period_stats(rider, today - timedelta(days=6)),
         rating=rider_rating(rider),
+        goal_list=_goals_ctx(rider), cash=_cash_ctx(rider),
+        bonuses=list(rider.bonuses.all()[:10]),
         settlements=list(rider.settlements.all()[:20])))
 
 
@@ -356,6 +548,11 @@ def rider_earnings(request):
 @require_POST
 def rider_toggle_online(request):
     rider = request.user.rider_profile
+    if not rider.is_online:                       # Online jaane se pehle approval / documents / shift check
+        ok, why = rider_gate.work_status(rider)
+        if not ok:
+            messages.error(request, why)
+            return redirect('rider_documents' if rider.approval_status != 'approved' else 'rider_home')
     rider.is_online = not rider.is_online
     rider.last_seen_at = now()
     rider.save(update_fields=['is_online', 'last_seen_at'])
@@ -369,10 +566,22 @@ def rider_poll(request):
     """Har ~12 second mein: naye offers/orders ka count (awaaz ke liye)."""
     rider = request.user.rider_profile
     _touch(rider)
-    offers = len(dispatch.visible_orders(_offers_qs(), rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES)) if rider.is_online else 0
+    visible = dispatch.visible_orders(_offers_qs(), rider, MAX_ACTIVE_ORDERS, ACTIVE_STATUSES) if (rider.is_online and rider_gate.work_status(rider)[0]) else []
     active = DeliveryInfo.objects.filter(rider=rider, status__in=ACTIVE_STATUSES).count()
     assigned = DeliveryInfo.objects.filter(rider=rider, status='assigned').count()
-    return JsonResponse({'offers': offers, 'active': active, 'assigned': assigned, 'online': rider.is_online})
+    alerts = []
+    if visible and shop_flag('rider_offer_alert_enabled') and shop_flag('rider_can_accept_orders'):
+        for o in visible[:3]:      # full-screen alert: sab se purane 3 offers
+            c = _offer_card(o, rider)
+            alerts.append({
+                'id': o.id, 'order_no': str(o.order_no), 'store': c['store'], 'store_addr': c['store_addr'],
+                'cust_addr': c['cust_addr'], 'fee': f'{c["fee"]:,.0f}', 'is_cod': c['is_cod'],
+                'total': f'{c["total"]:,.0f}', 'dist_km': c['dist_km'], 'items': c['items_count'],
+                'accept_url': reverse('rider_accept_order', args=[o.id]),
+                'decline_url': reverse('rider_decline_order', args=[o.id]),
+            })
+    return JsonResponse({'offers': len(visible), 'active': active, 'assigned': assigned, 'online': rider.is_online,
+                         'offer_list': alerts, 'alert_seconds': dispatch.WINDOW_SECONDS})
 
 
 @rider_login_required
@@ -383,6 +592,10 @@ def rider_accept_order(request, pk):
     rider = request.user.rider_profile
     if not rider.is_online:
         messages.error(request, '❌ Please go online first.')
+        return redirect('rider_home')
+    ok, why = rider_gate.work_status(rider)
+    if not ok:
+        messages.error(request, why)
         return redirect('rider_home')
     if DeliveryInfo.objects.filter(rider=rider, status__in=ACTIVE_STATUSES).count() >= MAX_ACTIVE_ORDERS:
         messages.error(request, f'❌ You already have {MAX_ACTIVE_ORDERS} orders. Please complete them first.')
@@ -405,6 +618,28 @@ def rider_accept_order(request, pk):
 
     messages.success(request, f'✅ Order #{order.order_no} is yours. Now pick up the items from {store_orders.store_name(order.vendor_id)}.')
     return redirect('rider_home')
+
+
+MAX_PROOF_BYTES = 8 * 1024 * 1024
+
+
+def _clean_proof_photo(f):
+    """Delivery photo check: sirf asli tasveer, 8 MB tak. Galat ho to OrderActionError."""
+    if not f:
+        return None
+    if f.size > MAX_PROOF_BYTES:
+        raise store_orders.OrderActionError('Photo bohat bari hai (max 8 MB).')
+    try:
+        from PIL import Image
+        img = Image.open(f)
+        img.verify()
+        fmt = (img.format or '').upper()
+        f.seek(0)
+    except Exception:
+        raise store_orders.OrderActionError('Yeh file tasveer nahi hai. Dobara photo lein.')
+    if fmt not in ('JPEG', 'PNG', 'WEBP', 'MPO'):
+        raise store_orders.OrderActionError('Sirf JPG, PNG ya WebP photo chalti hai.')
+    return f
 
 
 @rider_login_required
@@ -440,6 +675,12 @@ def rider_order_action(request, pk, action):
             else:
                 if di.status not in ('picked_up', 'in_transit') or order.status != 'ready':
                     raise store_orders.OrderActionError('Pehle "Maal le liya" dabayein.')
+                proof = _clean_proof_photo(request.FILES.get('proof_photo'))
+                if proof is None and shop_flag('rider_proof_photo_required'):
+                    raise store_orders.OrderActionError('Deliver karne se pehle delivery ki photo lagana zaroori hai.')
+                if proof is not None:
+                    di.delivery_photo = proof
+                di.delivery_signature = (request.POST.get('receiver_name') or '').strip()[:100] or None
                 total = store_orders.order_cash_due(order)
                 is_cod = (order.payment_method or 'cod') == 'cod'
                 di.status = 'delivered'
@@ -457,6 +698,11 @@ def rider_order_action(request, pk, action):
                                      + (f' COD Rs. {total:,.0f} rider ke paas hai.' if is_cod else ''),
                                      '/shop/vendor/orders/?tab=done', 'success')
                 msg = f'🎉 Order #{order.order_no} deliver ho gaya. Kamai: Rs. {rider.per_delivery_fee:,.0f}.'
+                for kind, amt in _award_goal_bonuses(rider):
+                    msg += f' 🏆 {"Daily" if kind == "daily" else "Weekly"} goal poora! Bonus: Rs. {amt:,.0f}.'
+                    store_orders._notify(request.user, '🏆 Goal bonus mila',
+                                         f'{"Daily" if kind == "daily" else "Weekly"} goal poora karne par Rs. {amt:,.0f} bonus.',
+                                         reverse('rider_earnings'), 'success')
                 if is_cod:
                     msg += f' Customer se Rs. {total:,.0f} cash liya — admin ko jama karwayein.'
                 messages.success(request, msg)
@@ -473,8 +719,8 @@ def rider_order_action(request, pk, action):
 @flag_required('vendor_can_assign_riders', redirect_to='vendor_orders')
 @require_POST
 def vendor_assign_rider(request, pk):
-    vendor = request.user.vendor_profile.vendor
-    rider = get_object_or_404(RiderProfile, pk=request.POST.get('rider_id') or 0, is_active=True)
+    vendor = get_vendor_profile(request.user).vendor
+    rider = get_object_or_404(RiderProfile, pk=request.POST.get('rider_id') or 0, is_active=True, approval_status='approved')
 
     try:
         with transaction.atomic():
@@ -572,6 +818,7 @@ def rider_manage(request):
         r.bal = rider_balances(r)
         r.live = bool(r.is_online and r.last_seen_at and r.last_seen_at >= online_cut)
         r.rating = rider_rating(r)
+        r.pending_docs = r.documents.filter(status='pending').count()
     from ..models import CustomerOTP
     pending_resets = []
     by_phone = {r.phone: r for r in riders}

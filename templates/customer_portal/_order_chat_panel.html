@@ -1,0 +1,118 @@
+{# Order chat panel (customer <-> store / rider). Include once per page; open with OrderChat.open(orderId, 'vendor'|'rider', [['vendor','Store'],['rider','Rider']]) #}
+{% if SHOP.shop_order_chat_enabled %}
+<style>
+  #ocBack{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483000;display:none}
+  #ocBox{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;height:78vh;max-height:640px;background:#fff;border-radius:18px 18px 0 0;z-index:2147483001;display:none;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.25);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  #ocBack.on{display:block}#ocBox.on{display:flex}
+  .oc-h{padding:12px 14px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:8px}
+  .oc-h b{flex:1;font-size:15px;color:#111827}.oc-h small{display:block;color:#6b7280;font-weight:500}
+  .oc-x{border:0;background:#f3f4f6;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer}
+  .oc-tabs{display:flex;gap:6px;padding:8px 14px 0}
+  .oc-tab{border:1.5px solid #e5e7eb;background:#fff;border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700;color:#4b5563;cursor:pointer}
+  .oc-tab.on{background:#4f46e5;border-color:#4f46e5;color:#fff}
+  .oc-list{flex:1;overflow-y:auto;padding:12px 14px;background:#f8fafc;display:flex;flex-direction:column;gap:6px}
+  .oc-m{max-width:80%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.35;word-wrap:break-word;white-space:pre-wrap;background:#fff;border:1px solid #e5e7eb;color:#111827;align-self:flex-start}
+  .oc-m.me{align-self:flex-end;background:#4f46e5;border-color:#4f46e5;color:#fff}
+  .oc-m i{display:block;font-style:normal;font-size:10px;opacity:.7;margin-top:2px;text-align:right}
+  .oc-empty{margin:auto;color:#9ca3af;font-size:13px;text-align:center}
+  .oc-f{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #e5e7eb;background:#fff}
+  .oc-f input{flex:1;min-width:0;border:1.5px solid #d1d5db;border-radius:999px;padding:10px 14px;font-size:16px}
+  .oc-f button{border:0;background:#4f46e5;color:#fff;border-radius:999px;padding:0 18px;font-weight:800;cursor:pointer}
+  .oc-f button:disabled{opacity:.5}
+  .oc-note{padding:10px 14px;text-align:center;font-size:12px;color:#6b7280;background:#fff;border-top:1px solid #e5e7eb;display:none}
+  .oc-badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:999px;background:#e11d48;color:#fff;font-size:11px;font-weight:800;margin-left:4px}
+  .oc-badge:empty{display:none}
+</style>
+<div id="ocBack" onclick="OrderChat.close()"></div>
+<div id="ocBox" role="dialog" aria-label="Chat">
+  <div class="oc-h"><b id="ocTitle">Chat<small id="ocSub"></small></b><button type="button" class="oc-x" onclick="OrderChat.close()" aria-label="Close">&#10005;</button></div>
+  <div class="oc-tabs" id="ocTabs"></div>
+  <div class="oc-list" id="ocList"></div>
+  <div class="oc-note" id="ocNote"></div>
+  <form class="oc-f" id="ocForm" onsubmit="return OrderChat.send(event)">
+    <input type="text" id="ocInput" maxlength="1000" autocomplete="off" placeholder="{% if LANG_CODE == 'ur' %}پیغام لکھیں...{% else %}Type a message...{% endif %}">
+    <button type="submit" id="ocSend">{% if LANG_CODE == 'ur' %}بھیجیں{% else %}Send{% endif %}</button>
+  </form>
+</div>
+<script>
+var OrderChat = (function () {
+  var st = {order: 0, channel: '', last: 0, timer: null, tabs: null, writable: true};
+  var $ = function (id) { return document.getElementById(id); };
+  function csrf() { var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/); return m ? decodeURIComponent(m[1]) : ''; }
+  function url(kind) { return '/shop/order-chat/' + st.order + '/' + st.channel + '/' + kind + '/'; }
+  function add(m) {
+    var list = $('ocList'), empty = list.querySelector('.oc-empty'); if (empty) empty.remove();
+    var d = document.createElement('div'); d.className = 'oc-m' + (m.mine ? ' me' : ''); d.dataset.id = m.id;
+    d.appendChild(document.createTextNode(m.text));
+    var t = document.createElement('i'); t.textContent = m.time; d.appendChild(t);
+    list.appendChild(d); st.last = Math.max(st.last, m.id);
+  }
+  function scroll() { var l = $('ocList'); l.scrollTop = l.scrollHeight; }
+  function setWritable(ok, note) {
+    st.writable = ok; $('ocForm').style.display = ok ? 'flex' : 'none';
+    var n = $('ocNote'); n.style.display = ok ? 'none' : 'block'; n.textContent = note || '';
+  }
+  function load(first) {
+    if (!st.order) return;
+    var ch = st.channel, o = st.order;
+    fetch(url('messages') + (st.last ? '?after=' + st.last : ''), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function (r) { return r.json().then(function (d) { return {s: r.status, d: d}; }); })
+      .then(function (res) {
+        if (o !== st.order || ch !== st.channel) return;
+        var d = res.d;
+        if (res.s === 401 && d.login) { location.href = '/shop/login/?next=' + encodeURIComponent(location.pathname); return; }
+        if (!d.success) { if (first) { $('ocList').innerHTML = ''; var e = document.createElement('div'); e.className = 'oc-empty'; e.textContent = d.message || 'Chat is not available.'; $('ocList').appendChild(e); setWritable(false, ''); } return; }
+        $('ocSub').textContent = ' ' + d.title + ' \u00b7 #' + d.order_no;
+        var stick = first || ($('ocList').scrollTop + $('ocList').clientHeight >= $('ocList').scrollHeight - 60);
+        d.messages.forEach(add);
+        if (first && !d.messages.length) { var e2 = document.createElement('div'); e2.className = 'oc-empty'; e2.textContent = '{% if LANG_CODE == 'ur' %}ابھی کوئی پیغام نہیں۔ بات شروع کریں۔{% else %}No messages yet. Say hello!{% endif %}'; $('ocList').appendChild(e2); }
+        setWritable(d.can_write, d.closed_note);
+        if (stick) scroll();
+        if (window.OrderChat) OrderChat.badges();
+      }).catch(function () {});
+  }
+  function tick() { if (!document.hidden) load(false); }
+  function renderTabs() {
+    var box = $('ocTabs'); box.innerHTML = '';
+    if (!st.tabs || st.tabs.length < 2) return;
+    st.tabs.forEach(function (t) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'oc-tab' + (t[0] === st.channel ? ' on' : ''); b.textContent = t[1];
+      b.onclick = function () { open(st.order, t[0], st.tabs); }; box.appendChild(b);
+    });
+  }
+  function open(order, channel, tabs) {
+    st.order = order; st.channel = channel; st.last = 0; st.tabs = tabs || null;
+    $('ocList').innerHTML = ''; $('ocSub').textContent = ''; renderTabs();
+    $('ocBack').classList.add('on'); $('ocBox').classList.add('on');
+    clearInterval(st.timer); load(true); st.timer = setInterval(tick, 4000);
+    setTimeout(function () { try { $('ocInput').focus(); } catch (e) {} }, 150);
+  }
+  function close() { $('ocBack').classList.remove('on'); $('ocBox').classList.remove('on'); clearInterval(st.timer); st.order = 0; badges(); }
+  function send(ev) {
+    ev.preventDefault();
+    var inp = $('ocInput'), text = inp.value.trim(); if (!text || !st.writable) return false;
+    var btn = $('ocSend'); btn.disabled = true;
+    fetch(url('send'), {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest'}, body: JSON.stringify({message: text})})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        btn.disabled = false;
+        if (!d.success) { alert(d.message || 'Could not send.'); return; }
+        inp.value = ''; if (!$('ocList').querySelector('[data-id="' + d.message.id + '"]')) add(d.message); scroll();
+      }).catch(function () { btn.disabled = false; alert('Network problem. Please try again.'); });
+    return false;
+  }
+  function badges() {
+    fetch('/shop/order-chat/unread/', {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !d.success) return;
+      document.querySelectorAll('[data-chat-badge]').forEach(function (el) {
+        var o = d.orders[el.getAttribute('data-chat-badge')] || {}, ch = el.getAttribute('data-chat-channel');
+        var n = ch ? (o[ch] || 0) : ((o.vendor || 0) + (o.rider || 0));
+        el.textContent = n ? String(n) : '';
+      });
+    }).catch(function () {});
+  }
+  document.addEventListener('DOMContentLoaded', function () { badges(); setInterval(function () { if (!document.hidden && !st.order) badges(); }, 20000); });
+  return {open: open, close: close, send: send, badges: badges};
+})();
+</script>
+{% endif %}

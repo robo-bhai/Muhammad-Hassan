@@ -4,6 +4,7 @@ Privacy: customer ka sirf pehla naam dikhta hai, phone/address nahi.
 Har party sirf apne hi disputes dekh sakti hai (vendor = apna store, rider = apni deliveries).
 """
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
@@ -40,7 +41,7 @@ def _detail_ctx(d, party):
 # ------------------------------------------------------------------ vendor
 @vendor_login_required
 def vendor_disputes(request):
-    vendor = request.user.vendor_profile.vendor
+    vendor = get_vendor_profile(request.user).vendor
     tab = request.GET.get('tab', 'open')
     if tab not in TABS:
         tab = 'open'
@@ -55,7 +56,7 @@ def vendor_disputes(request):
 @vendor_login_required
 @require_http_methods(['GET', 'POST'])
 def vendor_dispute_detail(request, pk):
-    vendor = request.user.vendor_profile.vendor
+    vendor = get_vendor_profile(request.user).vendor
     d = get_object_or_404(logic.disputes_for('vendor', vendor), pk=pk)
     if request.method == 'POST':
         try:

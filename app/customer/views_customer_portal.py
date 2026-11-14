@@ -58,6 +58,7 @@ from ..security.security_utils import safe_error
 from . import store_orders
 from . import drop_pin
 from . import cart_options
+from .voice_terms import q_any
 from . import offers
 from . import coupons as coupon_logic
 from ..models.trade.product_options import resolve_selection
@@ -700,6 +701,14 @@ def _home_reco(request, search, category_id, brand_id):
         return None
 
 
+def _home_reorder(request, search, category_id, brand_id):
+    """Home ke top par one-click Reorder widget: sirf bina search / filter wale pehle page par."""
+    if search or category_id or brand_id or request.GET.get('page', '1') not in ('', '1'):
+        return []
+    from .recommendations import home_reorder
+    return home_reorder(request)
+
+
 def _club_cards():
     """Homepage par Pro aur Loyalty ke cards. Flag band ho to khali; ghalti homepage nahi rokti."""
     cards = []
@@ -745,13 +754,8 @@ def shop_home(request):
     typo_corrected = None
     
     if search:
-        products = products.filter(
-            Q(name__icontains=search) |
-            Q(serial_no__icontains=search) |
-            Q(barcode__icontains=search) |
-            Q(description__icontains=search) |
-            Q(category__name__icontains=search) |
-            Q(brand__name__icontains=search)
+        products = products.filter(      # Urdu / Roman Urdu / English (voice_terms)
+            q_any(['name', 'serial_no', 'barcode', 'description', 'category__name', 'brand__name'], search)
         )
         
         if not products.exists() and len(search) >= 3:
@@ -793,6 +797,9 @@ def shop_home(request):
         except (ValueError, TypeError):
             brand_id = ''
     
+    from .stock_alerts import hide_sold_out
+    products = hide_sold_out(products)       # jin vendors ne sold-out maal chhupaya hai
+
     products = products.annotate(
         total_stock=Coalesce(
             Sum('inventory__stock'),
@@ -951,6 +958,7 @@ def shop_home(request):
         'banners': banners,
         'club_cards': _club_cards(),
         'reco': _home_reco(request, search, category_id, brand_id),
+        'reorder_widget': _home_reorder(request, search, category_id, brand_id),
         'featured_stores': featured_stores,
         'company_name': company.name if company else 'Shop',
         'company': company,

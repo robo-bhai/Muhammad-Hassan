@@ -8,6 +8,7 @@ Hisaab aur qawaid `payout_requests.py` me hain; yahan sirf form/POST ka kaam hai
 import logging
 
 from django.contrib import messages
+from .vendor_access import get_vendor_profile
 from django.db import transaction
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
@@ -32,7 +33,7 @@ def _company_name():
 @vendor_login_required
 @flag_required(FLAG, redirect_to='vendor_dashboard')
 def vendor_payouts(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     vendor = profile.vendor
 
     if request.method == 'POST':
@@ -76,7 +77,7 @@ def vendor_payouts(request):
 @flag_required(FLAG, redirect_to='vendor_dashboard')
 def vendor_payout_cancel(request, pk):
     try:
-        payout_requests.cancel_request(request.user.vendor_profile, pk)
+        payout_requests.cancel_request(get_vendor_profile(request.user), pk)
         messages.success(request, '✅ Request cancel kar di gayi.')
     except PayoutError as exc:
         messages.error(request, f'❌ {exc}')

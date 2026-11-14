@@ -11,7 +11,7 @@
 // - Prefetch: user jis link par hath/touch rakhe uska page pehle se 60 sec ke liye save (sirf shop browse pages).
 // - Push: notification (vibration, action buttons, urgent order alerts) + icon par badge; click par sahi app window khulti hai.
 // - Storage hisaab: purani cache entries khud delete; jagah kam ho to media/pages kam kar deta hai.
-var VERSION = 'v10';   // har release par badlein (cache refresh)
+var VERSION = 'v11';   // har release par badlein (cache refresh)
 var SHELL = 'bms-shell-' + VERSION;
 var STATIC = 'bms-static-' + VERSION;
 var SHOP = 'bms-shop-' + VERSION;
@@ -338,6 +338,48 @@ self.addEventListener('fetch', function (event) {
       })
       .catch(function () { return caches.match(OFFLINE_URL); }));
   }
+});
+
+
+// ---- Rider location queue (Background Sync) --------------------------------
+// Offline mein page ne point IndexedDB 'rider-loc' mein rakhi; internet aate hi browser 'sync' chalata hai.
+// Server sirf aakhri location rakhta hai, isliye sab se nayi point bheji jati hai.
+var LOC_DB = 'rider-loc', LOC_ST = 'q', LOC_TAG = 'rider-loc-sync';
+
+function locLatest() {
+  return new Promise(function (res) {
+    var r = indexedDB.open(LOC_DB, 1);
+    r.onupgradeneeded = function () { r.result.createObjectStore(LOC_ST, {autoIncrement: true}); };
+    r.onerror = function () { res(null); };
+    r.onsuccess = function () {
+      var db = r.result, cur = db.transaction(LOC_ST).objectStore(LOC_ST).openCursor(null, 'prev');
+      cur.onsuccess = function () { var k = cur.result; res(k ? {db: db, key: k.key, item: k.value} : null); };
+      cur.onerror = function () { res(null); };
+    };
+  });
+}
+
+function locFlush() {
+  return locLatest().then(function (x) {
+    if (!x || !x.item || !x.item.url) return;
+    var b = new URLSearchParams();
+    b.append('lat', x.item.lat); b.append('lng', x.item.lng); b.append('at', x.item.at);
+    return fetch(x.item.url, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: {'X-CSRFToken': x.item.csrf || '', 'Content-Type': 'application/x-www-form-urlencoded'}, body: b
+    }).then(function (r) {
+      if (r.status >= 500) throw new Error('retry');   // reject = browser baad mein dobara sync chalayega
+      return new Promise(function (res) {
+        var tx = x.db.transaction(LOC_ST, 'readwrite');
+        tx.objectStore(LOC_ST).delete(IDBKeyRange.upperBound(x.key));
+        tx.oncomplete = tx.onerror = function () { res(); };
+      });
+    });
+  });
+}
+
+self.addEventListener('sync', function (event) {
+  if (event.tag === LOC_TAG) event.waitUntil(locFlush());
 });
 
 

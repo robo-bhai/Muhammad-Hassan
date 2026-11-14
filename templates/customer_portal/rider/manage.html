@@ -7,6 +7,7 @@
 
 {% block content %}
 <div class="container-fluid py-3">
+  <div class="mb-2"><a class="btn btn-sm btn-outline-primary" href="{% url 'rider_shift_admin' %}">🗓️ Shifts</a></div>
   <div class="row g-3 mb-1">
     <div class="col-6 col-lg-3"><div class="card shadow-sm"><div class="card-body py-2">
       <div class="text-muted small">Riders ke paas COD cash</div><div class="h4 mb-0 text-danger">Rs. {{ total_cash|floatformat:0 }}</div></div></div></div>
@@ -56,7 +57,10 @@
             {% for r in riders %}
               <tr>
                 <td>
-                  {% if not r.is_active and not r.last_login_at %}<span class="badge bg-warning text-dark">⏳ New — approval pending</span>
+                  {% if r.approval_status == 'pending' %}<span class="badge bg-warning text-dark">📄 Documents review{% if r.pending_docs %} ({{ r.pending_docs }}){% endif %}</span>
+                  {% elif r.approval_status == 'rejected' %}<span class="badge bg-danger">Rad</span>
+                  {% elif r.approval_status == 'suspended' %}<span class="badge bg-dark">Suspended</span>
+                  {% elif not r.is_active and not r.last_login_at %}<span class="badge bg-warning text-dark">⏳ New — approval pending</span>
                   {% elif not r.is_active %}<span class="badge bg-secondary">Band</span>
                   {% elif r.live %}<span class="badge bg-success">🟢 Online</span>
                   {% else %}<span class="badge bg-light text-dark border">⚫ Offline</span>{% endif %}
@@ -70,6 +74,7 @@
                 <td class="text-end {% if r.bal.due > 0 %}text-primary fw-bold{% endif %}">Rs. {{ r.bal.due|floatformat:0 }}</td>
                 <td class="text-end text-nowrap">
                   <a class="btn btn-sm btn-outline-primary" href="{% url 'rider_detail' r.id %}">Hisab</a>
+                  <a class="btn btn-sm {% if r.pending_docs %}btn-warning{% else %}btn-outline-dark{% endif %}" href="{% url 'rider_review' r.id %}">📄 Docs</a>
                   <form method="post" class="d-inline">{% csrf_token %}
                     <input type="hidden" name="action" value="toggle"><input type="hidden" name="rider_id" value="{{ r.id }}">
                     <button class="btn btn-sm {% if r.is_active %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">{% if r.is_active %}Band{% else %}Chalu{% endif %}</button>

@@ -1,0 +1,41 @@
+{% extends 'customer_portal/rider/base.html' %}
+{% block title %}Shifts{% endblock %}
+{% block body %}
+<div class="wrap">
+  <h3>🗓️ Shifts</h3>
+  {% if not approved %}<div class="card" style="background:#fef3c7;color:#92400e;font-weight:700">⏳ Shift book karne ke liye pehle <a href="{% url 'rider_documents' %}">documents</a> approve hone chahiye.</div>{% endif %}
+  <div class="card">
+    <div class="row"><span>Is hafte ki shifts</span><b>{{ week_count }}{% if week_max %} / {{ week_max }}{% endif %}</b></div>
+    <small style="color:var(--mut)">Cancel: shuru hone se {{ cancel_hours }} ghante pehle tak.{% if required %} Aap sirf apni booked shift ke dauran Online ja sakte hain.{% endif %}</small>
+  </div>
+
+  {% if my_list %}
+  <h3>✅ Meri shifts</h3>
+  {% for c in my_list %}
+  <div class="card"><div class="row"><b>{{ c.start|date:"D d M" }} · {{ c.start|time:"H:i" }}–{{ c.end|time:"H:i" }}</b>
+    {% if c.shift.zone %}<span class="pill">📍 {{ c.shift.zone }}</span>{% endif %}</div></div>
+  {% endfor %}
+  {% endif %}
+
+  {% for d, cards in days %}
+  <h3>{{ d|date:"l, d M" }}</h3>
+  {% for c in cards %}
+  <div class="card">
+    <div class="row"><b>{{ c.start|time:"H:i" }} – {{ c.end|time:"H:i" }}</b>{% if c.shift.zone %}<span class="pill">📍 {{ c.shift.zone }}</span>{% endif %}</div>
+    <div class="row"><small>{{ c.left }} / {{ c.shift.capacity }} jagah khali</small>
+      {% if c.state == 'mine' %}<span class="pill g">✅ Booked</span>{% endif %}</div>
+    {% if c.state == 'open' and approved %}
+      <form method="post" action="{% url 'rider_shift_book' c.shift.id %}" class="acts">{% csrf_token %}<button class="btn">Book karein</button></form>
+    {% elif c.state == 'mine' %}
+      {% if c.can_cancel %}<form method="post" action="{% url 'rider_shift_cancel' c.shift.id %}" class="acts" onsubmit="return confirm('Shift cancel karein?')">{% csrf_token %}<button class="btn" style="background:#6b7280">Cancel</button></form>
+      {% else %}<small style="color:var(--mut)">Ab cancel nahi ho sakti.</small>{% endif %}
+    {% elif c.state == 'full' %}<small style="color:var(--mut)">Shift full hai.</small>
+    {% elif c.state == 'closed' %}<small style="color:var(--mut)">Booking band hai.</small>
+    {% elif c.state == 'started' %}<small style="color:var(--mut)">Shift shuru ho chuki hai.</small>{% endif %}
+  </div>
+  {% endfor %}
+  {% empty %}
+  <div class="card empty">Abhi koi shift nahi. Admin jaldi nayi shifts dalega.</div>
+  {% endfor %}
+</div>
+{% endblock %}

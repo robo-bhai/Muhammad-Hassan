@@ -1,4 +1,7 @@
 """Delivery models."""
+import os
+import uuid
+
 from django.db import models
 from decimal import Decimal
 from app.security.field_crypto import EncryptedCharField, EncryptedTextField
@@ -97,6 +100,11 @@ class RiderProfile(models.Model):
     last_lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     last_lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     last_location_at = models.DateTimeField(null=True, blank=True)
+    # Onboarding: purane riders 'approved' rehte hain; naye (documents wale) 'pending' se shuru hote hain
+    APPROVAL = [('pending', 'Review mein'), ('approved', 'Approved'), ('rejected', 'Rad'), ('suspended', 'Suspended')]
+    approval_status = models.CharField(max_length=10, choices=APPROVAL, default='approved', db_index=True)
+    approval_note = models.CharField(max_length=200, blank=True, default='')
+    approved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -122,6 +130,88 @@ class RiderSettlement(models.Model):
 
     def __str__(self):
         return f"{self.rider.name} {self.kind} Rs.{self.amount}"
+
+
+def rider_doc_path(instance, filename):
+    """Documents ka naam anjaan (uuid) rakhte hain taake URL andaze se na milay."""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.pdf'):
+        ext = '.bin'
+    return f'rider_docs/{instance.rider_id}/{uuid.uuid4().hex}{ext}'
+
+
+class RiderDocument(models.Model):
+    """Rider ka ek document (CPR, licence, vehicle, photo). Har rider ka har kind ka ek hi record."""
+    STATUS = [('pending', 'Review mein'), ('approved', 'Approved'), ('rejected', 'Rad')]
+    rider = models.ForeignKey(RiderProfile, on_delete=models.CASCADE, related_name='documents')
+    kind = models.CharField(max_length=10)
+    file = models.FileField(upload_to=rider_doc_path)
+    number = models.CharField(max_length=40, blank=True, default='')
+    expiry = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default='pending')
+    reject_reason = models.CharField(max_length=200, blank=True, default='')
+    reviewed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['rider_id', 'kind']
+        constraints = [models.UniqueConstraint(fields=['rider', 'kind'], name='uniq_rider_document_kind')]
+
+    def __str__(self):
+        return f"{self.rider.name} {self.kind} ({self.status})"
+
+
+class RiderShift(models.Model):
+    """Admin ki banayi shift (waqt ka slot). Riders capacity tak book kar sakte hain."""
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField(help_text="Shuru se pehle ho to shift agle din khatam hoti hai")
+    capacity = models.PositiveSmallIntegerField(default=5)
+    zone = models.CharField(max_length=60, blank=True, default='')
+    is_open = models.BooleanField(default=True, help_text="Band ho to nayi booking nahi")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'start_time']
+        constraints = [models.UniqueConstraint(fields=['date', 'start_time', 'end_time', 'zone'],
+                                               name='uniq_rider_shift_slot')]
+
+    def __str__(self):
+        return f"{self.date} {self.start_time:%H:%M}-{self.end_time:%H:%M} {self.zone}".strip()
+
+
+class RiderShiftBooking(models.Model):
+    STATUS = [('booked', 'Booked'), ('cancelled', 'Cancelled')]
+    shift = models.ForeignKey(RiderShift, on_delete=models.CASCADE, related_name='bookings')
+    rider = models.ForeignKey(RiderProfile, on_delete=models.CASCADE, related_name='shift_bookings')
+    status = models.CharField(max_length=10, choices=STATUS, default='booked')
+    booked_at = models.DateTimeField(auto_now_add=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['shift', 'rider'], name='uniq_rider_shift_booking')]
+
+    def __str__(self):
+        return f"{self.rider.name} -> {self.shift} ({self.status})"
+
+
+class RiderBonus(models.Model):
+    """Goal bonus: rider ne din/hafte ka target poora kiya. Har (rider, kind, period_start) ek hi baar milta hai."""
+    KINDS = [('daily', 'Daily goal'), ('weekly', 'Weekly goal')]
+    rider = models.ForeignKey(RiderProfile, on_delete=models.CASCADE, related_name='bonuses')
+    kind = models.CharField(max_length=10, choices=KINDS)
+    period_start = models.DateField(help_text="Din ki tareekh, ya hafte ka Peer (Monday)")
+    deliveries = models.PositiveIntegerField(default=0, help_text="Target poora karte waqt deliveries")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(fields=['rider', 'kind', 'period_start'], name='uniq_rider_bonus_period')]
+
+    def __str__(self):
+        return f"{self.rider.name} {self.kind} bonus Rs.{self.amount}"
 
 
 class OrderReview(models.Model):

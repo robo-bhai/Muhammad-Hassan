@@ -5,16 +5,34 @@
 <div class="stats">
   <div class="stat"><b>{{ today.deliveries }}</b><small>Aaj deliveries</small></div>
   <div class="stat"><b>Rs. {{ today.earned|floatformat:0 }}</b><small>Aaj ki kamai</small></div>
-  <div class="stat"><b>Rs. {{ balances.cash_in_hand|floatformat:0 }}</b><small>Cash paas</small></div>
+  <div class="stat"{% if cash.level == 'over' %} style="background:#fee2e2"{% elif cash.level == 'warn' %} style="background:#fef3c7"{% endif %}><b>Rs. {{ balances.cash_in_hand|floatformat:0 }}</b><small>Cash paas</small></div>
 </div>
 <div class="wrap">
+  {% if gate_msg %}<div class="cash-alert over" style="background:#fef3c7;color:#92400e">{{ gate_msg }}{% if rider.approval_status != 'approved' %} <a href="{% url 'rider_documents' %}"><b>Documents →</b></a>{% endif %}</div>{% endif %}
+  {% for w in doc_warnings %}<div class="cash-alert warn">{{ w }} <a href="{% url 'rider_documents' %}"><b>Upload →</b></a></div>{% endfor %}
+  {% if next_shift %}<div class="goal"><div class="row"><b>🗓️ {% if next_shift.live %}Shift chal rahi hai{% else %}Agli shift{% endif %}</b>
+    <small>{{ next_shift.start|date:"D d M" }} · {{ next_shift.start|time:"H:i" }}–{{ next_shift.end|time:"H:i" }}</small></div></div>{% endif %}
+  {% include 'customer_portal/rider/_goals.html' %}
 
   <h3>🛵 {% t "Meri deliveries ({}/{})" mine|length max_active %}</h3>
+  {% if plan %}
+  <div class="card batch">
+    <div class="navttl">🔗 Batch route — {{ mine|length }} orders ek saath</div>
+    <ol class="stops">
+      {% for s in plan.stops %}
+      <li><b>{% if s.kind == 'pickup' %}📦 Uthayein{% else %}🏠 Dein{% endif %}:</b> {{ s.label }}
+        <small>({% for n in s.orders %}#{{ n }}{% if not forloop.last %}, {% endif %}{% endfor %})</small></li>
+      {% endfor %}
+    </ol>
+    {% if plan.google %}<div class="acts" style="margin-top:6px"><a class="btn o" href="{{ plan.google }}" target="_blank" rel="noopener">🗺️ Poora route Google Maps mein</a></div>{% endif %}
+  </div>
+  {% endif %}
   {% for r in mine %}
   <div class="card">
     <div class="row"><span class="no">#{{ r.order.order_no }}</span>
       <span class="pill {% if r.di.status == 'assigned' %}{% else %}b{% endif %}">{% if r.di.status == 'assigned' %}Maal uthana hai{% else %}Customer ko dena hai{% endif %}</span></div>
 
+    {% if SHOP.shop_order_chat_enabled %}<div class="row"><button type="button" class="btn l s" style="width:auto" onclick="OrderChat.open({{ r.order.id }}, 'rider')">💬 Customer chat<span class="oc-badge" data-chat-badge="{{ r.order.id }}" data-chat-channel="rider"></span></button></div>{% endif %}
     <div class="sep"></div>
     <div class="row"><span>📍 <b>{{ r.store }}</b>{% if r.store_addr %}<br><small>{{ r.store_addr }}</small>{% endif %}</span>
       <span style="display:flex;gap:6px">
@@ -28,6 +46,15 @@
         {% if r.wa_cust %}<a class="btn l s" style="width:auto" href="{{ r.wa_cust }}" target="_blank">💬</a>{% endif %}
       </span></div>
 
+    {% if r.nav %}
+    <div class="navbox">
+      <div class="navttl">🧭 {% if r.nav_leg == 'store' %}Store tak route{% else %}Customer tak route{% endif %}</div>
+      <div class="acts" style="margin-top:6px">
+        <a class="btn o" href="{{ r.nav.google }}" target="_blank" rel="noopener">🗺️ Google Maps</a>
+        <a class="btn" style="background:#33ccff;color:#05263a" href="{{ r.nav.waze }}" target="_blank" rel="noopener">🚗 Waze</a>
+      </div>
+    </div>
+    {% endif %}
     <div class="sep"></div>
     {% for it in r.items %}<div class="row"><span>{{ it.qty|floatformat:"-2" }} × {{ it.product.name }}</span></div>{% endfor %}
 
@@ -39,8 +66,13 @@
         <form method="post" action="{% url 'rider_order_action' r.order.id 'pickup' %}" style="flex:1">{% csrf_token %}
           <button class="btn o">📦 Maal le liya</button></form>
       {% else %}
-        <form method="post" action="{% url 'rider_order_action' r.order.id 'deliver' %}" style="flex:1"
+        <form method="post" enctype="multipart/form-data" action="{% url 'rider_order_action' r.order.id 'deliver' %}" style="flex:1"
               onsubmit="return confirm('Order customer ko de diya{% if r.is_cod %} aur Rs. {{ r.total|floatformat:0 }} cash le liya{% endif %}?');">{% csrf_token %}
+          <div class="proof">
+            <label class="proof-lbl">📸 Delivery ki photo{% if SHOP.rider_proof_photo_required %} <b style="color:#dc2626">*</b>{% else %} <small>(optional)</small>{% endif %}</label>
+            <input type="file" name="proof_photo" accept="image/*" capture="environment"{% if SHOP.rider_proof_photo_required %} required{% endif %} class="proof-in">
+            <input type="text" name="receiver_name" maxlength="100" placeholder="Maal kis ne liya? (naam, optional)" class="proof-in">
+          </div>
           <button class="btn">🎉 Deliver ho gaya{% if r.is_cod %} / Cash liya{% endif %}</button></form>
       {% endif %}
     </div>
@@ -56,6 +88,7 @@
     {% for o in offers %}
     <div class="card">
       <div class="row"><span class="no">#{{ o.order.order_no }}</span><span class="fee">Rs. {{ o.fee|floatformat:0 }}</span></div>
+      {% if o.batch %}<div class="batch-tag">{{ o.batch }}</div>{% endif %}
       <div class="row"><span>📍 <b>{{ o.store }}</b>{% if o.store_addr %}<br><small>{{ o.store_addr }}</small>{% endif %}</span></div>
       <div class="row"><span>🏠 {{ o.cust_addr|default:"—" }}</span></div>
       <div class="row"><small>{% t "{} item(s)" o.items_count %}</small>{% if o.dist_km is not None %}<small>📏 {% t "Store se {} km" o.dist_km %}</small>{% endif %}
@@ -68,5 +101,9 @@
       <div class="card empty">No new orders right now. You will hear a sound when one arrives 🔔</div>
     {% endfor %}
   {% endif %}
+  <div class="card"><div class="row"><a href="{% url 'rider_documents' %}"><b>📄 Mere documents</b></a>
+    {% if SHOP.rider_shift_booking_enabled %}<a href="{% url 'rider_shifts' %}"><b>🗓️ Shifts</b></a>{% endif %}</div></div>
+  {% include 'customer_portal/rider/_battery_saver.html' %}
 </div>
+{% include 'customer_portal/_order_chat_panel.html' %}
 {% endblock %}

@@ -104,8 +104,16 @@ def vendor_login_required(view_func):
             messages.warning(request, '🔒 Please log in as a vendor first')
             return redirect(f"{reverse('vendor_login')}?next={request.get_full_path()}")
 
-        if hasattr(request.user, 'vendor_profile'):
-            return view_func(request, *args, **kwargs)
+        from ..customer.vendor_access import (
+            activate_branch, get_vendor_profile, vendor_role, role_can_open)
+        activate_branch(request)
+        if get_vendor_profile(request.user) is not None:
+            match = getattr(request, 'resolver_match', None)
+            url_name = match.url_name if match else ''
+            if role_can_open(vendor_role(request.user), url_name):
+                return view_func(request, *args, **kwargs)
+            messages.error(request, '🔒 Your staff role cannot open this page')
+            return redirect('vendor_dashboard')
 
         messages.error(request, '❌ This page is for vendors only')
         return redirect('shop_home')

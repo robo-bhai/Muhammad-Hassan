@@ -25,6 +25,7 @@ from datetime import time as dtime
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
+from .vendor_access import accessible_profiles, get_vendor_profile, vendor_role
 from django.contrib import messages
 from django.contrib.auth import authenticate, logout
 from django.contrib.auth.models import User
@@ -50,7 +51,7 @@ from ..vendor_commission import (
 from ..models import (
     Cuisine,
     Brand, Category, CompanyInfo, DeliveryArea, DeliveryInfo, Inventory, OrderReview, Product, RiderProfile, SaleOrder,
-    StockBatch, StoreCategory, Unit, Vendor, VendorProfile, Warehouse,
+    StockBatch, StoreCategory, Unit, Vendor, VendorDayHours, VendorProfile, VendorStaff, Warehouse,
 )
 from . import store_orders
 from .views_reviews import vendor_rating
@@ -96,7 +97,7 @@ def _dispute_pending(vendor):
 
 
 def _get_vendor(request):
-    return request.user.vendor_profile.vendor
+    return get_vendor_profile(request.user).vendor
 
 
 def _login_key(phone, ip):
@@ -259,7 +260,7 @@ def _form_context(request, product=None, data=None):
         'units': Unit.objects.order_by('name'),
         'v': v,
         'current_stock': _read_stock(product, warehouse) if product else None,
-        'commission_percent': commission_percent(request.user.vendor_profile),
+        'commission_percent': commission_percent(get_vendor_profile(request.user)),
         'company_name': _company_name(),
     }
 
@@ -311,7 +312,7 @@ def _launch_offer_banner():
 @flag_required('vendor_register_enabled')
 def vendor_register(request):
     """Vendor account banao. Admin approve karega (ya auto-approve setting)."""
-    if request.user.is_authenticated and hasattr(request.user, 'vendor_profile'):
+    if request.user.is_authenticated and (get_vendor_profile(request.user) is not None):
         return redirect('vendor_dashboard')
 
     if request.method == 'POST':
@@ -437,7 +438,7 @@ def vendor_register(request):
 
 @flag_required('vendor_login_enabled')
 def vendor_login(request):
-    if request.user.is_authenticated and hasattr(request.user, 'vendor_profile'):
+    if request.user.is_authenticated and (get_vendor_profile(request.user) is not None):
         return redirect(_safe_next(request, request.GET.get('next')) or 'vendor_dashboard')
 
     if request.method == 'POST':
@@ -459,11 +460,18 @@ def vendor_login(request):
 
         profile = (
             VendorProfile.objects.select_related('user', 'vendor')
-            .filter(vendor__contact_number=phone).first()
+            .filter(vendor__contact_number=phone, parent__isnull=True).first()
         )
         user = None
+        staff_rec = None
         if profile and profile.user and not (profile.user.is_staff or profile.user.is_superuser):
             user = authenticate(request, username=profile.user.username, password=password)
+        elif not profile:
+            # Phone kisi owner ka nahi: store ke staff ka ho sakta hai
+            staff_rec = (VendorStaff.objects.select_related('user', 'store')
+                         .filter(phone=phone, is_active=True).first())
+            if staff_rec and staff_rec.user and not (staff_rec.user.is_staff or staff_rec.user.is_superuser):
+                user = authenticate(request, username=staff_rec.user.username, password=password)
 
         if not user:
             cache.set(key, cache.get(key, 0) + 1, LOGIN_LOCK_SECONDS)
@@ -473,6 +481,11 @@ def vendor_login(request):
         cache.delete(key)
         safe_login(request, user)
         request.session.save()
+        if staff_rec:
+            staff_rec.last_login_at = now()
+            staff_rec.save(update_fields=['last_login_at'])
+            messages.success(request, f'🎉 Welcome, {staff_rec.name}! ({staff_rec.store.business_name})')
+            return redirect(next_url or 'vendor_dashboard')
         profile.last_login_at = now()
         profile.save(update_fields=['last_login_at'])
         messages.success(request, f'🎉 Welcome back, {profile.business_name}!')
@@ -498,7 +511,7 @@ def vendor_logout(request):
 
 @vendor_login_required
 def vendor_dashboard(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     vendor = profile.vendor
 
     # Launch promo ki date guzar gayi ho to batches abhi normal rate par aa jayen (cron na chale to bhi)
@@ -515,25 +528,28 @@ def vendor_dashboard(request):
         .order_by('-id')
     )
     counts = {'approved': 0, 'pending': 0, 'rejected': 0}
-    from .stock_alerts import low_stock_settings, stock_state
+    from .stock_alerts import effective_level, low_stock_settings, stock_state
     stock_cfg = low_stock_settings()
+    stock_level = effective_level(profile, stock_cfg)
     low_count = out_count = 0
     for p in products:
         counts[p.approval_status] = counts.get(p.approval_status, 0) + 1
         p.stock_state = None
         if stock_cfg['enabled'] and p.approval_status == 'approved' and p.is_active:
-            p.stock_state = stock_state(p.total_stock, stock_cfg['level'])
+            p.stock_state = stock_state(p.total_stock, stock_level)
             low_count += p.stock_state == 'low'
             out_count += p.stock_state == 'out'
 
     return render(request, 'customer_portal/vendor/dashboard.html', {
+        'vendor_role': vendor_role(request.user),
+        'switch_stores': accessible_profiles(request.user),
         'page_title': 'Vendor Dashboard',
         'profile': profile,
         'products': products,
         'counts': counts,
         'low_count': low_count,
         'out_count': out_count,
-        'low_level': stock_cfg['level'],
+        'low_level': stock_level,
         'earnings': vendor_earnings(vendor),
         'payouts': vendor.marketplace_payouts.all()[:10],
         'rating': vendor_rating(vendor),
@@ -587,7 +603,7 @@ def _bulk_context(request, rows):
         'categories': Category.objects.order_by('name'),
         'brands': Brand.objects.order_by('name'),
         'units': Unit.objects.order_by('name'),
-        'commission_percent': commission_percent(request.user.vendor_profile),
+        'commission_percent': commission_percent(get_vendor_profile(request.user)),
         'company_name': _company_name(),
     }
 
@@ -619,7 +635,7 @@ def vendor_product_add(request):
     Ek hi page se kai products add karo. Har product apni transaction mein save hota hai:
     jo theek hain wo save ho jate hain, jin mein ghalti ho unhi ki rows error ke saath wapas aati hain.
     """
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     if not profile.is_approved:
         messages.warning(request, '⏳ Your account has not been approved yet.')
         return redirect('vendor_dashboard')
@@ -684,7 +700,7 @@ def vendor_product_add(request):
 @vendor_login_required
 @flag_required('vendor_can_add_products')
 def vendor_product_edit(request, pk):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     product = get_object_or_404(Product, pk=pk, vendor=profile.vendor)
 
     if not profile.is_approved:
@@ -787,7 +803,7 @@ def vendor_create_master(request, kind):
         return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
     label = MASTER_LABELS[kind]
 
-    if not request.user.vendor_profile.is_approved:
+    if not get_vendor_profile(request.user).is_approved:
         return JsonResponse({'success': False, 'message': 'Your account has not been approved yet.'}, status=403)
 
     try:
@@ -828,7 +844,7 @@ def vendor_create_master(request, kind):
 @require_POST
 def vendor_product_toggle(request, pk):
     """Approved product ko shop par show/hide karo (delete nahi, history bachi rahe)."""
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     product = get_object_or_404(Product, pk=pk, vendor=profile.vendor)
 
     if product.approval_status != 'approved':
@@ -868,9 +884,25 @@ def _parse_money(value, label, errors, maximum=Decimal('99999.99')):
         return Decimal('0')
 
 
+def _day_rows_for_form(profile, post=None):
+    """Settings form ke 7 din: [{'i','name','closed','open','close'}] (galti par POST wali values wapas)."""
+    rows = []
+    saved = {r.weekday: r for r in profile.day_hours.all()}
+    for i, name in enumerate(VendorProfile.DAY_NAMES):
+        if post is not None:
+            rows.append({'i': i, 'name': name, 'closed': bool(post.get(f'day_closed_{i}')),
+                         'open': post.get(f'day_open_{i}', ''), 'close': post.get(f'day_close_{i}', '')})
+        else:
+            r = saved.get(i)
+            rows.append({'i': i, 'name': name, 'closed': bool(r and r.is_closed),
+                         'open': r.opens_at.strftime('%H:%M') if r and r.opens_at else '',
+                         'close': r.closes_at.strftime('%H:%M') if r and r.closes_at else ''})
+    return rows
+
+
 @vendor_login_required
 def vendor_store_settings(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
 
     if request.method == 'POST':
         post, errors = request.POST, []
@@ -890,6 +922,21 @@ def vendor_store_settings(request):
             errors.append('Enter valid opening and closing times')
         if bool(opens_at) != bool(closes_at):
             errors.append('Opening aur closing dono time likhein (ya dono khali chhoden)')
+
+        day_rows = {}
+        for i, dname in enumerate(VendorProfile.DAY_NAMES):
+            closed = bool(post.get(f'day_closed_{i}'))
+            try:
+                d_open, d_close = _parse_time(post.get(f'day_open_{i}')), _parse_time(post.get(f'day_close_{i}'))
+            except (ValueError, TypeError):
+                errors.append(f'{dname}: valid time likhein')
+                continue
+            if closed:
+                day_rows[i] = (True, None, None)
+            elif bool(d_open) != bool(d_close):
+                errors.append(f'{dname}: opening aur closing dono likhein (ya dono khali chhoden)')
+            elif d_open and d_close:
+                day_rows[i] = (False, d_open, d_close)
 
         min_order = _parse_money(post.get('min_order_amount'), 'Minimum order', errors)
         fee = _parse_money(post.get('delivery_fee'), 'Delivery fee', errors)
@@ -929,6 +976,26 @@ def vendor_store_settings(request):
         if len([x for x in raw_areas.replace('\n', ',').replace(';', ',').split(',') if x.strip()]) > VendorProfile.MAX_AREAS:
             errors.append(f'Zyada se zyada {VendorProfile.MAX_AREAS} areas likh sakte hain')
 
+        hide_sold_out = bool(post.get('hide_sold_out'))
+        low_raw = (post.get('low_stock_level') or '').strip()
+        low_level = None
+        if low_raw:
+            try:
+                low_level = int(low_raw)
+                if not 1 <= low_level <= 10000:
+                    raise ValueError
+            except ValueError:
+                low_level = profile.low_stock_level
+                errors.append('Low-stock level must be a number from 1 to 10000 (or leave it empty)')
+        auto_accept = bool(post.get('auto_accept'))
+        try:
+            auto_prep = int(post.get('auto_accept_prep_minutes') or profile.auto_accept_prep_minutes or 20)
+            if not 1 <= auto_prep <= 600:
+                raise ValueError
+        except ValueError:
+            auto_prep = profile.auto_accept_prep_minutes
+            errors.append('Auto-accept prep time must be 1 to 600 minutes')
+
         logo, cover = request.FILES.get('logo'), request.FILES.get('cover_image')
         for f in (logo, cover):
             if f:
@@ -947,6 +1014,8 @@ def vendor_store_settings(request):
             profile.min_order_amount, profile.delivery_fee = min_order, fee
             profile.fee_per_km, profile.free_radius_km, profile.max_delivery_km = fee_per_km, free_radius, max_km
             profile.delivery_time_min, profile.delivery_time_max = t_min, t_max
+            profile.auto_accept, profile.auto_accept_prep_minutes = auto_accept, auto_prep
+            profile.hide_sold_out, profile.low_stock_level = hide_sold_out, low_level
             profile.delivery_areas = ', '.join(area_list)
             if logo:
                 profile.logo = logo
@@ -958,6 +1027,11 @@ def vendor_store_settings(request):
                 profile.cover_image = None
             profile.save()
             profile.cuisines.set(cuisines)
+            with transaction.atomic():
+                profile.day_hours.all().delete()
+                for wd, (closed, d_open, d_close) in day_rows.items():
+                    VendorDayHours.objects.create(store=profile, weekday=wd, is_closed=closed,
+                                                  opens_at=d_open, closes_at=d_close)
             messages.success(request, '✅ Store settings saved.')
             return redirect('vendor_store_settings')
 
@@ -967,6 +1041,7 @@ def vendor_store_settings(request):
         'store_categories': StoreCategory.objects.filter(is_active=True),
         'cuisines': Cuisine.objects.filter(is_active=True),
         'my_cuisine_ids': set(profile.cuisines.values_list('id', flat=True)),
+        'day_rows': _day_rows_for_form(profile, request.POST if request.method == 'POST' else None),
         'distance_fee_on': shop_flag('shop_distance_fee_enabled'),
         'cuisines_on': shop_flag('shop_cuisines_enabled'),
         'company_name': _company_name(),
@@ -992,7 +1067,7 @@ def _vendor_orders(vendor):
 @vendor_login_required
 @flag_required('vendor_can_manage_orders')
 def vendor_orders(request):
-    profile = request.user.vendor_profile
+    profile = get_vendor_profile(request.user)
     vendor = profile.vendor
     store_orders.expire_if_due()
 
@@ -1046,7 +1121,7 @@ def vendor_orders(request):
         })
 
     return render(request, 'customer_portal/vendor/orders.html', {
-        'riders': list(RiderProfile.objects.filter(is_active=True)),
+        'riders': list(RiderProfile.objects.filter(is_active=True, approval_status='approved')),
         'page_title': 'Orders',
         'profile': profile,
         'orders': orders,
@@ -1063,11 +1138,11 @@ def vendor_orders(request):
 @require_POST
 def vendor_order_action(request, pk, action):
     """action: accept | reject | ready | delivered."""
-    vendor = request.user.vendor_profile.vendor
+    vendor = get_vendor_profile(request.user).vendor
     tab = request.POST.get('tab', 'new')
     back = f"{reverse('vendor_orders')}?tab={tab if tab in ORDER_TABS else 'new'}"
 
-    if not request.user.vendor_profile.is_approved:
+    if not get_vendor_profile(request.user).is_approved:
         messages.error(request, '❌ You can handle orders only after your account is approved.')
         return redirect(back)
 
@@ -1113,7 +1188,7 @@ def vendor_order_action(request, pk, action):
 @flag_required('vendor_can_manage_orders', json=True)
 def vendor_orders_poll(request):
     """Orders page har 30 second mein poochta hai: kitne naye order hain (naya aane par beep)."""
-    vendor = request.user.vendor_profile.vendor
+    vendor = get_vendor_profile(request.user).vendor
     store_orders.expire_if_due()
     new = _vendor_orders(vendor).filter(status='pending')
     latest = new.order_by('-id').values_list('id', flat=True).first() or 0

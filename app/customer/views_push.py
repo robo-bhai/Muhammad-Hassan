@@ -2,6 +2,7 @@
 import json
 
 from django.http import HttpResponse, JsonResponse
+from .vendor_access import get_vendor_profile
 from django.views.decorators.http import require_GET, require_POST
 
 from .. import push_service
@@ -80,12 +81,13 @@ def _badge_count(user, portal):
     try:
         from ..models import DeliveryInfo, Notification, SaleOrder
         if portal not in _PORTALS:    # page ne nahi batayaa: user ke role se andaza
-            portal = ('vendor' if getattr(user, 'vendor_profile', None) else
+            portal = ('vendor' if get_vendor_profile(user) else
                       'rider' if getattr(user, 'rider_profile', None) else
                       'shop' if getattr(user, 'customer_profile', None) else 'erp')
         if portal == 'vendor':
-            vp = getattr(user, 'vendor_profile', None)
-            return SaleOrder.objects.filter(vendor=vp.vendor, status='pending').count() if vp else 0
+            from .vendor_access import accessible_profiles
+            ids = [p.vendor_id for p in accessible_profiles(user)]
+            return SaleOrder.objects.filter(vendor_id__in=ids, status='pending').count() if ids else 0
         if portal == 'rider':
             rp = getattr(user, 'rider_profile', None)
             if not rp:

@@ -1,0 +1,45 @@
+{% extends 'customer_portal/rider/base.html' %}
+{% block title %}Documents{% endblock %}
+{% block body %}
+<style>
+  .dbox{border-radius:14px;padding:12px 14px;margin-bottom:10px;font-weight:700;font-size:14px}
+  .dbox.ok{background:#dcfce7;color:#166534}.dbox.wait{background:#fef3c7;color:#92400e}.dbox.bad{background:#fee2e2;color:#991b1b}
+  .dform{margin-top:8px}.dform input[type=text],.dform input[type=date],.dform input[type=file]{width:100%;padding:9px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;background:#fff;margin-bottom:6px}
+  .dform label{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-bottom:3px}
+</style>
+<div class="wrap">
+  <h3>📄 Mere documents</h3>
+  {% if approval == 'approved' %}<div class="dbox ok">✅ Aap approved hain.</div>
+  {% elif approval == 'pending' %}<div class="dbox wait">⏳ Review mein. Sab documents upload karein — admin approve karega to aap Online ja sakenge.</div>
+  {% elif approval == 'rejected' %}<div class="dbox bad">❌ Application rad{% if approval_note %}: {{ approval_note }}{% endif %}. Dobara upload karein.</div>
+  {% else %}<div class="dbox bad">⛔ Account suspend{% if approval_note %}: {{ approval_note }}{% endif %}. Admin se rabta karein.</div>{% endif %}
+
+  {% for it in items %}
+  <div class="card">
+    <div class="row"><b>{{ it.label }}</b>
+      {% if not it.doc %}<span class="pill">Baqi</span>
+      {% elif it.doc.status == 'approved' %}<span class="pill g">✅ Approved</span>
+      {% elif it.doc.status == 'rejected' %}<span class="pill" style="background:#fee2e2;color:#991b1b">❌ Rad</span>
+      {% else %}<span class="pill" style="background:#fef3c7;color:#92400e">⏳ Review mein</span>{% endif %}</div>
+    {% if it.doc %}
+      <small>{% if it.doc.number %}Number: {{ it.doc.number }} · {% endif %}{% if it.doc.expiry %}Expiry: {{ it.doc.expiry|date:"d M Y" }}{% endif %}
+        · <a href="{% url 'rider_document_file' it.doc.id %}" target="_blank" rel="noopener">Dekhein</a></small>
+      {% if it.expired %}<div class="dbox bad" style="margin:6px 0 0">⛔ Expire ho gaya — naya upload karein.</div>
+      {% elif it.expiring %}<div class="dbox wait" style="margin:6px 0 0">⚠️ Jald expire hoga — naya upload karein.</div>{% endif %}
+      {% if it.doc.status == 'rejected' and it.doc.reject_reason %}<div class="dbox bad" style="margin:6px 0 0">Wajah: {{ it.doc.reject_reason }}</div>{% endif %}
+    {% endif %}
+    {% if not it.doc or it.doc.status != 'approved' or it.expired or it.expiring %}
+    <form method="post" enctype="multipart/form-data" class="dform">{% csrf_token %}
+      <input type="hidden" name="kind" value="{{ it.kind }}">
+      {% if it.needs_num %}<label>Number</label><input type="text" name="number" maxlength="40" value="{{ it.doc.number|default:'' }}" required>{% endif %}
+      {% if it.needs_exp %}<label>Expiry ki tareekh</label><input type="date" name="expiry" min="{{ min_date }}" required>{% endif %}
+      <label>{% if it.kind == 'photo' %}Photo{% else %}Saaf photo ya PDF{% endif %}</label>
+      <input type="file" name="file" accept="image/*,application/pdf"{% if it.kind == 'photo' %} capture="user"{% endif %} required>
+      <button class="btn">{% if it.doc %}🔄 Dobara upload{% else %}⬆️ Upload{% endif %}</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <small style="color:var(--mut)">Aap ke documents sirf aap aur admin dekh sakte hain. File 8 MB tak (JPG, PNG, WebP ya PDF).</small>
+</div>
+{% endblock %}

@@ -1,23 +1,137 @@
-{# Rider ka phone apni location server ko bhejta hai (sirf online + active order ke dauran). #}
+{# Rider ka phone apni location server ko bhejta hai (sirf online + active order ke dauran).
+   Internet na ho to point IndexedDB queue mein jati hai aur wapas aane par (Background Sync / online event) bheji jati hai.
+   Battery saver: kam GPS power, kam baar bhejna, screen jagaye rakhna band. #}
 <script>
 (function(){
   if(!('geolocation' in navigator)) return;
   var url = "{% url 'rider_location_update' %}", csrf = "{{ csrf_token }}";
-  var lastSent = 0, wake = null;
-  function send(p){
-    var n = Date.now();
-    if(n - lastSent < 5000) return;
-    lastSent = n;
+  var DB = 'rider-loc', ST = 'q', CAP = 20, TAG = 'rider-loc-sync';
+  var lastSent = 0, lastLL = null, wake = null, watchId = null, mode = '', flushing = false, lowBatt = false;
+  function noop(){}
+
+  // ---------- queue (IndexedDB) ----------
+  function db(){
+    return new Promise(function(res, rej){
+      if(!window.indexedDB) return rej(new Error('no idb'));
+      var r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore(ST, {autoIncrement: true}); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  function qAdd(item){
+    return db().then(function(d){ return new Promise(function(res, rej){
+      var tx = d.transaction(ST, 'readwrite'), s = tx.objectStore(ST);
+      s.add(item);
+      var c = s.count();
+      c.onsuccess = function(){            // sirf naye CAP points rakho
+        var extra = c.result - CAP;
+        if(extra > 0){ var cur = s.openCursor(); cur.onsuccess = function(){ var k = cur.result; if(k && extra > 0){ k.delete(); extra--; k.continue(); } }; }
+      };
+      tx.oncomplete = function(){ res(); }; tx.onerror = function(){ rej(tx.error); };
+    }); });
+  }
+  function qLatest(){                      // sab se nayi point + queue ki ginti
+    return db().then(function(d){ return new Promise(function(res){
+      var s = d.transaction(ST).objectStore(ST), out = {n: 0, key: null, item: null};
+      s.count().onsuccess = function(e){ out.n = e.target.result; };
+      var cur = s.openCursor(null, 'prev');
+      cur.onsuccess = function(){ var k = cur.result; if(k){ out.key = k.key; out.item = k.value; } res(out); };
+      cur.onerror = function(){ res(out); };
+    }); }).catch(function(){ return {n: 0, key: null, item: null}; });
+  }
+  function qClearUpTo(key){
+    return db().then(function(d){ return new Promise(function(res){
+      var tx = d.transaction(ST, 'readwrite'); tx.objectStore(ST).delete(IDBKeyRange.upperBound(key));
+      tx.oncomplete = function(){ res(); }; tx.onerror = function(){ res(); };
+    }); }).catch(noop);
+  }
+
+  // ---------- bhejna ----------
+  function post(item){                      // 'retry' = network/server masla (queue mein rakho), 'done' = jawab mil gaya
     var b = new URLSearchParams();
-    b.append('lat', p.coords.latitude); b.append('lng', p.coords.longitude);
-    fetch(url, {method:'POST', credentials:'same-origin',
-      headers:{'X-CSRFToken':csrf,'Content-Type':'application/x-www-form-urlencoded'}, body:b}).catch(function(){});
+    b.append('lat', item.lat); b.append('lng', item.lng);
+    if(item.at) b.append('at', item.at);
+    return fetch(url, {method: 'POST', credentials: 'same-origin',
+      headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded'}, body: b})
+      .then(function(r){ return r.status >= 500 ? 'retry' : 'done'; }, function(){ return 'retry'; });
+  }
+  // Server sirf aakhri location rakhta hai, isliye queue se sirf sab se nayi point bhejte hain.
+  function flush(){
+    if(flushing || !navigator.onLine) return Promise.resolve();
+    flushing = true;
+    return qLatest().then(function(x){
+      if(!x.item) return;
+      return post(x.item).then(function(r){ if(r === 'done') return qClearUpTo(x.key); });
+    }).then(function(){ flushing = false; chip(); }, function(){ flushing = false; });
+  }
+  function enqueue(ll){
+    return qAdd({lat: ll[0], lng: ll[1], at: Math.round(Date.now() / 1000), url: url, csrf: csrf}).then(function(){
+      chip();
+      if(navigator.serviceWorker && navigator.serviceWorker.ready){
+        navigator.serviceWorker.ready.then(function(reg){ if(reg.sync) return reg.sync.register(TAG); }).catch(noop);
+      }
+    }, noop);
+  }
+
+  // ---------- battery saver ----------
+  function pref(){ try{ return localStorage.getItem('riderSaver') || 'auto'; }catch(e){ return 'auto'; } }
+  function saver(){ var p = pref(); return p === 'on' || (p === 'auto' && lowBatt); }
+  function cfg(){ return saver() ? {saver: true, interval: 20000, high: false, maxAge: 15000}
+                                 : {saver: false, interval: 5000, high: true, maxAge: 5000}; }
+  function dist(a, b){                      // meter
+    var R = 6371000, r = Math.PI / 180, dLa = (b[0]-a[0])*r, dLo = (b[1]-a[1])*r;
+    var h = Math.sin(dLa/2)*Math.sin(dLa/2) + Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLo/2)*Math.sin(dLo/2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function send(p){
+    var c = cfg(), now = Date.now();
+    if(now - lastSent < c.interval) return;
+    var ll = [p.coords.latitude, p.coords.longitude];
+    if(c.saver && lastLL && now - lastSent < 60000 && dist(lastLL, ll) < 25) return;   // hila nahi: 60 sec mein ek dafa
+    lastSent = now; lastLL = ll;
+    if(!navigator.onLine){ enqueue(ll); return; }
+    post({lat: ll[0], lng: ll[1]}).then(function(r){ if(r === 'retry') enqueue(ll); else flush(); });
   }
   function keepAwake(){
-    try{ if(navigator.wakeLock){ navigator.wakeLock.request('screen').then(function(l){wake=l}).catch(function(){}); } }catch(e){}
+    if(saver()) return;
+    try{ if(navigator.wakeLock){ navigator.wakeLock.request('screen').then(function(l){ wake = l; }).catch(noop); } }catch(e){}
   }
-  navigator.geolocation.watchPosition(send, function(){}, {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
-  keepAwake();
-  document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') keepAwake(); });
+  function apply(){
+    var c = cfg(), m = c.saver ? 'saver' : 'normal';
+    if(m === mode) return;
+    mode = m;
+    if(watchId !== null) navigator.geolocation.clearWatch(watchId);
+    watchId = navigator.geolocation.watchPosition(send, noop, {enableHighAccuracy: c.high, maximumAge: c.maxAge, timeout: 30000});
+    if(c.saver){ try{ if(wake) wake.release(); }catch(e){} wake = null; } else { keepAwake(); }
+    try{ window.dispatchEvent(new CustomEvent('riderSaverState', {detail: {saver: c.saver}})); }catch(e){}
+  }
+
+  // ---------- queue ka chhota nishan ----------
+  var chipEl = null;
+  function chip(){
+    qLatest().then(function(x){
+      if(!x.n){ if(chipEl) chipEl.style.display = 'none'; return; }
+      if(!chipEl){
+        chipEl = document.createElement('div');
+        chipEl.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));background:#111827;color:#fff;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;text-align:center;z-index:40';
+        document.body.appendChild(chipEl);
+      }
+      chipEl.textContent = '\uD83D\uDCE1 Internet nahi \u2014 location save ho rahi hai (' + x.n + '). Wapas aane par khud chali jayegi.';
+      chipEl.style.display = 'block';
+    });
+  }
+
+  window.addEventListener('online', flush);
+  window.addEventListener('riderSaverChanged', function(){ apply(); });
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible'){ keepAwake(); flush(); } });
+  setInterval(flush, 60000);
+  if(navigator.getBattery){
+    navigator.getBattery().then(function(b){
+      function u(){ lowBatt = !b.charging && b.level <= 0.2; apply(); }
+      b.addEventListener('levelchange', u); b.addEventListener('chargingchange', u); u();
+    }).catch(noop);
+  }
+  apply(); flush(); chip();
 })();
 </script>

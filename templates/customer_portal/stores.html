@@ -159,7 +159,9 @@
       <p>Fast delivery from local stores near you</p>
       <div class="st-search">
         <i class="bi bi-search"></i>
-        <input type="text" name="q" id="stQ" value="{{ search }}" placeholder="Search stores or products...">
+        <input type="text" name="q" id="stQ" value="{{ search }}" placeholder="{% if LANG_CODE == 'ur' %}اسٹور یا آئٹم تلاش کریں...{% else %}Search stores or products...{% endif %}">
+        <button type="button" class="voice-lang-btn" data-voice-lang-btn onclick="toggleVoiceLang()" title="Voice language: English / اردو" aria-label="Voice language">EN</button>
+        <button type="button" class="st-mic" id="stMic" onclick="toggleVoiceSearch('stQ','stMic',true)" title="Voice Search" aria-label="Voice Search"><i class="bi bi-mic-fill"></i></button>
         <button type="submit">Search</button>
       </div>
       <div id="stRecent" style="display:none;margin-top:10px;gap:6px;flex-wrap:wrap;align-items:center;"></div>

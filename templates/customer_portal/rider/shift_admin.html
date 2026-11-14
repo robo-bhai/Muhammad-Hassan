@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Rider shifts{% endblock %}
+{% block page_title %}🗓️ Rider shifts{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <a href="{% url 'rider_manage' %}" class="btn btn-sm btn-outline-secondary mb-3">← Riders</a>
+  <div class="row g-3">
+    <div class="col-lg-4"><div class="card shadow-sm"><div class="card-header fw-bold">➕ Shifts banayein</div><div class="card-body">
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="generate">
+        <div class="mb-2"><label class="form-label small mb-0">Pehla din</label><input class="form-control" type="date" name="start_date" value="{{ today }}" required></div>
+        <div class="mb-2"><label class="form-label small mb-0">Kitne din (1-14)</label><input class="form-control" type="number" name="days" value="7" min="1" max="14" required></div>
+        <div class="mb-2"><label class="form-label small mb-0">Slots (har din)</label><input class="form-control" name="slots" value="12:00-16:00, 18:00-23:00" required>
+          <div class="form-text">Comma se alag. Raat ke paar: 22:00-02:00</div></div>
+        <div class="mb-2"><label class="form-label small mb-0">Har shift mein riders (capacity)</label><input class="form-control" type="number" name="capacity" value="5" min="1" max="500" required></div>
+        <div class="mb-3"><label class="form-label small mb-0">Zone (optional)</label><input class="form-control" name="zone" maxlength="60" placeholder="Manama, Juffair ..."></div>
+        <button class="btn btn-primary w-100">Banayein</button>
+      </form>
+    </div></div></div>
+
+    <div class="col-lg-8">
+    {% for d, shs in days %}
+      <div class="card shadow-sm mb-3"><div class="card-header fw-bold">{{ d|date:"l, d M Y" }}</div>
+      <div class="list-group list-group-flush">
+      {% for s in shs %}
+        <div class="list-group-item">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div><b>{{ s.start_time|time:"H:i" }} – {{ s.end_time|time:"H:i" }}</b>{% if s.zone %} · 📍 {{ s.zone }}{% endif %}
+              <span class="badge {% if s.booked_n >= s.capacity %}bg-danger{% else %}bg-success{% endif %}">{{ s.booked_n }} / {{ s.capacity }}</span>
+              {% if not s.is_open %}<span class="badge bg-secondary">Band</span>{% endif %}</div>
+            <div class="d-flex gap-1">
+              <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="shift_id" value="{{ s.id }}"><input type="hidden" name="action" value="capacity">
+                <input class="form-control form-control-sm" style="width:70px" type="number" name="capacity" value="{{ s.capacity }}" min="1" max="500">
+                <button class="btn btn-sm btn-outline-primary">Save</button></form>
+              <form method="post">{% csrf_token %}<input type="hidden" name="shift_id" value="{{ s.id }}"><input type="hidden" name="action" value="toggle">
+                <button class="btn btn-sm btn-outline-secondary">{% if s.is_open %}Band karein{% else %}Kholein{% endif %}</button></form>
+              <form method="post" onsubmit="return confirm('Shift hata dein? Booked riders ko bata diya jayega.')">{% csrf_token %}<input type="hidden" name="shift_id" value="{{ s.id }}"><input type="hidden" name="action" value="delete">
+                <button class="btn btn-sm btn-outline-danger">🗑️</button></form>
+            </div>
+          </div>
+          {% if s.riders %}<div class="small text-muted mt-1">{{ s.riders|join:", " }}</div>{% endif %}
+        </div>
+      {% endfor %}
+      </div></div>
+    {% empty %}
+      <div class="card shadow-sm"><div class="card-body text-center text-muted">Aage ke 14 din mein koi shift nahi. Baayein taraf se banayein.</div></div>
+    {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

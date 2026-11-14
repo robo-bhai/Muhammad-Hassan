@@ -15,6 +15,7 @@ import threading
 import time
 
 from django.contrib.auth.models import User
+from .vendor_access import get_vendor_profile
 from django.core import signing
 from django.db import connection, transaction
 from django.http import JsonResponse
@@ -64,14 +65,16 @@ def _vendor_action(user, order_id, action):
     from . import store_orders
     if action not in ('accept', 'reject'):
         return _fail('Invalid action.')
-    vp = getattr(user, 'vendor_profile', None)
-    if vp is None or not vp.is_approved:
+    from .vendor_access import accessible_profiles
+    profiles = accessible_profiles(user)
+    if not profiles:
         return _fail('Account approved nahi hai.')
     if not shop_flag('vendor_can_manage_orders'):
         return _fail('Order manage karna abhi band hai.')
     try:
         with transaction.atomic():
-            order = SaleOrder.objects.select_for_update().filter(pk=order_id, vendor=vp.vendor).first()
+            order = SaleOrder.objects.select_for_update().filter(
+                pk=order_id, vendor_id__in=[p.vendor_id for p in profiles if p.is_approved]).first()
             if order is None:
                 return _fail('Order nahi mila.')
             store_orders.apply_vendor_action(
@@ -193,7 +196,7 @@ def push_offer_to_rider(order, rider_id):
         from ..models import RiderProfile
         from .. import push_service
         from . import store_orders
-        rider = RiderProfile.objects.filter(pk=rider_id, is_active=True, is_online=True).select_related('user').first()
+        rider = RiderProfile.objects.filter(pk=rider_id, is_active=True, is_online=True, approval_status='approved').select_related('user').first()
         if not rider or not rider.user_id:
             return
         push_service.send_push_after_commit(

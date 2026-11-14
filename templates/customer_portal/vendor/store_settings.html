@@ -87,12 +87,39 @@
         </div>
         <div class="ss-help">{% t "Closed: customers cannot order. Busy: orders are accepted but may be delayed." %} {% if profile.is_open_now %}{% t "Right now customers see your store as <b>open</b>." %}{% else %}{% t "Right now customers see your store as <b>closed</b>." %}{% endif %}</div>
 
+        <div class="ss-sec">New orders</div>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:700;"><input type="checkbox" name="auto_accept" value="1" {% if profile.auto_accept %}checked{% endif %}> Auto-accept new orders</label>
+        <div class="ss-row" style="margin-top:8px;">
+          <div class="ss-group"><label>Prep time shown to customer (minutes)</label><input type="number" name="auto_accept_prep_minutes" min="1" max="600" value="{{ profile.auto_accept_prep_minutes }}"></div>
+        </div>
+        <div class="ss-help">OFF: a loud ringtone plays on the Orders page until you Accept or Reject each new order. ON: orders are accepted automatically and the customer gets the ETA. Stock is still checked at checkout.</div>
+
+        <div class="ss-sec">Stock</div>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:700;"><input type="checkbox" name="hide_sold_out" value="1" {% if profile.hide_sold_out %}checked{% endif %}> Hide sold-out products from customers</label>
+        <div class="ss-row" style="margin-top:8px;">
+          <div class="ss-group"><label>Low-stock alert at (units, optional)</label><input type="number" name="low_stock_level" min="1" max="10000" placeholder="Default" value="{{ profile.low_stock_level|default_if_none:'' }}"></div>
+        </div>
+        <div class="ss-help">When a product reaches 0 stock it disappears from your store and the shop home, and comes back by itself when you add stock. Hidden products stay in your dashboard. You get a "Low stock" alert at the level above and a "Sold out" alert at 0.</div>
+
         <div class="ss-sec">Timings</div>
         <div class="ss-row">
           <div class="ss-group"><label>Opens at</label><input type="time" name="opens_at" value="{{ profile.opens_at|time:'H:i' }}"></div>
           <div class="ss-group"><label>Closes at</label><input type="time" name="closes_at" value="{{ profile.closes_at|time:'H:i' }}"></div>
         </div>
-        <div class="ss-help" style="margin-top:-8px;">If both are empty, the store is always open according to its status. Overnight hours also work (e.g. 18:00 to 02:00).</div>
+        <div class="ss-help" style="margin-top:-8px;">If both are empty, the store is always open according to its status. Overnight hours also work (e.g. 18:00 to 02:00). The times above apply to every day, unless you set a different time for a day below.</div>
+
+        <details style="margin-top:10px;" {% for d in day_rows %}{% if d.closed or d.open %}open{% endif %}{% endfor %}>
+          <summary style="font-weight:700;cursor:pointer;">Different timing for specific days (optional)</summary>
+          <div class="ss-help" style="margin:6px 0;">Leave a day empty to use the timing above. Tick "Closed" if the store is off that whole day (e.g. Friday).</div>
+          {% for d in day_rows %}
+          <div class="ss-row" style="align-items:flex-end;margin-bottom:6px;">
+            <div class="ss-group" style="min-width:90px;"><label>{{ d.name }}</label>
+              <label style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;"><input type="checkbox" name="day_closed_{{ d.i }}" value="1" {% if d.closed %}checked{% endif %}> Closed</label></div>
+            <div class="ss-group"><label>Opens</label><input type="time" name="day_open_{{ d.i }}" value="{{ d.open }}"></div>
+            <div class="ss-group"><label>Closes</label><input type="time" name="day_close_{{ d.i }}" value="{{ d.close }}"></div>
+          </div>
+          {% endfor %}
+        </details>
 
         <div class="ss-sec">Delivery</div>
         <div class="ss-row">

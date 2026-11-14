@@ -35,6 +35,29 @@
   .btn{flex:1;min-width:110px;text-align:center;padding:13px 10px;border-radius:12px;border:0;font-weight:800;font-size:15px;color:#fff;background:var(--ok);display:block;width:100%}
   .btn.o{background:var(--brand)}.btn.l{background:#fff;color:var(--ink);border:1px solid #d1d5db;font-weight:700}
   .btn.s{padding:9px;font-size:13px;min-width:0}
+  .navbox{background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;margin-top:10px}
+  .navttl{font-weight:800;font-size:13px;color:#c2410c}
+  .proof{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:8px}
+  .proof-lbl{display:block;font-weight:800;font-size:13px;margin-bottom:6px}
+  .proof-in{width:100%;padding:9px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;background:#fff;margin-bottom:6px}
+  .batch{border:1px solid #bfdbfe;background:#eff6ff}
+  .stops{margin:8px 0 0;padding-left:20px;font-size:14px;line-height:1.7}
+  .batch-tag{background:#dbeafe;color:#1d4ed8;font-weight:800;font-size:12px;border-radius:8px;padding:5px 9px;margin-bottom:6px}
+  .goal{background:#fff;border-radius:16px;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .bar{height:10px;background:#e5e7eb;border-radius:8px;overflow:hidden;margin:8px 0 4px}.bar i{display:block;height:100%;background:var(--brand);border-radius:8px}.bar i.full{background:var(--ok)}
+  .cash-alert{border-radius:12px;padding:10px 12px;font-weight:700;font-size:13px;margin-bottom:10px}
+  .cash-alert.warn{background:#fef3c7;color:#92400e}.cash-alert.over{background:#fee2e2;color:#991b1b}
+  .oa{position:fixed;inset:0;z-index:1000;background:linear-gradient(160deg,#7c2d12,#ea580c);color:#fff;display:flex;flex-direction:column;padding:calc(18px + env(safe-area-inset-top,0px)) 18px calc(18px + env(safe-area-inset-bottom,0px));overflow:auto}
+  .oa h2{margin:0;font-size:15px;letter-spacing:.5px;opacity:.9;text-align:center}
+  .oa .ring{width:112px;height:112px;border-radius:50%;margin:14px auto;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:900;background:conic-gradient(#fff var(--p,100%),rgba(255,255,255,.25) 0)}
+  .oa .ring span{width:92px;height:92px;border-radius:50%;background:#9a3412;display:flex;align-items:center;justify-content:center}
+  .oa .fee{text-align:center;font-size:34px;font-weight:900}
+  .oa .det{background:rgba(0,0,0,.22);border-radius:16px;padding:12px 14px;margin:12px 0;font-size:15px;line-height:1.6}
+  .oa .det small{opacity:.85}
+  .oa .big{display:block;width:100%;border:0;border-radius:16px;padding:18px;font-size:19px;font-weight:900;margin-top:10px}
+  .oa .yes{background:#16a34a;color:#fff}.oa .no{background:#fff;color:#991b1b}.oa .later{background:transparent;color:#fff;font-size:14px;font-weight:700;opacity:.85}
+  .oa .cnt{text-align:center;font-size:12px;opacity:.8}
+  @media (prefers-reduced-motion:no-preference){.oa .ring{animation:oapulse 1s ease-in-out infinite}@keyframes oapulse{50%{transform:scale(1.05)}}}
   .empty{text-align:center;color:var(--mut);padding:30px 10px}
   .fee{font-size:20px;font-weight:900;color:var(--ok)}
   .nav{position:fixed;left:0;right:0;bottom:0;background:#fff;display:flex;border-top:1px solid #e5e7eb;padding-bottom:env(safe-area-inset-bottom,0)}
@@ -67,6 +90,12 @@
   <a href="{% url 'rider_home' %}" class="{% if nav == 'orders' %}on{% endif %}"><span>🛵</span>Orders{% if active_count %}<i class="badge">{{ active_count }}</i>{% endif %}</a>
   <a href="{% url 'rider_history' %}" class="{% if nav == 'history' %}on{% endif %}"><span>🧾</span>History</a>
   <a href="{% url 'rider_disputes' %}" class="{% if nav == 'disputes' %}on{% endif %}"><span>⚠️</span>Masle{% if dispute_count %}<i class="badge">{{ dispute_count }}</i>{% endif %}</a>
+  {% if SHOP.rider_shift_booking_enabled %}
+  <a href="{% url 'rider_shifts' %}" class="{% if nav == 'shifts' %}on{% endif %}"><span>🗓️</span>Shifts</a>
+  {% endif %}
+  {% if SHOP.rider_hotspots_enabled %}
+  <a href="{% url 'rider_hotspots' %}" class="{% if nav == 'hotspots' %}on{% endif %}"><span>🔥</span>Demand</a>
+  {% endif %}
   {% if SHOP.rider_earnings_enabled %}
   <a href="{% url 'rider_earnings' %}" class="{% if nav == 'earnings' %}on{% endif %}"><span>💰</span>Kamai</a>
   {% endif %}
@@ -76,8 +105,8 @@
 <script>
 (function(){
   var last = null, audioCtx = null;
-  function beep(){
-    if(window.__pwaAlertAt && Date.now()-window.__pwaAlertAt<20000) return;   // push ki ring abhi baji hai
+  function beep(force){
+    if(!force && window.__pwaAlertAt && Date.now()-window.__pwaAlertAt<20000) return;   // push ki ring abhi baji hai
     try{
       audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
       [0,.25,.5].forEach(function(t){
@@ -91,13 +120,73 @@
   function toast(t){var el=document.getElementById('toast');el.textContent=t;el.style.display='block';setTimeout(function(){el.style.display='none'},5000);}
   // browser awaaz tab chalne deta hai jab user ne page ko ek dafa touch kiya ho
   document.addEventListener('touchstart',function(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();}catch(e){}},{once:true});
+  // ---------- full-screen offer alert ----------
+  var CSRF = "{{ csrf_token }}", seen = {}, queue = [], cur = null, tick = null, ring = null;
+  try{ seen = JSON.parse(sessionStorage.getItem('riderAlertSeen') || '{}'); }catch(e){}
+  function esc(s){ var d=document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function post(url){
+    var f=document.createElement('form'); f.method='post'; f.action=url; f.style.display='none';
+    var i=document.createElement('input'); i.type='hidden'; i.name='csrfmiddlewaretoken'; i.value=CSRF; f.appendChild(i);
+    document.body.appendChild(f); f.submit();
+  }
+  function isHome(){ return window.location.pathname.replace(/\/$/,'').endsWith('/rider'); }
+  function closeAlert(){
+    clearInterval(tick); clearInterval(ring);
+    var el=document.getElementById('offerAlert'); if(el) el.remove();
+    cur = null;
+    if(queue.length){ showNext(); } else if(isHome()){ setTimeout(function(){location.reload()},300); }
+  }
+  function showNext(){
+    var o = queue.shift(); if(!o) return;
+    cur = o;
+    var secs = o.seconds, left = secs;
+    var el=document.createElement('div'); el.id='offerAlert'; el.className='oa';
+    el.setAttribute('role','alertdialog'); el.setAttribute('aria-modal','true'); el.setAttribute('aria-label','Naya order');
+    el.innerHTML =
+      '<h2>\uD83C\uDD95 NAYA ORDER #'+esc(o.order_no)+'</h2>'+
+      '<div class="ring" id="oaRing"><span id="oaLeft">'+left+'</span></div>'+
+      '<div class="fee">Rs. '+esc(o.fee)+'</div>'+
+      '<div class="det">\uD83D\uDCCD <b>'+esc(o.store)+'</b>'+(o.store_addr?'<br><small>'+esc(o.store_addr)+'</small>':'')+
+        '<br>\uD83C\uDFE0 '+esc(o.cust_addr||'\u2014')+
+        '<br><small>'+esc(o.items)+' item(s)'+(o.dist_km!=null?' \u00B7 \uD83D\uDCCF Store se '+esc(o.dist_km)+' km':'')+
+        ' \u00B7 '+(o.is_cod?'\uD83D\uDCB5 COD Rs. '+esc(o.total):'\u2705 Paid')+'</small></div>'+
+      '<button class="big yes" id="oaYes">\u2705 ACCEPT</button>'+
+      '<button class="big no" id="oaNo">Reject</button>'+
+      '<button class="big later" id="oaLater">Baad mein (list mein rahega)</button>'+
+      '<div class="cnt">'+secs+' second mein alert band ho jayega \u2014 order list mein rahega</div>';
+    document.body.appendChild(el);
+    var ringEl=document.getElementById('oaRing'), leftEl=document.getElementById('oaLeft');
+    document.getElementById('oaYes').onclick=function(){ clearInterval(tick); post(o.accept_url); };
+    document.getElementById('oaNo').onclick=function(){ clearInterval(tick); post(o.decline_url); };
+    document.getElementById('oaLater').onclick=closeAlert;
+    document.getElementById('oaYes').focus();
+    beep(true);
+    ring = setInterval(function(){ beep(true); }, 3000);
+    var t0 = Date.now();
+    tick = setInterval(function(){
+      left = Math.max(0, secs - Math.floor((Date.now()-t0)/1000));
+      leftEl.textContent = left; ringEl.style.setProperty('--p', (left*100/secs)+'%');
+      if(left<=0) closeAlert();
+    }, 250);
+  }
+  function queueAlerts(list, secs){
+    var added = false;
+    list.forEach(function(o){
+      if(seen[o.id]) return;
+      seen[o.id] = 1; added = true; o.seconds = secs; queue.push(o);
+    });
+    if(added){ try{ sessionStorage.setItem('riderAlertSeen', JSON.stringify(seen)); }catch(e){} }
+    if(!cur && queue.length) showNext();
+    return !!cur || queue.length > 0;
+  }
   function poll(){
     fetch("{% url 'rider_poll' %}",{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){
       var key = d.offers+'|'+d.assigned;
+      var alerting = (d.offer_list && d.offer_list.length) ? queueAlerts(d.offer_list, d.alert_seconds || 20) : !!cur;
       if(last!==null && key!==last){
-        if(d.offers>(+last.split('|')[0])){beep();toast('🆕 Naya order available!');}
+        if(d.offers>(+last.split('|')[0])){ if(!alerting){beep();toast('🆕 Naya order available!');} }
         else if(d.assigned>(+last.split('|')[1])){beep();toast('🏍️ Aap ko naya order diya gaya!');}
-        if(window.location.pathname.replace(/\/$/,'').endsWith('/rider')){setTimeout(function(){location.reload()},1500);}
+        if(isHome() && !alerting){setTimeout(function(){location.reload()},1500);}
       }
       last=key;
     }).catch(function(){});

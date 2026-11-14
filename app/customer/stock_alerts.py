@@ -38,6 +38,20 @@ def stock_state(total, level):
     return 'low' if total <= level else 'ok'
 
 
+def effective_level(profile, cfg):
+    """Vendor ki apni low-stock hadd (khali ho to shop ki default)."""
+    own = getattr(profile, 'low_stock_level', None)
+    return max(int(own), 1) if own else cfg['level']
+
+
+def hide_sold_out(qs):
+    """Jin vendors ne 'Hide sold-out products' chalu kiya, unka stock-0 maal queryset se hata do (restock par khud wapas)."""
+    from ..models import Inventory, Product
+    in_stock = Inventory.objects.values('product_id').annotate(t=Sum('stock')).filter(t__gt=0).values('product_id')
+    hidden = Product.objects.filter(vendor__portal_profile__hide_sold_out=True).exclude(pk__in=in_stock).values('pk')
+    return qs.exclude(pk__in=hidden)
+
+
 def _already_sent(user, title):
     from ..models import Notification
     since = timezone.now() - timedelta(hours=REPEAT_HOURS)
@@ -57,25 +71,30 @@ def check_product(product_id):
     if not product:
         return None
     total = Inventory.objects.filter(product_id=product.pk).aggregate(t=Sum('stock'))['t'] or 0
-    state = stock_state(total, cfg['level'])
-    if state == 'ok':
-        return None
-    profile = VendorProfile.objects.filter(vendor_id=product.vendor_id).select_related('user').first()
+    profile = VendorProfile.objects.filter(vendor_id=product.vendor_id).select_related('user', 'parent', 'parent__user').first()
     if not profile or not profile.user_id:
+        return None
+    level = effective_level(profile, cfg)
+    state = stock_state(total, level)
+    if state == 'ok':
         return None
 
     name = (product.name or '')[:100]
     if state == 'out':
         title = f'\u274c Sold out: {name}'
-        body = 'Stock is finished. Customers see it as out of stock until you add more.'
+        body = ('Stock is finished. Customers no longer see it until you add more.' if profile.hide_sold_out
+                else 'Stock is finished. Customers see it as out of stock until you add more.')
         kind = 'danger'
     else:
         title = f'\U0001F4E6 Low stock: {name}'
-        body = f'Only {total:g} left (alert at {cfg["level"]} or less). Add stock to keep selling.'
+        body = f'Only {total:g} left (alert at {level} or less). Add stock to keep selling.'
         kind = 'warning'
-    if _already_sent(profile.user, title):
+    target = profile.parent.user if profile.parent_id else profile.user    # branch ka login nahi: owner ko
+    if profile.parent_id:
+        title = f'{title} [{profile.branch_name}]'
+    if _already_sent(target, title):
         return None
-    _notify(profile.user, title, body, '/shop/vendor/', kind)
+    _notify(target, title, body, '/shop/vendor/', kind)
     return state
 
 

@@ -1,0 +1,15 @@
+{# Goals ki progress + cash limit. Context: goal_list, cash #}
+{% if cash and cash.level != 'ok' %}
+<div class="cash-alert {{ cash.level }}">
+  {% if cash.level == 'over' %}🚨 Aap ke paas Rs. {{ cash.cash|floatformat:0 }} cash hai — hadd (Rs. {{ cash.limit|floatformat:0 }}) paar. Abhi admin ko jama karwayein.
+  {% else %}⚠️ Cash Rs. {{ cash.cash|floatformat:0 }} / Rs. {{ cash.limit|floatformat:0 }} — jald jama karwayein.{% endif %}
+</div>
+{% endif %}
+{% for g in goal_list %}
+<div class="goal">
+  <div class="row"><b>🎯 {{ g.label }}</b>
+    <span>{% if g.paid %}<span class="pill g">🏆 Bonus mila Rs. {{ g.bonus|floatformat:0 }}</span>{% elif g.bonus %}<span class="pill">Bonus Rs. {{ g.bonus|floatformat:0 }}</span>{% endif %}</span></div>
+  <div class="bar"><i style="width:{{ g.pct }}%"{% if g.reached %} class="full"{% endif %}></i></div>
+  <small>{{ g.done }} / {{ g.goal }} deliveries{% if not g.reached %} — {{ g.left }} aur{% else %} — poora ho gaya 🎉{% endif %}</small>
+</div>
+{% endfor %}

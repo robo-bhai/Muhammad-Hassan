@@ -83,9 +83,18 @@
     <div class="vd-head">
         <div>
             <h3><i class="bi bi-shop-window"></i> {{ profile.business_name }}</h3>
-            <p>{{ profile.vendor.vendor_code }}{% if profile.city %} &middot; {{ profile.city }}{% endif %}</p>
+            <p>{% if profile.parent_id %}<b style="color:#c2410c;">Branch: {{ profile.branch_name }}</b> &middot; {% endif %}{{ profile.vendor.vendor_code }}{% if profile.city %} &middot; {{ profile.city }}{% endif %}</p>
+            {% if switch_stores|length > 1 %}
+            <form method="post" action="{% url 'vendor_switch_store' %}" style="margin-top:6px;">{% csrf_token %}
+                <select name="store" onchange="this.form.submit()" style="border:1px solid #d1d5db;border-radius:8px;padding:4px 8px;font-size:13px;max-width:100%;">
+                    {% for st in switch_stores %}<option value="{{ st.pk }}" {% if st.pk == profile.pk %}selected{% endif %}>{{ st.business_name }}</option>{% endfor %}
+                </select>
+            </form>
+            {% endif %}
         </div>
         <div class="vd-head-btns">
+            {% if vendor_role == 'owner' %}<a href="{% url 'vendor_branches' %}" class="vd-btn"><i class="bi bi-diagram-3"></i> Branches</a>{% endif %}
+            {% if vendor_role == 'owner' %}<a href="{% url 'vendor_staff' %}" class="vd-btn"><i class="bi bi-people"></i> Staff</a>{% endif %}
             <a href="{% url 'vendor_menu' %}" class="vd-btn"><i class="bi bi-list-stars"></i> Menu</a>
             <a href="{% url 'vendor_reports' %}" class="vd-btn"><i class="bi bi-graph-up"></i> Reports</a>
             {% if profile.is_approved %}<a href="{% url 'vendor_offers' %}" class="vd-btn"><i class="bi bi-tag"></i> Offers</a>{% endif %}

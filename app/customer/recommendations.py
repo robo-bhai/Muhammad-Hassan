@@ -88,10 +88,25 @@ def reorder_cards(customer, limit=REORDER_SIZE):
         names = [i.product.name for i in items[:2]]
         more = len(items) - len(names)
         total = sum(((i.price or ZERO) * (i.qty or 0) for i in items), ZERO)
+        thumbs = [i.product.image for i in items if i.product.image][:3]
         cards.append({'order_id': o.pk, 'store_name': store.business_name, 'store_id': store.pk,
                       'summary': ', '.join(names) + (f' +{more}' if more > 0 else ''),
-                      'total': total, 'date': o.order_date})
+                      'total': total, 'date': o.order_date, 'count': len(items), 'thumbs': thumbs,
+                      'is_open': store.status_label != 'closed'})
     return cards
+
+
+def home_reorder(request):
+    """Home ke top ka 'Reorder' widget: logged-in customer ke pichle orders (guest/galti par khali).
+    Recommendations flag se alag hai - reorder hamesha dikhna chahiye."""
+    try:
+        user = getattr(request, 'user', None)
+        if user is None or not user.is_authenticated or not hasattr(user, 'customer_profile'):
+            return []
+        return reorder_cards(user.customer_profile.customer)
+    except Exception:
+        logger.exception('Home reorder widget error')
+        return []
 
 
 def favourite_ids(customer, limit=30):
@@ -142,7 +157,7 @@ def home_rows(request):
             customer = user.customer_profile.customer
         fav_ids = []
         if customer is not None:
-            out['reorder'] = reorder_cards(customer)
+            # 'reorder' ab home ke top wale widget (home_reorder) mein hai; yahan duplicate nahi
             fav_ids = favourite_ids(customer)
             out['favourites'] = _product_cards(fav_ids)
         shown = {c['id'] for c in out['favourites']}

@@ -1,0 +1,83 @@
+{# Naye (pending) order par loud ringtone: jab tak pending order hai bajti rehti hai; Accept/Reject se ruk jati hai. #}
+<script>
+(function () {
+    var banner = document.getElementById('voNewBanner');
+    var pending = {{ new_count|default:0 }};
+    var ctx = null, timer = null, unlocked = false, muted = false;
+    try { muted = localStorage.getItem('voRingMuted') === '1'; } catch (e) {}
+
+    function ensureCtx() {
+        try {
+            if (!ctx) { var C = window.AudioContext || window.webkitAudioContext; ctx = new C(); }
+            if (ctx.state === 'suspended') ctx.resume();
+            return true;
+        } catch (e) { return false; }
+    }
+    function tone(freq, at, dur) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'square'; o.frequency.value = freq;
+        o.connect(g); g.connect(ctx.destination);
+        var t = ctx.currentTime + at;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.05);
+    }
+    function ringOnce() {            // teen sur ki tez ring, har ~2.2 second mein dohrai jati hai
+        if (!ensureCtx()) return;
+        tone(880, 0, 0.28); tone(1175, 0.32, 0.28); tone(880, 0.64, 0.28); tone(1175, 0.96, 0.4);
+        if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+    }
+    function startRing() {
+        if (timer || muted || !unlocked || pending <= 0) return;
+        ringOnce();
+        timer = setInterval(function () { if (pending > 0 && !muted) ringOnce(); else stopRing(); }, 2200);
+    }
+    function stopRing() { if (timer) { clearInterval(timer); timer = null; } }
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.cssText = 'position:fixed;right:12px;bottom:78px;z-index:60;border:0;border-radius:999px;padding:9px 14px;font-weight:800;font-size:13px;color:#fff;background:#2563eb;box-shadow:0 4px 14px rgba(0,0,0,.25)';
+    function label() {
+        btn.textContent = !unlocked ? '🔔 Tap to enable order sound' : (muted ? '🔕 Sound off' : '🔔 Sound on');
+        btn.style.background = !unlocked ? '#dc3545' : (muted ? '#6b7280' : '#2563eb');
+    }
+    btn.onclick = function () {
+        if (!unlocked) { unlocked = ensureCtx(); }
+        else { muted = !muted; try { localStorage.setItem('voRingMuted', muted ? '1' : '0'); } catch (e) {} }
+        if (muted) stopRing(); else startRing();
+        label();
+    };
+    document.body.appendChild(btn);
+    label();
+    // Browser awaaz tab hi chalne deta hai jab page par kam az kam ek tap ho chuka ho
+    function firstTap() {
+        if (!unlocked && ensureCtx()) { unlocked = true; label(); startRing(); }
+        document.removeEventListener('pointerdown', firstTap);
+    }
+    document.addEventListener('pointerdown', firstTap);
+
+    function update(n) {
+        pending = n;
+        if (n > 0) {
+            if (banner) {
+                banner.style.display = 'block';
+                banner.textContent = '🔔 ' + n + ' new order' + (n > 1 ? 's' : '') + ' waiting - Accept or Reject to stop the sound';
+            }
+            startRing();
+        } else {
+            if (banner) banner.style.display = 'none';
+            stopRing();
+        }
+    }
+    function poll() {
+        fetch('{% url "vendor_orders_poll" %}', {credentials: 'same-origin'})
+            .then(function (r) { return r.json(); })
+            .then(function (d) { update(d.new || 0); })
+            .catch(function () {});
+    }
+    update(pending);
+    setInterval(poll, 10000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+})();
+</script>

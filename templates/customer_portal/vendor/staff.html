@@ -1,0 +1,78 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Staff{% endblock %}
+
+{% block content %}
+<style>
+    .st-wrap { max-width: 680px; margin: 26px auto; padding: 0 14px; }
+    .st-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .st-card { background: #fff; border-radius: 18px; box-shadow: 0 6px 28px rgba(0,0,0,.07); padding: 16px 18px; margin-bottom: 14px; }
+    .st-card h4 { margin: 0 0 10px; font-weight: 800; }
+    .st-in, .st-sel { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 8px 10px; font-size: 15px; margin-top: 4px; }
+    .st-lbl { display: block; font-weight: 700; font-size: 13.5px; margin-top: 10px; }
+    .st-btn { border: 0; border-radius: 12px; padding: 11px 18px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#ea580c,#f59e0b); cursor: pointer; width: 100%; margin-top: 14px; }
+    .st-mini { border: 1px solid #d1d5db; background: #fff; border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+    .st-mini.red { border-color: #fecaca; color: #b91c1c; }
+    .st-row { padding: 12px 0; border-top: 1px solid #f1f1f1; }
+    .st-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .st-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+    .st-acts input { border: 1px solid #d1d5db; border-radius: 8px; padding: 4px 8px; font-size: 13px; width: 140px; }
+    .st-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .st-alert.error { background: #f8d7da; color: #721c24; }
+    .st-note { font-size: 12.5px; color: #6b7280; margin-top: 8px; }
+    .st-badge { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 700; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .st-badge.off { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
+</style>
+
+<div class="st-wrap">
+    <a class="st-back" href="{% url 'vendor_dashboard' %}">&larr; Dashboard</a>
+    {% for m in messages %}<div class="st-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="st-card">
+        <h4>&#128101; Your staff</h4>
+        {% for s in staff %}
+        <div class="st-row">
+            <div class="st-top">
+                <div><b>{{ s.name }}</b> <span class="st-badge {% if not s.is_active %}off{% endif %}">{{ s.get_role_display }}{% if not s.is_active %} &middot; off{% endif %}</span><br>
+                    <small style="color:#6b7280;">{{ s.phone }}{% if multi %} &middot; {{ s.store.branch_name|default:"Main" }}{% for e in s.extra_stores.all %}, {{ e.branch_name|default:"Main" }}{% endfor %}{% endif %}{% if s.last_login_at %} &middot; last login {{ s.last_login_at|date:"d M, h:i A" }}{% else %} &middot; never logged in{% endif %}</small></div>
+                <form method="post" action="{% url 'vendor_staff_action' s.pk 'toggle' %}">{% csrf_token %}
+                    <button class="st-mini" type="submit">{% if s.is_active %}Turn off{% else %}Turn on{% endif %}</button></form>
+            </div>
+            <div class="st-acts">
+                <form method="post" action="{% url 'vendor_staff_action' s.pk 'role' %}" style="display:flex;gap:6px;">{% csrf_token %}
+                    <select name="role" class="st-mini">{% for v, l in roles %}<option value="{{ v }}" {% if v == s.role %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+                    <button class="st-mini" type="submit">Change role</button></form>
+                {% if multi %}
+                <form method="post" action="{% url 'vendor_staff_action' s.pk 'stores' %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">{% csrf_token %}
+                    {% for st in stores %}<label style="font-size:13px;"><input type="checkbox" name="stores" value="{{ st.pk }}" {% if st.pk in s.store_ids %}checked{% endif %}> {{ st.branch_name|default:"Main" }}</label>{% endfor %}
+                    <button class="st-mini" type="submit">Save stores</button></form>
+                {% endif %}
+                <form method="post" action="{% url 'vendor_staff_action' s.pk 'password' %}" style="display:flex;gap:6px;">{% csrf_token %}
+                    <input type="password" name="password" placeholder="New password" autocomplete="new-password">
+                    <button class="st-mini" type="submit">Reset</button></form>
+                <form method="post" action="{% url 'vendor_staff_action' s.pk 'delete' %}" onsubmit="return confirm('Remove {{ s.name|escapejs }}?');">{% csrf_token %}
+                    <button class="st-mini red" type="submit">Delete</button></form>
+            </div>
+        </div>
+        {% empty %}<p style="margin:0;color:#6b7280;">No staff yet. Add one below.</p>{% endfor %}
+    </div>
+
+    <div class="st-card">
+        <h4>&#10133; Add staff</h4>
+        <form method="post">{% csrf_token %}
+            <label class="st-lbl">Name<input class="st-in" name="name" maxlength="80" required></label>
+            <label class="st-lbl">Phone (login ID)<input class="st-in" name="phone" inputmode="tel" placeholder="03XXXXXXXXX" required></label>
+            <label class="st-lbl">Role
+                <select class="st-sel" name="role">{% for v, l in roles %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></label>
+            {% if multi %}
+            <span class="st-lbl">Works at (ek ya zyada)</span>
+            {% for st in stores %}<label style="display:block;font-size:14px;margin-top:4px;"><input type="checkbox" name="stores" value="{{ st.pk }}" {% if forloop.first %}checked{% endif %}> {{ st.business_name }}</label>{% endfor %}
+            {% else %}
+            {% for st in stores %}<input type="hidden" name="stores" value="{{ st.pk }}">{% endfor %}
+            {% endif %}
+            <label class="st-lbl">Password<input class="st-in" type="password" name="password" autocomplete="new-password" required></label>
+            <button class="st-btn" type="submit">Create staff login</button>
+        </form>
+        <p class="st-note">Staff <b>{{ profile.business_name }}</b> ke portal me login karta hai (Seller Login page se, apne phone aur password se). Jin stores par chunega, un sab ke naye orders ki notification usay milti hai aur dashboard par store switch kar sakta hai. Manager payouts, store settings aur staff nahi dekh sakta. Orders-only staff sirf orders aur busy mode dekhta hai. Max {{ max_staff }} staff.</p>
+    </div>
+</div>
+{% endblock %}

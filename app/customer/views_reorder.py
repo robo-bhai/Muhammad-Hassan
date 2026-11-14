@@ -25,15 +25,9 @@ def _option_ids_from_key(options_key):
     return cart_options.parse_option_ids(head.replace('-', ',')) if head else []
 
 
-@customer_login_required
-@require_POST
-def reorder(request, order_id):
+def build_cart_from_order(order):
+    """Order ke items se naya cart banao. Wapas: (cart, skipped). Repeat plans bhi yahi use karte hain."""
     from .views_customer_portal import get_product_final_price, store_closed_message
-
-    if not hasattr(request.user, 'customer_profile'):
-        return redirect('shop_home')
-    customer = request.user.customer_profile.customer
-    order = get_object_or_404(SaleOrder, pk=order_id, customer=customer)
 
     cart, skipped = {}, []
     for it in order.items.select_related('product', 'product__vendor'):
@@ -81,6 +75,18 @@ def reorder(request, order_id):
                 'options_extra': float(extras),
                 'note': it.note or '',
             }
+    return cart, skipped
+
+
+@customer_login_required
+@require_POST
+def reorder(request, order_id):
+    if not hasattr(request.user, 'customer_profile'):
+        return redirect('shop_home')
+    customer = request.user.customer_profile.customer
+    order = get_object_or_404(SaleOrder, pk=order_id, customer=customer)
+
+    cart, skipped = build_cart_from_order(order)
 
     if not cart:
         messages.error(request, 'None of the items in this order are available right now.')

@@ -384,6 +384,7 @@ def _um_staff_users():
     return User.objects.filter(
         customer_profile__isnull=True,
         vendor_profile__isnull=True,
+        vendor_staff__isnull=True,
         rider_profile__isnull=True,
     )
 

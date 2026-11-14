@@ -147,6 +147,18 @@ class VendorProfile(models.Model):
         max_length=6, choices=STORE_STATUS, default='open',
         help_text="Closed = customer is store se order nahi de sakta. Busy = order milte hain, par der ho sakti ha."
     )
+    hide_sold_out = models.BooleanField(
+        default=False, verbose_name="Hide sold-out products",
+        help_text="ON = stock 0 hote hi maal customer ko dikhna band (store page / shop home); restock par khud wapas aa jata hai.")
+    low_stock_level = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name="Low-stock alert level",
+        help_text="Is store ke maal par itne ya kam bachne par 'Low stock' alert. Khali = shop ki default hadd.")
+    auto_accept = models.BooleanField(
+        default=False, verbose_name="Auto-accept orders",
+        help_text="ON = naya order aate hi khud qubool ho jata hai (ringtone nahi bajti). Customer ko ETA mil jati hai.")
+    auto_accept_prep_minutes = models.PositiveSmallIntegerField(
+        default=20, verbose_name="Auto-accept prep time (min)",
+        help_text="Auto-accept par customer ko itne minute mein tayyar hone ka ETA dikhta hai.")
     paused_until = models.DateTimeField(
         null=True, blank=True,
         help_text="Busy mode: is waqt tak naye orders band (khud khul jata hai). Khali = pause nahi."
@@ -168,6 +180,12 @@ class VendorProfile(models.Model):
     delivery_time_max = models.PositiveSmallIntegerField(default=45, help_text="Minutes")
     lat = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     lng = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    # Branch: parent khali = main store; parent bhara = us owner ki branch (alag store, alag products/orders)
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.PROTECT, related_name='branches',
+        help_text="Khali = main store. Bhara = ye is store ki branch hai."
+    )
+    branch_name = models.CharField(max_length=60, blank=True, default='')
     delivery_areas = models.TextField(
         blank=True, default='', max_length=1000,
         help_text="Wo shehar/area jahan ye store deliver karta hai, comma se alag (jaise: Gulberg, DHA, Johar Town). "
@@ -200,15 +218,78 @@ class VendorProfile(models.Model):
     def delivery_area_list(self):
         return self.clean_areas(self.delivery_areas)
 
+    # ---- Timings: har din ka alag waqt (VendorDayHours), warna opens_at/closes_at roz ke liye ----
+    DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+    def _day_map(self):
+        cache = getattr(self, '_day_hours_cache', None)
+        if cache is None:
+            cache = {r.weekday: r for r in self.day_hours.all()}     # prefetch ho to koi extra query nahi
+            self._day_hours_cache = cache
+        return cache
+
+    def hours_for_day(self, weekday):
+        """-> 'closed' (us din band) | (opens, closes) | None (koi waqt tay nahi = khula)."""
+        row = self._day_map().get(weekday)
+        if row is not None:
+            if row.is_closed:
+                return 'closed'
+            if row.opens_at and row.closes_at:
+                return (row.opens_at, row.closes_at)
+        if self.opens_at and self.closes_at:
+            return (self.opens_at, self.closes_at)
+        return None
+
+    def within_hours_at(self, local_dt):
+        """local_dt (aware, local time) par store ke waqt ke andar? Raat paar hone wale waqt
+        (18:00 -> 02:00) agle din ke shuru ke ghanton ko bhi dhakte hain."""
+        wd, t = local_dt.weekday(), local_dt.time()
+        prev = self.hours_for_day((wd - 1) % 7)
+        if isinstance(prev, tuple) and prev[0] > prev[1] and t <= prev[1]:
+            return True
+        today = self.hours_for_day(wd)
+        if today is None:
+            return True
+        if today == 'closed':
+            return False
+        o, c = today
+        if o <= c:
+            return o <= t <= c
+        return t >= o
+
+    @staticmethod
+    def _fmt_hours(h):
+        if h == 'closed':
+            return 'Closed'
+        if h is None:
+            return 'Open all day'
+        return f"{h[0].strftime('%H:%M')} - {h[1].strftime('%H:%M')}"
+
+    def hours_text_for(self, local_dt):
+        return self._fmt_hours(self.hours_for_day(local_dt.weekday()))
+
+    @property
+    def has_day_hours(self):
+        return bool(self._day_map())
+
+    @property
+    def has_any_hours(self):
+        return bool(self._day_map()) or bool(self.opens_at and self.closes_at)
+
+    @property
+    def today_hours_text(self):
+        return self.hours_text_for(timezone.localtime())
+
+    @property
+    def week_hours(self):
+        today = timezone.localtime().weekday()
+        return [{'day': self.DAY_NAMES[i], 'text': self._fmt_hours(self.hours_for_day(i)), 'today': i == today}
+                for i in range(7)]
+
     @property
     def is_within_hours(self):
-        """Opening/closing time ke andar? (raat ko paar hone wale time bhi theek: 18:00 -> 02:00)"""
-        if not self.opens_at or not self.closes_at:
-            return True
-        t = timezone.localtime().time()
-        if self.opens_at <= self.closes_at:
-            return self.opens_at <= t <= self.closes_at
-        return t >= self.opens_at or t <= self.closes_at
+        """Opening/closing time ke andar? (din ke hisab se, raat paar hone wale time bhi theek)"""
+        return self.within_hours_at(timezone.localtime())
 
     @property
     def is_open_now(self):
@@ -441,3 +522,48 @@ class OrderDeal(models.Model):
 
     def __str__(self):
         return f"{self.order_id}: {self.title} -{self.amount}"
+
+
+class VendorStaff(models.Model):
+    """Store ka staff login (manager / orders-only). Owner ke VendorProfile ke neeche."""
+    ROLE_MANAGER = 'manager'
+    ROLE_ORDERS = 'orders'
+    ROLE_CHOICES = [
+        (ROLE_MANAGER, 'Manager (products, offers, reports, orders)'),
+        (ROLE_ORDERS, 'Orders only (orders, busy mode)'),
+    ]
+
+    store = models.ForeignKey('VendorProfile', on_delete=models.CASCADE, related_name='staff_members')
+    extra_stores = models.ManyToManyField(
+        'VendorProfile', blank=True, related_name='extra_staff',
+        help_text="Staff in branches par bhi kaam karta hai (orders, notifications, switch)")
+    user = models.OneToOneField('auth.User', on_delete=models.CASCADE, related_name='vendor_staff')
+    name = models.CharField(max_length=80)
+    phone = models.CharField(max_length=20, unique=True, db_index=True,
+                             help_text="Staff isi phone se login karta hai")
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default=ROLE_ORDERS)
+    is_active = models.BooleanField(default=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_active', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.get_role_display()}) - {self.store.business_name}"
+
+
+class VendorDayHours(models.Model):
+    """Kisi ek din (weekday) ka alag waqt. Row na ho to store ke roz wale opens_at/closes_at chalte hain."""
+    store = models.ForeignKey('VendorProfile', on_delete=models.CASCADE, related_name='day_hours')
+    weekday = models.PositiveSmallIntegerField(help_text="0 = Monday ... 6 = Sunday")
+    is_closed = models.BooleanField(default=False, help_text="Is din store band")
+    opens_at = models.TimeField(null=True, blank=True)
+    closes_at = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('store', 'weekday')
+        ordering = ['weekday']
+
+    def __str__(self):
+        return f"{self.store.business_name} - day {self.weekday}"

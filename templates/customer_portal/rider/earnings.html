@@ -8,10 +8,12 @@
   <div class="stat"><b>{{ b.deliveries }}</b><small>Kul deliveries</small></div>
 </div>
 <div class="wrap">
+  {% include 'customer_portal/rider/_goals.html' %}
   <div class="card">
     <div class="row"><span>Aaj ki kamai</span><b>Rs. {{ today.earned|floatformat:0 }}</b></div>
     <div class="row"><span>Last 7 days</span><b>Rs. {{ week.earned|floatformat:0 }}</b></div>
     <div class="row"><span>Kul kamai</span><b>Rs. {{ b.earned|floatformat:0 }}</b></div>
+    {% if b.bonus %}<div class="row"><small>jis mein goal bonus</small><small><b>Rs. {{ b.bonus|floatformat:0 }}</b></small></div>{% endif %}
     <div class="row"><span>Mil chuki</span><b>Rs. {{ b.paid_out|floatformat:0 }}</b></div>
     <div class="sep"></div>
     <div class="row"><span><b>Aap ko milna baaqi</b></span><span class="fee">Rs. {{ b.due|floatformat:0 }}</span></div>
@@ -27,8 +29,18 @@
     <div class="row"><span>Admin ko jama kiya</span><b>Rs. {{ b.cash_deposited|floatformat:0 }}</b></div>
     <div class="sep"></div>
     <div class="row"><span><b>Aap ke paas cash</b></span><span class="fee" style="color:#c2410c">Rs. {{ b.cash_in_hand|floatformat:0 }}</span></div>
+    {% if cash %}<div class="bar" style="margin-top:8px"><i style="width:{{ cash.pct }}%;background:{% if cash.level == 'over' %}#dc2626{% elif cash.level == 'warn' %}#f59e0b{% else %}#16a34a{% endif %}"></i></div>
+    <small>Hadd: Rs. {{ cash.limit|floatformat:0 }}</small>{% endif %}
     <div class="cod">This cash belongs to the company — deposit it with the admin.</div>
   </div>
+
+  {% if bonuses %}
+  <h3>🏆 Bonus history</h3>
+  <div class="card"><table>
+    {% for x in bonuses %}<tr><td>{{ x.period_start|date:"d M" }}<br><small style="color:#6b7280">{% if x.kind == 'daily' %}Daily goal{% else %}Weekly goal{% endif %} · {{ x.deliveries }} deliveries</small></td>
+      <td style="text-align:right"><b>+ Rs. {{ x.amount|floatformat:0 }}</b></td></tr>{% endfor %}
+  </table></div>
+  {% endif %}
 
   <h3>Hisab ki history</h3>
   <div class="card">
