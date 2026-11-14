@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dispatch Board{% endblock %}
+{% block page_title %}🎯 Live Dispatch Board{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .db-col h6{position:sticky;top:0;background:var(--bs-body-bg,#fff);z-index:1;padding:6px 0}
+  .db-scroll{max-height:70vh;overflow:auto;padding-right:4px}
+  .db-card{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:8px;background:#fff;cursor:pointer}
+  .db-card.sel{border-color:#6366f1;box-shadow:0 0 0 2px #c7d2fe}
+  .db-card.hot{border-left:5px solid #dc2626}
+  .db-pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.72rem;font-weight:600}
+  .db-red{background:#fee2e2;color:#b91c1c}.db-amber{background:#fef3c7;color:#92400e}.db-green{background:#dcfce7;color:#166534}.db-gray{background:#e5e7eb;color:#374151}
+  .db-chip{border:1px solid #c7d2fe;background:#eef2ff;border-radius:16px;padding:2px 10px;font-size:.8rem;margin:2px 4px 2px 0;cursor:pointer}
+  .db-chip:hover{background:#e0e7ff}.db-chip[disabled]{opacity:.5;cursor:wait}.db-chip.full{border-color:#fca5a5;background:#fef2f2}
+  #dbMap{height:340px;border-radius:12px}
+</style>
+
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <span class="small text-muted">Auto-refresh every 8s · Last update: <b id="dbTime">{{ snapshot.generated_at }}</b><span id="dbErr" class="text-danger"></span></span>
+    <span id="dbMsg" class="small fw-semibold"></span>
+    <a class="btn btn-sm btn-outline-primary ms-auto" href="{% url 'marketplace_ops' %}">🛰️ Marketplace Ops</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'rider_manage' %}">🏍️ Riders</a>
+  </div>
+  {% if not can_assign %}<div class="alert alert-info py-2">View only: you need the “Manage Orders” permission to assign riders.</div>{% endif %}
+
+  <div class="row g-3">
+    <div class="col-xl-8">
+      <div class="row g-3">
+        <div class="col-md-4 db-col"><h6>🚨 Needs rider <span class="db-pill db-red" id="cNeeds">0</span></h6><div class="db-scroll" id="colNeeds"></div></div>
+        <div class="col-md-4 db-col"><h6>🏍️ Rider assigned <span class="db-pill db-green" id="cAssigned">0</span></h6><div class="db-scroll" id="colAssigned"></div></div>
+        <div class="col-md-4 db-col"><h6>👨‍🍳 Preparing <span class="db-pill db-gray" id="cPreparing">0</span></h6><div class="db-scroll" id="colPreparing"></div></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="card shadow-sm mb-3"><div class="card-body">
+        <b>🗺️ Map</b> <span class="small text-muted">Click an order to see store, drop-off and nearby riders</span>
+        <div id="dbMap" class="mt-2"></div>
+      </div></div>
+      <div class="card shadow-sm"><div class="card-body">
+        <b>🏍️ Riders online</b> <span class="small text-muted" id="dbRiderCounts"></span>
+        <div class="db-scroll mt-2" style="max-height:260px" id="dbRiders"></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+{{ snapshot|json_script:"dbInitial" }}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var DATA_URL="{{ data_url|escapejs }}", ASSIGN_URL="{{ assign_url|escapejs }}", CAN={{ can_assign|yesno:'true,false' }}, CSRF="{{ csrf_token|escapejs }}";
+  var data=null, selected=null, busy=false;
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function say(t,ok){var m=document.getElementById('dbMsg');m.textContent=t;m.className='small fw-semibold '+(ok?'text-success':'text-danger')}
+
+  function chips(o){
+    if(!CAN) return '';
+    if(!o.suggestions.length) return '<div class="small text-muted">No free riders online right now.</div>';
+    return o.suggestions.map(function(r){
+      var info=(r.dist_km!=null?r.dist_km+' km · ~'+r.eta_min+'m':'no location')+' · '+r.open+'/'+data.max_active;
+      return '<button class="db-chip'+(r.full?' full':'')+'" data-order="'+o.id+'" data-rider="'+r.id+'" data-name="'+esc(r.name)+'">'+esc(r.name)+' <span class="text-muted">'+info+'</span></button>'}).join('');
+  }
+  function offerLine(o){
+    if(!o.offer) return '';
+    return '<div class="small text-muted mt-1">Auto-offer ('+o.offer.started_min+'m): '+o.offer.ranking.map(function(r){
+      return r.declined?'<s>'+esc(r.name)+'</s>':esc(r.name)}).join(' → ')+'</div>';
+  }
+  function card(o){
+    var hot=o.column==='needs_rider'&&o.waiting_min>=5;
+    var h='<div class="db-card'+(hot?' hot':'')+(selected===o.id?' sel':'')+'" data-id="'+o.id+'">'
+      +'<div class="d-flex justify-content-between"><a href="'+esc(o.url)+'" class="fw-bold">'+esc(o.order_no)+'</a><span class="small text-muted">'+esc(o.age_txt)+' old</span></div>'
+      +'<div class="small">🏪 '+esc(o.vendor)+'</div><div class="small text-muted">👤 '+esc(o.customer)+' · '+o.items+' item(s)'+(o.payment==='cod'?' · <b>COD</b>':'')+'</div>';
+    if(o.column==='preparing'){h+='<div class="mt-1"><span class="db-pill db-gray">'+(esc(o.prep_left_txt)||'preparing')+'</span></div>';}
+    else if(o.column==='needs_rider'){
+      h+='<div class="mt-1"><span class="db-pill '+(hot?'db-red':'db-amber')+'">Ready '+esc(o.ready_txt)+' ago</span></div>'+offerLine(o)+'<div class="mt-1">'+chips(o)+'</div>';
+    } else {
+      h+='<div class="mt-1"><span class="db-pill db-green">🏍️ '+esc(o.rider.name)+'</span> <span class="small text-muted">'+esc(o.rider.phone)+'</span></div>'
+        +(CAN&&o.suggestions.length?'<details class="mt-1"><summary class="small text-muted">Reassign…</summary>'+chips(o)+'</details>':'');
+    }
+    return h+'</div>';
+  }
+  var map=null, layer=null;
+  function find(id){var all=[].concat(data.columns.needs_rider,data.columns.assigned,data.columns.preparing);return all.filter(function(o){return o.id===id})[0]}
+  function icon(e){return L.divIcon({html:'<div style="font-size:22px">'+e+'</div>',className:'',iconSize:[26,26],iconAnchor:[13,13]})}
+  function drawMap(){
+    if(typeof L==='undefined')return;
+    if(!map){map=L.map('dbMap').setView([26.2285,50.5860],11);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);layer=L.layerGroup().addTo(map)}
+    layer.clearLayers();var pts=[];
+    data.riders.forEach(function(r){if(r.lat==null)return;pts.push([r.lat,r.lng]);L.marker([r.lat,r.lng],{icon:icon('🏍️'),opacity:r.state==='stale'?.5:1}).addTo(layer).bindPopup(esc(r.name)+' · '+esc(r.state)+' · '+r.open+' order(s)')});
+    var o=selected&&find(selected);
+    if(o){var sp=null,dp=null;
+      if(o.store.lat!=null){sp=[o.store.lat,o.store.lng];L.marker(sp,{icon:icon('🏪')}).addTo(layer).bindPopup(esc(o.vendor))}
+      if(o.drop.lat!=null){dp=[o.drop.lat,o.drop.lng];L.marker(dp,{icon:icon('📍')}).addTo(layer).bindPopup(esc(o.customer))}
+      if(sp&&dp)L.polyline([sp,dp],{color:'#6366f1',dashArray:'6 6'}).addTo(layer);
+      var focus=[sp,dp].filter(Boolean);if(focus.length)map.fitBounds(focus.concat(o.suggestions.length?[]:[]),{padding:[40,40],maxZoom:15});
+    } else if(pts.length&&!map._fitted){map.fitBounds(pts,{padding:[30,30],maxZoom:14});map._fitted=true}
+  }
+  function render(d){
+    data=d;document.getElementById('dbTime').textContent=d.generated_at;
+    var c=d.columns;
+    [['Needs','needs_rider','colNeeds'],['Assigned','assigned','colAssigned'],['Preparing','preparing','colPreparing']].forEach(function(x){
+      document.getElementById('c'+x[0]).textContent=d.counts[x[1]];
+      document.getElementById(x[2]).innerHTML=c[x[1]].length?c[x[1]].map(card).join(''):'<div class="text-muted small">Nothing here.</div>'});
+    var rc=d.rider_counts;document.getElementById('dbRiderCounts').textContent='busy '+rc.busy+' · free '+rc.idle+' · no signal '+rc.stale;
+    document.getElementById('dbRiders').innerHTML=d.riders.length?d.riders.map(function(r){
+      var cls=r.state==='busy'?'db-amber':r.state==='idle'?'db-green':'db-gray';
+      return '<div class="d-flex justify-content-between align-items-center border-bottom py-1"><div><b>'+esc(r.name)+'</b><div class="small text-muted">'+esc(r.vehicle||'')+' · seen '+esc(r.seen_txt)+' ago</div></div><span class="db-pill '+cls+'">'+(r.state==='busy'?r.open+'/'+d.max_active:r.state==='idle'?'free':'no signal')+'</span></div>'}).join(''):'<div class="text-muted small">No riders online.</div>';
+    drawMap();
+  }
+  function post(orderId,riderId,force){
+    if(busy)return;busy=true;
+    var fd=new FormData();fd.append('order_id',orderId);fd.append('rider_id',riderId);if(force)fd.append('force','1');
+    return fetch(ASSIGN_URL,{method:'POST',body:fd,credentials:'same-origin',headers:{'X-CSRFToken':CSRF,'X-Requested-With':'XMLHttpRequest'}})
+      .then(function(r){return r.json().catch(function(){return {ok:false,message:'Error '+r.status}})})
+      .then(function(j){busy=false;
+        if(j.needs_confirm){if(confirm(j.message+'\n\nAssign anyway?'))return post(orderId,riderId,true);return}
+        say((j.ok?'✅ ':'❌ ')+j.message,j.ok);if(j.ok)refresh()})
+      .catch(function(){busy=false;say('❌ Network error',false)});
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('.db-chip');
+    if(b){e.stopPropagation();post(b.dataset.order,b.dataset.rider,false);return}
+    if(e.target.closest('a,summary,details'))return;
+    var c=e.target.closest('.db-card');
+    if(c){var id=parseInt(c.dataset.id,10);selected=(selected===id)?null:id;render(data)}
+  });
+  function refresh(){
+    if(busy)return;
+    fetch(DATA_URL,{credentials:'same-origin',headers:{'Accept':'application/json'}}).then(function(r){if(!r.ok)throw 0;return r.json()})
+      .then(function(d){document.getElementById('dbErr').textContent='';render(d)}).catch(function(){document.getElementById('dbErr').textContent=' · refresh failed, retrying…'});
+  }
+  render(JSON.parse(document.getElementById('dbInitial').textContent));
+  setInterval(function(){if(!document.hidden)refresh()},8000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
+})();
+</script>
+{% endblock %}

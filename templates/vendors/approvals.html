@@ -54,7 +54,7 @@
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
-          <tr><th>Business</th><th>Vendor</th><th>Contact</th><th>City</th><th>Delivers to</th><th>Commission %</th><th>Sales / Vendor ka hissa</th><th>Status</th><th class="text-end">Action</th></tr>
+          <tr><th>Business</th><th>Vendor</th><th>Contact</th><th>City</th><th>Delivers to</th><th>Documents</th><th>Commission %</th><th>Sales / Vendor ka hissa</th><th>Status</th><th class="text-end">Action</th></tr>
         </thead>
         <tbody>
         {% for p in page_obj %}
@@ -64,6 +64,8 @@
             <td>{{ p.vendor.contact_number|default:"-" }}</td>
             <td>{{ p.city|default:"-" }}</td>
             <td style="max-width:200px;"><small title="{{ p.delivery_areas }}">{% if p.delivery_areas %}{{ p.delivery_areas|truncatechars:60 }}{% else %}<span class="text-muted">Only {{ p.city|default:"own city" }}</span>{% endif %}</small></td>
+            <td style="min-width:150px"><small class="{% if p.docs_summary.1 %}text-success{% elif p.docs_summary.2 %}text-danger{% else %}text-muted{% endif %}">{{ p.docs_summary.0 }}</small><br>
+              <a class="btn btn-sm btn-outline-secondary mt-1" href="{% url 'vendor_documents_review' p.pk %}">📄 Documents</a></td>
             <td style="min-width:150px">
               <form method="post" action="{% url 'vendor_commission_update' p.pk %}" class="d-flex gap-1">
                 {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">

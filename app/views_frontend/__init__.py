@@ -11,6 +11,7 @@ _MODULES = [
     "purchase.vendor_reports",
     "purchase.vendors",
     "purchase.vendor_approvals",
+    "purchase.vendor_documents",
     "purchase.shop_banners",
     "purchase.purchase_orders",
     "purchase.grn",
@@ -70,6 +71,8 @@ _MODULES = [
     "people.blocked",
     "people.account_history",
     "people.oversight",
+    "people.marketplace_ops",
+    "people.dispatch_board",
     "system.translations",
     "finance.profit_analysis",
     "finance.subledger"

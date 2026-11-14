@@ -183,6 +183,8 @@ TABS = [
              'group': 'Vendors'},
             {'name': 'vendor_can_manage_orders', 'label': 'Vendors can manage orders', 'type': 'bool', 'default': True,
              'group': 'Vendors', 'help': 'OFF = vendors cannot open the orders page or accept / reject / mark ready.'},
+            {'name': 'vendor_documents_required', 'label': 'New vendors must have approved documents (CR, owner ID, bank proof)', 'type': 'bool', 'default': False,
+             'group': 'Vendors', 'help': 'ON = a new vendor account cannot be approved (and is never auto-approved) until its required documents are approved. Existing vendors are not affected.'},
             {'name': 'vendor_payout_request_enabled', 'label': 'Vendors can request payouts', 'type': 'bool', 'default': True,
              'group': 'Vendors', 'help': 'OFF = the payout request page is closed. You can still record payouts from Admin > Vendor Payouts.'},
             {'name': 'payout_min_amount', 'label': 'Minimum payout request', 'type': 'decimal', 'default': '500',

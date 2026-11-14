@@ -1,0 +1,65 @@
+{% extends 'customer_portal/base_shop.html' %}
+{% block title %}Documents{% endblock %}
+
+{% block content %}
+<style>
+    .vdoc-wrap { max-width: 720px; margin: 26px auto; padding: 0 14px; }
+    .vdoc-back { display: inline-block; margin: 4px 0 14px; color: #2563eb; text-decoration: none; }
+    .vdoc-card { background: #fff; border-radius: 18px; box-shadow: 0 6px 28px rgba(0,0,0,.07); padding: 16px 18px; margin-bottom: 14px; }
+    .vdoc-card h4 { margin: 0 0 4px; font-weight: 800; font-size: 17px; }
+    .vdoc-in { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 8px 10px; font-size: 15px; margin-top: 4px; }
+    .vdoc-lbl { display: block; font-weight: 700; font-size: 13.5px; margin-top: 10px; }
+    .vdoc-btn { border: 0; border-radius: 12px; padding: 10px 18px; font-weight: 800; color: #fff; background: linear-gradient(135deg,#ea580c,#f59e0b); cursor: pointer; margin-top: 12px; }
+    .vdoc-alert { padding: 11px 15px; border-radius: 12px; margin-bottom: 10px; background: #e8f5e9; color: #1b5e20; }
+    .vdoc-alert.error { background: #f8d7da; color: #721c24; }
+    .vdoc-alert.warn { background: #fff3cd; color: #664d03; }
+    .vdoc-badge { display: inline-block; border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 700; border: 1px solid transparent; }
+    .vdoc-badge.approved { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .vdoc-badge.pending { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .vdoc-badge.rejected, .vdoc-badge.expired { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+    .vdoc-badge.missing { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
+    .vdoc-note { font-size: 12.5px; color: #6b7280; margin-top: 6px; }
+    .vdoc-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+</style>
+
+<div class="vdoc-wrap">
+    <a class="vdoc-back" href="{% url 'vendor_dashboard' %}">&larr; Dashboard</a>
+    {% for m in messages %}<div class="vdoc-alert {% if m.tags == 'error' %}error{% endif %}">{{ m }}</div>{% endfor %}
+
+    <div class="vdoc-card">
+        <h4>&#128196; Store documents</h4>
+        <div class="vdoc-note">Upload clear photos or PDFs (JPG, PNG, WebP or PDF, up to 8 MB). Our team reviews each document.
+            Documents of all branches are kept here, under the main store.</div>
+        {% if ev.complete %}<div class="vdoc-alert" style="margin-top:10px;">&#9989; All required documents are approved.</div>
+        {% elif ev.missing %}<div class="vdoc-alert warn" style="margin-top:10px;">Still needed: {% for k in ev.missing %}{{ k }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+    </div>
+
+    {% for it in items %}
+    <div class="vdoc-card">
+        <div class="vdoc-top">
+            <h4>{{ it.label }}{% if not it.required %} <small style="font-weight:400;color:#6b7280;">(optional)</small>{% endif %}</h4>
+            {% if not it.doc %}<span class="vdoc-badge missing">Not uploaded</span>
+            {% elif it.expired %}<span class="vdoc-badge expired">Expired</span>
+            {% else %}<span class="vdoc-badge {{ it.doc.status }}">{{ it.doc.get_status_display }}</span>{% endif %}
+        </div>
+        {% if it.doc %}
+            <div class="vdoc-note">
+                <a href="{% url 'vendor_document_file' it.doc.pk %}" target="_blank" rel="noopener">View uploaded file</a>
+                {% if it.doc.number %} &middot; No. {{ it.doc.number }}{% endif %}
+                {% if it.doc.expiry %} &middot; Expires {{ it.doc.expiry|date:"d M Y" }}{% if it.expiring %} <b style="color:#b45309;">(soon)</b>{% endif %}{% endif %}
+            </div>
+            {% if it.doc.status == 'rejected' and it.doc.reject_reason %}<div class="vdoc-alert error" style="margin-top:8px;">Rejected: {{ it.doc.reject_reason }}</div>{% endif %}
+        {% endif %}
+        {% if not it.doc or it.doc.status != 'approved' or it.expired or it.expiring %}
+        <form method="post" enctype="multipart/form-data">{% csrf_token %}
+            <input type="hidden" name="kind" value="{{ it.kind }}">
+            {% if it.needs_num %}<label class="vdoc-lbl">Number<input class="vdoc-in" name="number" maxlength="40" required value="{{ it.doc.number|default:'' }}"></label>{% endif %}
+            {% if it.needs_exp %}<label class="vdoc-lbl">Expiry date<input class="vdoc-in" type="date" name="expiry" min="{{ min_date }}" required></label>{% endif %}
+            <label class="vdoc-lbl">File<input class="vdoc-in" type="file" name="file" accept="image/*,application/pdf" required></label>
+            <button class="vdoc-btn" type="submit">{% if it.doc %}Replace &amp; resubmit{% else %}Upload{% endif %}</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

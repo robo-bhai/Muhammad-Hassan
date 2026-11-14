@@ -15,6 +15,7 @@ from app.customer import views_coupons
 from app.customer import views_offers
 from app.customer import views_rider_portal
 from app.customer import views_rider_onboarding
+from app.customer import views_vendor_documents
 from app.customer import views_rider_password_reset
 from app.customer import views_live_tracking
 from app.customer import views_dispatch
@@ -268,16 +269,23 @@ urlpatterns = [
     path('people/history/', views_frontend.account_history, name='account_history'),
     path('people/overview/', views_frontend.oversight_dashboard, name='oversight_dashboard'),
     path('people/vendor-performance/', views_frontend.vendor_performance, name='vendor_performance'),
+    path('marketplace/ops/', views_frontend.marketplace_ops, name='marketplace_ops'),
+    path('marketplace/ops/data/', views_frontend.marketplace_ops_data, name='marketplace_ops_data'),
+    path('marketplace/dispatch/', views_frontend.dispatch_board, name='dispatch_board'),
+    path('marketplace/dispatch/data/', views_frontend.dispatch_board_data, name='dispatch_board_data'),
+    path('marketplace/dispatch/assign/', views_frontend.dispatch_board_assign, name='dispatch_board_assign'),
     
     # ============================================
     # VENDORS
     # ============================================
     path('vendors/', views_frontend.vendor_list, name='vendor_list'),
     path('vendors/approvals/', views_frontend.vendor_approvals, name='vendor_approvals'),
+    # commission wala path generic <action> se PEHLE hona zaroori hai, warna 'commission' action ban kar 'Invalid action' aata hai
+    path('vendors/approvals/account/<int:pk>/commission/', views_frontend.vendor_commission_update, name='vendor_commission_update'),
     path('vendors/approvals/account/<int:pk>/<str:action>/', views_frontend.vendor_account_action, name='vendor_account_action'),
     path('vendors/approvals/product/<int:pk>/<str:action>/', views_frontend.vendor_product_action, name='vendor_product_action'),
     path('vendors/approvals/bulk/', views_frontend.vendor_approvals_bulk, name='vendor_approvals_bulk'),
-    path('vendors/approvals/account/<int:pk>/commission/', views_frontend.vendor_commission_update, name='vendor_commission_update'),
+    path('vendors/<int:pk>/documents/', views_frontend.vendor_documents_review, name='vendor_documents_review'),
     path('vendors/banners/', views_frontend.shop_banner_list, name='shop_banner_list'),
     path('vendors/banners/add/', views_frontend.shop_banner_form, name='shop_banner_create'),
     path('vendors/banners/<int:pk>/edit/', views_frontend.shop_banner_form, name='shop_banner_edit'),
@@ -1255,6 +1263,8 @@ urlpatterns = [
      path('shop/order/<int:order_id>/dispute/', views_disputes.dispute_create, name='dispute_create'),
      path('shop/vendor/payouts/', views_vendor_payouts.vendor_payouts, name='vendor_payouts'),
      path('shop/vendor/staff/', views_vendor_staff.vendor_staff, name='vendor_staff'),
+     path('shop/vendor/documents/', views_vendor_documents.vendor_documents, name='vendor_documents'),
+     path('shop/vendor/documents/<int:pk>/file/', views_vendor_documents.vendor_document_file, name='vendor_document_file'),
      path('shop/vendor/switch-store/', views_vendor_staff.vendor_switch_store, name='vendor_switch_store'),
      path('shop/vendor/branches/', views_vendor_branches.vendor_branches, name='vendor_branches'),
      path('shop/vendor/branches/copy/', views_vendor_branches.vendor_branch_copy, name='vendor_branch_copy'),

@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marketplace Operations{% endblock %}
+{% block page_title %}🛰️ Marketplace Operations{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .mo-card .num{font-size:1.6rem;font-weight:700;line-height:1.1}
+  .mo-stage{border-radius:10px;padding:8px 10px;text-align:center}
+  .mo-pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:.75rem;font-weight:600}
+  .mo-late{background:#fee2e2;color:#b91c1c}.mo-ok{background:#dcfce7;color:#166534}
+  .mo-busy{background:#fef3c7;color:#92400e}.mo-idle{background:#dcfce7;color:#166534}.mo-stale{background:#e5e7eb;color:#374151}
+  #moMap{height:360px;border-radius:12px}
+  .mo-bars{display:flex;align-items:flex-end;gap:3px;height:90px}
+  .mo-bars div{flex:1;background:#6366f1;border-radius:3px 3px 0 0;min-height:2px;position:relative}
+  .mo-scroll{max-height:420px;overflow:auto}
+</style>
+
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <form method="get" class="d-flex gap-1">
+      <select name="days" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for val, label in periods %}<option value="{{ val }}" {% if days == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </form>
+    <span class="small text-muted">Auto-refresh har 20s · Aakhri update: <b id="moTime">{{ snapshot.generated_at }}</b>
+      <span id="moErr" class="text-danger"></span></span>
+    <a class="btn btn-sm btn-primary ms-auto" href="{% url 'dispatch_board' %}">🎯 Dispatch board</a>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'order_tracking_panel' %}">📦 Order tracking</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'vendor_performance' %}">📈 Vendor performance</a>
+  </div>
+
+  <div class="row g-2 mb-3" id="moKpis"></div>
+
+  <div class="row g-2 mb-3" id="moAlerts"></div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card shadow-sm mb-3"><div class="card-body">
+        <div class="d-flex align-items-center mb-2"><b>🔴 Live orders</b><span class="ms-2 small text-muted" id="moLiveCount"></span></div>
+        <div class="row g-2 mb-2" id="moStages"></div>
+        <div class="table-responsive mo-scroll">
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Order</th><th>Store</th><th>Customer</th><th>Stage</th><th>Age</th><th>Rider</th><th>Alert</th></tr></thead>
+            <tbody id="moLive"></tbody>
+          </table>
+        </div>
+      </div></div>
+
+      <div class="card shadow-sm mb-3"><div class="card-body">
+        <b>🗺️ Live map</b> <span class="small text-muted">🏍️ riders · 🏪 stores with live orders · 📍 orders waiting for a rider</span>
+        <div id="moMap" class="mt-2"></div>
+      </div></div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card shadow-sm mb-3"><div class="card-body">
+        <b>🏍️ Riders</b> <span class="small text-muted" id="moRiderCounts"></span>
+        <div class="mo-scroll mt-2" id="moRiders"></div>
+      </div></div>
+
+      <div class="card shadow-sm mb-3"><div class="card-body">
+        <b>⏰ Orders by hour</b>
+        <div class="mo-bars mt-2" id="moHours"></div>
+        <div class="d-flex justify-content-between small text-muted"><span>0h</span><span>12h</span><span>23h</span></div>
+      </div></div>
+
+      <div class="card shadow-sm mb-3"><div class="card-body">
+        <b>🏆 Top stores</b>
+        <div class="table-responsive mt-2"><table class="table table-sm mb-0">
+          <thead><tr><th>Store</th><th class="text-end">Orders</th><th class="text-end">Sales</th><th class="text-end">Comm.</th></tr></thead>
+          <tbody id="moVendors"></tbody></table></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+{{ snapshot|json_script:"moInitial" }}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var DATA_URL = "{{ data_url|escapejs }}", DAYS = {{ days }};
+  var URLS = {
+    dispatch: "{% url 'dispatch_board' %}", approvals: "{% url 'vendor_approvals' %}", disputes: "{% url 'dispute_list' %}", riders: "{% url 'rider_manage' %}"
+  };
+  var STAGES = {new:['🆕 Waiting for store','#fef3c7'], preparing:['👨‍🍳 Preparing','#dbeafe'],
+                ready:['📦 Ready','#ede9fe'], on_way:['🛵 On the way','#dcfce7']};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function money(cur,v){return cur+' '+Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2})}
+  function card(label,val,cls,extra){return '<div class="col-6 col-md-4 col-xl-2"><div class="card mo-card h-100"><div class="card-body py-2 text-center">'
+    +'<div class="num '+(cls||'')+'">'+val+'</div><div class="small text-muted">'+label+'</div>'+(extra?'<div class="small">'+extra+'</div>':'')+'</div></div></div>'}
+  function alertCard(label,n,url,warn){return '<div class="col-6 col-md-3"><a class="text-decoration-none" href="'+url+'"><div class="card h-100 '+(n&&warn?'border-'+warn:'')+'"><div class="card-body py-2 text-center">'
+    +'<div class="fs-4 fw-bold '+(n&&warn?'text-'+warn:'')+'">'+n+'</div><div class="small text-muted">'+label+'</div></div></div></a></div>'}
+
+  var map=null, layer=null, fitted=false;
+  function render(d){
+    var k=d.kpis, c=d.currency;
+    document.getElementById('moTime').textContent=d.generated_at;
+    document.getElementById('moKpis').innerHTML =
+      card('Orders',k.orders,'',k.delivered+' delivered')
+     +card('GMV',money(c,k.gmv),'text-success','items '+money(c,k.items_total))
+     +card('Commission (approx.)',money(c,k.commission),'text-primary')
+     +card('Cancel rate',k.cancel_rate==null?'-':k.cancel_rate+'%',k.cancel_rate>=15?'text-danger':'',k.cancelled+' cancelled')
+     +card('Avg delivery',esc(k.avg_delivery_txt),'')
+     +card('Avg rating',k.avg_rating==null?'-':'⭐ '+k.avg_rating,'',k.rating_n+' ratings');
+    document.getElementById('moAlerts').innerHTML =
+      alertCard('⚠️ Late orders',d.late_total,'#','danger')
+     +alertCard('🏍️ Waiting for rider',d.unassigned_total,URLS.dispatch,'warning')
+     +alertCard('⚠️ Open disputes',d.todo.open_disputes,URLS.disputes,'danger')
+     +alertCard('⏳ Pending approvals',d.todo.pending_accounts+d.todo.pending_products+d.todo.pending_riders,URLS.approvals+'?tab=accounts&status=pending','warning');
+
+    document.getElementById('moLiveCount').textContent=d.live_total+' active'+(d.live_total>d.live.length?' (showing '+d.live.length+')':'');
+    document.getElementById('moStages').innerHTML=Object.keys(STAGES).map(function(s){
+      return '<div class="col-6 col-md-3"><div class="mo-stage" style="background:'+STAGES[s][1]+'"><div class="fs-5 fw-bold">'+(d.stage_counts[s]||0)+'</div><div class="small">'+STAGES[s][0]+'</div></div></div>'}).join('');
+    document.getElementById('moLive').innerHTML = d.live.length ? d.live.map(function(o){
+      var st=STAGES[o.stage]||[o.stage];
+      return '<tr><td><a href="'+esc(o.url)+'">'+esc(o.order_no)+'</a>'+(o.scheduled?' <span title="Scheduled">🕒</span>':'')+'</td><td>'+esc(o.vendor)+'</td><td>'+esc(o.customer)+'</td>'
+        +'<td class="small">'+st[0]+'</td><td>'+esc(o.age_txt)+'</td>'
+        +'<td>'+(o.rider?esc(o.rider):(o.needs_rider?'<span class="mo-pill mo-busy">needs rider</span>':'-'))+'</td>'
+        +'<td>'+(o.late?'<span class="mo-pill mo-late">'+esc(o.late)+'</span>':'<span class="mo-pill mo-ok">OK</span>')+'</td></tr>'}).join('')
+      : '<tr><td colspan="7" class="text-center text-muted py-3">No active orders 🎉</td></tr>';
+
+    var rc=d.rider_counts;
+    document.getElementById('moRiderCounts').textContent='busy '+rc.busy+' · free '+rc.idle+' · no signal '+rc.stale;
+    document.getElementById('moRiders').innerHTML = d.riders.length ? d.riders.map(function(r){
+      return '<div class="d-flex justify-content-between align-items-center border-bottom py-1"><div><a href="'+URLS.riders+r.id+'/" class="fw-semibold">'+esc(r.name)+'</a>'
+        +'<div class="small text-muted">'+esc(r.vehicle||'')+' · seen '+esc(r.seen_txt)+' ago</div></div>'
+        +'<span class="mo-pill mo-'+r.state+'">'+(r.state==='busy'?r.open+' order(s)':r.state==='idle'?'free':'no signal')+'</span></div>'}).join('')
+      : '<div class="text-muted small">No riders online.</div>';
+    var mx=Math.max.apply(null,d.hourly.concat([1]));
+    document.getElementById('moHours').innerHTML=d.hourly.map(function(n,h){return '<div title="'+h+'h: '+n+'" style="height:'+(n*100/mx)+'%"></div>'}).join('');
+    document.getElementById('moVendors').innerHTML = d.vendors.length ? d.vendors.map(function(v){
+      return '<tr><td>'+esc(v.name)+'</td><td class="text-end">'+v.orders+'</td><td class="text-end">'+Number(v.sales).toLocaleString()+'</td><td class="text-end">'+Number(v.commission).toLocaleString()+'</td></tr>'}).join('')
+      : '<tr><td colspan="4" class="text-center text-muted">No orders in this period</td></tr>';
+    drawMap(d.map);
+  }
+  function icon(emoji){return L.divIcon({html:'<div style="font-size:22px">'+emoji+'</div>',className:'',iconSize:[26,26],iconAnchor:[13,13]})}
+  function drawMap(m){
+    if(typeof L==='undefined') return;
+    if(!map){map=L.map('moMap').setView([26.2285,50.5860],11);   /* default: Bahrain; fit hota hai data aane par */
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);layer=L.layerGroup().addTo(map);}
+    layer.clearLayers(); var pts=[];
+    m.riders.forEach(function(r){pts.push([r.lat,r.lng]);L.marker([r.lat,r.lng],{icon:icon('🏍️')}).addTo(layer).bindPopup(esc(r.name)+' · '+esc(r.state))});
+    m.stores.forEach(function(s){pts.push([s.lat,s.lng]);L.marker([s.lat,s.lng],{icon:icon('🏪')}).addTo(layer).bindPopup(esc(s.name))});
+    m.drops.forEach(function(p){pts.push([p.lat,p.lng]);L.marker([p.lat,p.lng],{icon:icon('📍')}).addTo(layer).bindPopup(esc(p.order_no)+' – waiting for rider')});
+    if(pts.length&&!fitted){map.fitBounds(pts,{padding:[30,30],maxZoom:15});fitted=true}
+  }
+  render(JSON.parse(document.getElementById('moInitial').textContent));
+  function refresh(){
+    fetch(DATA_URL+'?days='+DAYS,{credentials:'same-origin',headers:{'Accept':'application/json'}})
+      .then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){document.getElementById('moErr').textContent='';render(d)})
+      .catch(function(){document.getElementById('moErr').textContent=' · refresh failed, retrying…'});
+  }
+  setInterval(function(){if(!document.hidden)refresh()},20000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});
+})();
+</script>
+{% endblock %}

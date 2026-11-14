@@ -31,6 +31,15 @@ def _company_name():
     return c.name if c else 'ERP System'
 
 
+def _docs_summary(profile):
+    """Approvals list ke liye: (text, complete). Branch ke documents parent par hote hain."""
+    from ...customer import vendor_docs
+    store = profile.parent if profile.parent_id else profile
+    ev = vendor_docs.evaluate([{'kind': d.kind, 'status': d.status, 'expiry': d.expiry}
+                               for d in store.documents.all()], now().date())
+    return vendor_docs.summary(ev), ev['complete'], bool(ev['expired'] or ev['rejected'])
+
+
 def _redirect_back(request, tab):
     """Action ke baad usi tab/filter par wapas."""
     nxt = request.POST.get('next', '')
@@ -96,6 +105,7 @@ def vendor_approvals(request):
         for p in page_obj:
             p.commission_effective = commission_percent(p)
             p.earn = vendor_earnings(p.vendor)
+            p.docs_summary = _docs_summary(p)
 
     return render(request, 'vendors/approvals.html', {
         'company_name': _company_name(),
@@ -117,6 +127,14 @@ def vendor_account_action(request, pk, action):
 
     if action == 'approve':
         first_time = profile.approved_at is None and not profile.is_approved   # pehli approval
+        if first_time and profile.parent_id is None:
+            from ...shop_flags import shop_flag
+            if shop_flag('vendor_documents_required'):
+                from ...customer.views_vendor_documents import docs_complete
+                if not docs_complete(profile):
+                    messages.error(request, f'❌ "{profile.business_name}": required documents (CR, owner ID, bank proof) '
+                                            'are not all approved yet. Review them first.')
+                    return redirect('vendor_documents_review', pk=profile.pk)
         VendorProfile.objects.filter(pk=pk).update(is_approved=True, approved_at=now())
         promo = on_vendor_approved(profile, first_time)
         # Sirf wo products dobara live jo suspend ki wajah se hide hue the; vendor ke khud hide kiye hue hide hi rehte hain

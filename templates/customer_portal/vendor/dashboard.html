@@ -95,6 +95,7 @@
         <div class="vd-head-btns">
             {% if vendor_role == 'owner' %}<a href="{% url 'vendor_branches' %}" class="vd-btn"><i class="bi bi-diagram-3"></i> Branches</a>{% endif %}
             {% if vendor_role == 'owner' %}<a href="{% url 'vendor_staff' %}" class="vd-btn"><i class="bi bi-people"></i> Staff</a>{% endif %}
+            {% if vendor_role == 'owner' %}<a href="{% url 'vendor_documents' %}" class="vd-btn"><i class="bi bi-file-earmark-text"></i> Documents</a>{% endif %}
             <a href="{% url 'vendor_menu' %}" class="vd-btn"><i class="bi bi-list-stars"></i> Menu</a>
             <a href="{% url 'vendor_reports' %}" class="vd-btn"><i class="bi bi-graph-up"></i> Reports</a>
             {% if profile.is_approved %}<a href="{% url 'vendor_offers' %}" class="vd-btn"><i class="bi bi-tag"></i> Offers</a>{% endif %}
@@ -110,6 +111,10 @@
             <a href="{% url 'vendor_logout' %}" class="vd-btn" style="background:rgba(255,255,255,.2);color:#fff;">Logout</a>
         </div>
     </div>
+
+    {% for level, text in doc_warnings %}
+    <a href="{% url 'vendor_documents' %}" style="display:block;text-decoration:none;margin-top:12px;padding:11px 15px;border-radius:12px;font-weight:600;{% if level == 'danger' %}background:#fee2e2;color:#b91c1c;{% else %}background:#fff3cd;color:#664d03;{% endif %}">📄 {{ text }}</a>
+    {% endfor %}
 
     {% if profile.is_approved %}
     <div style="background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.06);padding:14px 16px;margin-top:16px;">

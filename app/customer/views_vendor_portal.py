@@ -69,6 +69,15 @@ LOGIN_LOCK_SECONDS = 10 * 60
 # HELPERS
 # ============================================
 
+def _doc_warnings(profile):
+    from .views_vendor_documents import doc_warnings
+    try:
+        return doc_warnings(profile)
+    except Exception:           # documents ki wajah se dashboard na tootay
+        logger.exception('vendor doc warnings failed')
+        return []
+
+
 def _auto_approve_accounts():
     return shop_flag('vendor_auto_approve_accounts')
 
@@ -386,7 +395,7 @@ def vendor_register(request):
                     contact_number=phone,
                     address=f"{address}, {city}",
                 )
-                approved = _auto_approve_accounts()
+                approved = _auto_approve_accounts() and not shop_flag('vendor_documents_required')
                 new_profile = VendorProfile.objects.create(
                     vendor=vendor, user=user, business_name=business_name,
                     city=city, delivery_areas=delivery_areas, store_category=store_category,
@@ -544,6 +553,7 @@ def vendor_dashboard(request):
         'vendor_role': vendor_role(request.user),
         'switch_stores': accessible_profiles(request.user),
         'page_title': 'Vendor Dashboard',
+        'doc_warnings': _doc_warnings(profile) if vendor_role(request.user) == 'owner' else [],
         'profile': profile,
         'products': products,
         'counts': counts,

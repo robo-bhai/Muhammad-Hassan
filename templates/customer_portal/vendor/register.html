@@ -181,6 +181,16 @@
         padding: 0; margin: 0; background: transparent; z-index: 2;
     }
     .password-toggle i { font-size: 18px; line-height: 1; color: inherit; }
+    /* Kuch phone browsers (Samsung / Vivo / Opera...) apna eye icon khud lagate hain jo CSS se chhup nahi sakta.
+       Isliye hamara button input ki daayin patti ko poora dhaanp leta hai (input ke rang ka thos background),
+       taake sirf ek hi eye nazar aaye. */
+    .password-wrapper .password-toggle {
+        top: 2px; bottom: 2px; right: 2px; transform: none;
+        width: 50px; height: auto; border-radius: 0 10px 10px 0;
+        background: #f3f5ff;
+    }
+    .password-wrapper input:focus ~ .password-toggle { background: #fff; }
+    .password-wrapper input { padding-right: 56px; }
     
     .btn-register {
         width: 100%;
@@ -332,7 +342,8 @@
     html[dir="rtl"] .form-group textarea::placeholder { text-align: right; }
     /* eye button goes to the left side so it never covers the text */
     html[dir="rtl"] .password-toggle { right: auto; left: 15px; }
-    html[dir="rtl"] .password-wrapper input { padding-right: 16px; padding-left: 46px; }
+    html[dir="rtl"] .password-wrapper .password-toggle { left: 2px; right: auto; border-radius: 10px 0 0 10px; }
+    html[dir="rtl"] .password-wrapper input { padding-right: 16px; padding-left: 56px; }
     html[dir="rtl"] .form-group select { padding-left: 36px; padding-right: 16px; }
     html[dir="rtl"] .section-divider { letter-spacing: 0; text-transform: none; font-size: 14px; }
     html[dir="rtl"] .btn-register { flex-direction: row-reverse; letter-spacing: 0; }

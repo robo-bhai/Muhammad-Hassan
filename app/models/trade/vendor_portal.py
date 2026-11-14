@@ -1,4 +1,6 @@
 """Models: trade/vendor_portal - vendor self-service login (shop par products list karne ke liye)."""
+import os
+import uuid
 from datetime import time
 
 from django.db import models
@@ -567,3 +569,34 @@ class VendorDayHours(models.Model):
 
     def __str__(self):
         return f"{self.store.business_name} - day {self.weekday}"
+
+
+def vendor_doc_path(instance, filename):
+    """Documents ka naam anjaan (uuid) rakhte hain taake URL andaze se na milay."""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.pdf'):
+        ext = '.bin'
+    return f'vendor_docs/{instance.store_id}/{uuid.uuid4().hex}{ext}'
+
+
+class VendorDocument(models.Model):
+    """Store ka ek document (CR, owner ID, bank proof, VAT, health licence). Har store ka har kind ka ek hi record.
+    Branches ke documents main (parent) store par lagte hain - qanooni company ek hi hoti hai."""
+    STATUS = [('pending', 'Under review'), ('approved', 'Approved'), ('rejected', 'Rejected')]
+    store = models.ForeignKey('VendorProfile', on_delete=models.CASCADE, related_name='documents')
+    kind = models.CharField(max_length=10)
+    file = models.FileField(upload_to=vendor_doc_path)
+    number = models.CharField(max_length=40, blank=True, default='')
+    expiry = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default='pending', db_index=True)
+    reject_reason = models.CharField(max_length=200, blank=True, default='')
+    reviewed_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['store_id', 'kind']
+        constraints = [models.UniqueConstraint(fields=['store', 'kind'], name='uniq_vendor_document_kind')]
+
+    def __str__(self):
+        return f'{self.store.business_name} - {self.kind} ({self.status})'

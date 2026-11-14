@@ -18,6 +18,7 @@ FLAGS = {
     'vendor_login_enabled':          (True,  'Seller login is currently disabled.'),
     'vendor_auto_approve_accounts':  (None,  ''),   # None = fall back to settings.VENDOR_AUTO_APPROVE_ACCOUNTS
     'vendor_auto_approve_products':  (None,  ''),   # None = fall back to settings.VENDOR_AUTO_APPROVE_PRODUCTS
+    'vendor_documents_required':     (False, ''),
     'vendor_can_add_products':       (True,  'Adding or editing products is currently disabled for vendors.'),
     'vendor_can_manage_orders':      (True,  'Vendor order management is currently disabled.'),
     'vendor_payout_request_enabled': (True,  'Payout requests are currently disabled. Please contact the admin.'),

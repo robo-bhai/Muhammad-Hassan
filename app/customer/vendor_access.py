@@ -11,7 +11,7 @@ ROLE_OWNER = 'owner'
 # Sirf owner: paise, store ki settings, staff, branches
 OWNER_ONLY = {
     'vendor_payouts', 'vendor_payout_cancel', 'vendor_store_settings',
-    'vendor_staff', 'vendor_staff_action', 'vendor_set_location',
+    'vendor_staff', 'vendor_staff_action', 'vendor_set_location', 'vendor_documents',
     'vendor_branches', 'vendor_branch_action', 'vendor_branch_copy',
 }
 

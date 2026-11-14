@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Vendor Documents{% endblock %}
+{% block page_title %}📄 Documents — {{ store.business_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width:900px">
+  <div class="mb-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'vendor_approvals' %}?tab=accounts&status=all">&larr; Vendor approvals</a></div>
+
+  <div class="card shadow-sm mb-3"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div><div class="fw-bold fs-5">{{ store.business_name }}</div>
+        <div class="small text-muted">{{ store.vendor.name }} · {{ store.vendor.contact_number|default:"-" }} · {{ store.user.email }} · {{ store.city|default:"-" }}</div></div>
+      <div class="text-end">
+        {% if store.is_approved %}<span class="badge bg-success">Approved</span>
+        {% elif store.approved_at %}<span class="badge bg-secondary">Suspended</span>
+        {% else %}<span class="badge bg-warning text-dark">Pending</span>{% endif %}
+        <div class="small mt-1 {% if ev.complete %}text-success{% else %}text-muted{% endif %}">{{ summary }}</div>
+      </div>
+    </div>
+    {% if not store.is_approved %}
+    <form method="post" action="{% url 'vendor_account_action' store.pk 'approve' %}" class="mt-2">
+      {% csrf_token %}<input type="hidden" name="next" value="/vendors/approvals/?tab=accounts&status=all">
+      <button class="btn btn-sm btn-success" {% if not ev.complete %}title="Documents are not complete yet"{% endif %}>✅ Approve vendor</button>
+      {% if not ev.complete %}<span class="small text-muted ms-2">Approval is blocked until all required documents are approved, if “Vendors must upload documents” is ON in Settings.</span>{% endif %}
+    </form>
+    {% endif %}
+  </div></div>
+
+  {% for it in items %}
+  <div class="card shadow-sm mb-2"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <div class="fw-semibold">{{ it.label }}{% if it.required %} <span class="text-danger">*</span>{% endif %}</div>
+        {% if it.doc %}
+          <div class="small text-muted">
+            <a href="{% url 'vendor_document_file' it.doc.pk %}" target="_blank" rel="noopener">Open file</a>
+            {% if it.doc.number %} · No. <b>{{ it.doc.number }}</b>{% endif %}
+            {% if it.doc.expiry %} · Expires <b class="{% if it.expired %}text-danger{% endif %}">{{ it.doc.expiry|date:"d M Y" }}</b>{% if it.expired %} (expired){% endif %}{% endif %}
+            · uploaded {{ it.doc.uploaded_at|date:"d M Y H:i" }}
+          </div>
+          {% if it.doc.status == 'rejected' and it.doc.reject_reason %}<div class="small text-danger">Rejected: {{ it.doc.reject_reason }}</div>{% endif %}
+        {% else %}<div class="small text-muted">{% if it.required %}Not uploaded yet.{% else %}Not uploaded (optional).{% endif %}</div>{% endif %}
+      </div>
+      <div class="text-end">
+        {% if it.doc %}
+          <span class="badge {% if it.doc.status == 'approved' %}bg-success{% elif it.doc.status == 'rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ it.doc.get_status_display }}</span>
+          <div class="mt-2 d-flex gap-1 flex-wrap justify-content-end">
+            {% if it.doc.status != 'approved' %}
+            <form method="post">{% csrf_token %}<input type="hidden" name="action" value="doc_approve"><input type="hidden" name="doc_id" value="{{ it.doc.pk }}">
+              <button class="btn btn-sm btn-success">Approve</button></form>
+            {% endif %}
+            <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="action" value="doc_reject"><input type="hidden" name="doc_id" value="{{ it.doc.pk }}">
+              <input name="reason" maxlength="200" class="form-control form-control-sm" placeholder="Reason" required style="width:160px">
+              <button class="btn btn-sm btn-outline-danger">Reject</button></form>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div></div>
+  {% endfor %}
+</div>
+{% endblock %}
