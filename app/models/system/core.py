@@ -12,6 +12,26 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+DEDUPE_SECONDS = 60   # same user + same title + same message itni der ke andar dobara nahi banta
+
+
+def normalize_link(link):
+    """Apni site ka poora URL ho to sirf path (+query) rakho. Bell ka click sirf '/...' wale link kholta hai,
+    isliye absolute URL wali notification click par kuch nahi karti thi."""
+    if not link:
+        return link
+    link = str(link).strip()
+    if link.lower().startswith(('http://', 'https://')):
+        from urllib.parse import urlparse
+        u = urlparse(link)
+        site = urlparse(getattr(settings, 'SITE_URL', '') or '').netloc
+        own = {h for h in getattr(settings, 'ALLOWED_HOSTS', []) if h and not h.startswith('*')}
+        if site:
+            own.add(site)
+        if u.hostname in own or u.netloc in own:
+            link = (u.path or '/') + (f'?{u.query}' if u.query else '')
+    return link[:200]
+
 class CompanyInfo(models.Model):
     name = models.CharField("Company Name", max_length=255)
     tagline = models.CharField("Tagline", max_length=255, blank=True, null=True)
@@ -179,9 +199,24 @@ class Notification(models.Model):
         return f"{self.title} - {self.created_at.strftime('%d-%m-%Y %I:%M %p')}"
     
     @classmethod
+    def recent_duplicate(cls, user, title, message, seconds=DEDUPE_SECONDS):
+        """Isi user ko wohi title+message pichhle `seconds` mein mil chuka ho to wo notification, warna None."""
+        if not seconds:
+            return None
+        from datetime import timedelta
+        return cls.objects.filter(
+            user=user, title=title, message=message,
+            created_at__gte=now() - timedelta(seconds=seconds)).first()
+
+    @classmethod
     def send(cls, user, title, message, notification_type='info', category='all', link=None,
-             push_kind=None, push_actions=None):
-        """Create in-app notification and trigger email dispatch via email_helper."""
+             push_kind=None, push_actions=None, dedupe_seconds=DEDUPE_SECONDS):
+        """Create in-app notification and trigger email dispatch via email_helper.
+        Ek hi event do dafa trigger ho (signal + view) to doosri dafa kuch nahi banta (dedupe_seconds=0 = band)."""
+        existing = cls.recent_duplicate(user, title, message, dedupe_seconds)
+        if existing is not None:
+            return existing
+        link = normalize_link(link)
         notification = cls.objects.create(
             user=user,
             title=title,

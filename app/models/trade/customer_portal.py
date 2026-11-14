@@ -309,19 +309,17 @@ class CustomerOTP(models.Model):
                 'order': 'Order Verification'
             }
             
+            # Security: phone / email / token / verify link / OTP notification mein NAHI jate (har admin ke bell mein
+            # dikhte the). Poori detail sirf OTP management page par hai (uske apne permission ke saath).
+            title = f"🔐 OTP requested - {purpose_display.get(purpose, purpose)}"
+            message = f"Customer: {customer_name or 'Unknown'}. Open OTP management for details."
             for admin in admin_users:
+                if Notification.recent_duplicate(admin, title, message, seconds=600):
+                    continue          # ek customer ke baar baar OTP maangne par bell na bhare
                 Notification.objects.create(
                     user=admin,
-                    title=f"🔐 New OTP - {purpose_display.get(purpose, purpose)}",
-                    message=(
-                        f"Customer: {customer_name or 'Unknown'}\n"
-                        f"Phone: {phone}\n"
-                        f"OTP: {otp.masked_code} (masked)\n"
-                        f"Email: {customer_email or 'Not provided'}\n"
-                        + (f"Token: {order_token}\n" if order_token else "")
-                        + (f"Verify Link: {verify_url}\n" if verify_url else "")
-                        + f"Valid: 5 minutes"
-                    ),
+                    title=title,
+                    message=message,
                     notification_type='info',
                     category='system',
                     link=f'/otp-management/{otp.id}/'

@@ -136,6 +136,10 @@
     .notification-view-all { color: #667eea; text-decoration: none; font-size: 12px; }
     .notification-view-all:hover { text-decoration: underline; }
     .notification-item { cursor: pointer; }
+    /* Poora message dikhao (pehle 100 harf par kat jata tha): 3 line, phir "Show more" */
+    .notification-message { white-space: pre-line; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .notification-item.expanded .notification-message { display: block; -webkit-line-clamp: unset; overflow: visible; }
+    .notification-more { background: none; border: 0; padding: 0 0 4px; color: #667eea; font-size: 11px; font-weight: 600; cursor: pointer; }
     .category-btn:focus-visible, .notification-bell:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
 </style>
 
@@ -207,7 +211,8 @@
                 '<div class="notification-icon ' + type + '">' + (ICONS[n.notification_type] || '\uD83D\uDD14') + '</div>' +
                 '<div class="notification-content">' +
                 '<div class="notification-title">' + escapeHtml(n.title) + '</div>' +
-                '<div class="notification-message">' + escapeHtml(msg.substring(0, 100)) + (msg.length > 100 ? '...' : '') + '</div>' +
+                '<div class="notification-message">' + escapeHtml(msg) + '</div>' +
+                ((msg.length > 110 || msg.split('\n').length > 3) ? '<button type="button" class="notification-more" aria-expanded="false">Show more</button>' : '') +
                 '<div class="notification-time">' + escapeHtml(n.time_ago) + '</div>' +
                 '</div></div>';
         }).join('');
@@ -254,13 +259,24 @@
             .catch(function () {});
     }
 
+    function toggleExpand(item) {
+        var open = item.classList.toggle('expanded');
+        var b = item.querySelector('.notification-more');
+        if (b) { b.textContent = open ? 'Show less' : 'Show more'; b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+    }
+
     function openNotification(item) {
         var id = item.getAttribute('data-id');
         var link = item.getAttribute('data-link');
         api('/api/notifications/' + encodeURIComponent(id) + '/mark-read/', 'POST').catch(function () {});
+        if (!link) {                       // link nahi: panel band na karo, bas poora text kholo
+            item.classList.remove('unread');
+            if (!item.classList.contains('expanded')) toggleExpand(item);
+            loadUnreadCount();
+            return;
+        }
         closeDropdown();
-        if (link) window.location.href = link;
-        else loadUnreadCount();
+        window.location.href = link;
     }
 
     // Kept global: other templates may call these
@@ -279,7 +295,9 @@
     });
     els.list.addEventListener('click', function (e) {
         var item = e.target.closest('.notification-item');
-        if (item) openNotification(item);
+        if (!item) return;
+        if (e.target.closest('.notification-more')) { e.stopPropagation(); toggleExpand(item); return; }
+        openNotification(item);
     });
     els.list.addEventListener('keydown', function (e) {
         var item = e.target.closest('.notification-item');

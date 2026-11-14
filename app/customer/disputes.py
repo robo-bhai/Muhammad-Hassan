@@ -95,8 +95,8 @@ def open_dispute(order, reason, description='', photo=None):
         from django.urls import reverse
         from ..utils.admin_alerts import alert_admins
         store = order.vendor.name if order.vendor_id else 'Shop'
-        alert_admins(f'⚠️ Naya dispute: order #{order.order_no}', f'{label} - store: {store}.',
-                     link=reverse('dispute_detail', args=[dispute.pk]))
+        alert_admins(f'⚠️ New dispute: order #{order.order_no}', f'{label} - store: {store}.',
+                     link=reverse('dispute_detail', args=[dispute.pk]), category='system')
     except Exception:
         logger.exception('dispute admin alert failed')
     store_orders._notify(_user_for_vendor(order.vendor_id), f'⚠️ Dispute: order #{order.order_no}',

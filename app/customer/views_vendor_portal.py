@@ -390,11 +390,13 @@ def vendor_register(request):
                     first_name=parts[0],
                     last_name=' '.join(parts[1:]),
                 )
-                vendor = Vendor.objects.create(
+                vendor = Vendor(
                     name=business_name,
                     contact_number=phone,
                     address=f"{address}, {city}",
                 )
+                vendor._skip_notify = True      # signal ki dusri "New Vendor" notification na bane (duplicate)
+                vendor.save()
                 approved = _auto_approve_accounts() and not shop_flag('vendor_documents_required')
                 new_profile = VendorProfile.objects.create(
                     vendor=vendor, user=user, business_name=business_name,
@@ -415,10 +417,11 @@ def vendor_register(request):
         # Admin ko alert (kabhi register nahi rokta)
         try:
             from ..utils.admin_alerts import alert_admins
-            alert_admins('🏢 Naya vendor register hua',
+            alert_admins('🏢 New vendor registered',
                          f'{business_name} ({city}), {owner_name}: '
-                         + ('auto-approve ho gaya.' if approved else 'approval ka intezar hai.'),
-                         link=request.build_absolute_uri(reverse('vendor_approvals') + '?tab=accounts&status=pending'))
+                         + ('auto-approved.' if approved else 'waiting for approval.'),
+                         link=reverse('vendor_approvals') + '?tab=accounts&status=pending',
+                         category='vendors')
         except Exception:
             logger.exception('vendor register admin alert failed')
 

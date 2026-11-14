@@ -111,10 +111,14 @@ def create_announcement_notification(
     link=None,
     user=None
 ):
-    """Universal helper — notification create karo"""
+    """Universal helper — notification create karo (same user+title+message 60s ke andar dobara nahi banta)"""
     try:
+        from .models.system.core import normalize_link
+        link = normalize_link(link)
         if user:
             # For a specific user
+            if Notification.recent_duplicate(user, title, message):
+                return True
             Notification.objects.create(
                 user=user,
                 title=title,
@@ -127,6 +131,8 @@ def create_announcement_notification(
             # For all staff
             staff_users = User.objects.filter(is_staff=True, is_active=True)
             for u in staff_users:
+                if Notification.recent_duplicate(u, title, message):
+                    continue
                 Notification.objects.create(
                     user=u,
                     title=title,
@@ -614,6 +620,8 @@ def new_customer_signal(sender, instance, created, **kwargs):
 def new_vendor_signal(sender, instance, created, **kwargs):
     """When a new vendor is added"""
     if not created:
+        return
+    if getattr(instance, '_skip_notify', False):      # portal register: view apni (link wali) alert bhejta hai
         return
     
     try:
